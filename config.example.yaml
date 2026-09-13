@@ -1,0 +1,18 @@
+# 课表座位系统配置
+server:
+  port: 8080
+  # JWT 密钥，生产环境请修改
+  jwt_secret: "change-me-in-production"
+  # 数据文件目录
+  data_dir: "./data"
+
+# Supabase 云同步配置（管理员可通过后台修改）
+supabase:
+  # 是否启用云同步
+  enabled: false
+  # Supabase 项目 URL，如 https://xxx.supabase.co
+  url: ""
+  # Supabase anon key
+  api_key: ""
+  # 同步间隔（秒），0 表示不自动同步
+  sync_interval: 300

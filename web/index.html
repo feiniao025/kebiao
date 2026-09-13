@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>教师工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<div id="saveStatus"></div>
+<div id="diagPanel"></div>
+
+<h1 class="page-title" id="pageTitle">📚 教师工作台</h1>
+<p class="page-sub" id="pageSub">加载中...</p>
+
+<div class="control-bar">
+    <button data-filter="all" class="active schedule-only">全部显示</button>
+    <span id="classFilterButtons" style="display:contents;"></span>
+    <button id="createClassBtn" class="schedule-only" style="background:#16a085;">＋ 新建班级</button>
+    <button id="toggleWeekHighlight" class="active schedule-only">🔆 当日高亮</button>
+    <button id="editToggleBtn" class="schedule-only">✏️ 编辑课表</button>
+    <button id="seatEditToggle" class="seat-only" style="display:none;">✏️ 编辑座位</button>
+    <button id="themeToggle">☀️ 浅色</button>
+    <button id="moreToggle" class="more-ctrl">⚙️ 更多</button>
+    <div id="morePanel" class="more-panel">
+        <button id="exportBtn">📷 导出图片</button>
+        <button id="importExcelBtn" class="data-ctrl">📥 导入 Excel</button>
+        <button id="exportExcelBtn" class="data-ctrl">📤 导出 Excel</button>
+        <button id="diagBtn" class="diag-ctrl">🩺 存储诊断</button>
+    </div>
+</div>
+
+<div class="app-wrap">
+    <aside class="sidebar" style="display:none;">
+        <div class="sidebar-title">💼 教师工作台</div>
+        <nav class="sidebar-nav">
+            <button data-tab="schedule">📚 课程表</button>
+            <button data-tab="seat">🪑 座位表</button>
+            <button data-tab="me" class="active">👤 我的</button>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div id="meContainer">
+            <div class="me-page"><div class="me-card" id="meCard"></div></div>
+        </div>
+
+        <div id="scheduleContainer" style="display:none;"></div>
+
+        <div class="card" id="seatCard" style="display:none;">
+        <div class="card-header">
+        <h2><span id="seatCardTitle"></span><span class="badge" id="seatSizeInfo">7行×8列</span></h2>
+        <div class="legend seat-tools">
+        <button id="seatOrderBtn" class="seat-ctrl">讲台上</button>
+		<button id="seatAisleBtn" class="seat-ctrl">过道 关</button>
+        <button id="seatResizeToggle" class="seat-ctrl">行列 展开</button>
+        <div id="seatResizePanel" class="seat-resize-panel">
+        <button id="seatAddRow" class="seat-ctrl">＋行</button>
+        <button id="seatDelRow" class="seat-ctrl">－行</button>
+        <button id="seatAddCol" class="seat-ctrl">＋列</button>
+        <button id="seatDelCol" class="seat-ctrl">－列</button>
+        </div>
+        </div>
+        </div>
+        <div class="seat-stage" id="seatStage">讲 台</div>
+        <div class="seat-grid" id="seatGrid"></div>
+        <div class="seat-legend">💡 单击看名片 · 点击「✏️ 编辑座位」后长按可拖动换位、可增删改学生</div>
+        </div>
+    </main>
+</div>
+
+<!-- 学生信息弹窗 -->
+<div class="seat-pop" id="seatPop">
+<div class="seat-pop-inner">
+    <button id="popCloseBtn" class="pop-close-x" aria-label="关闭">×</button>
+    <h3>学生信息</h3>
+    <div class="cell-pop-row"><label>姓名：</label><input type="text" id="popNameInput" class="cell-pop-input"></div>
+    <div class="cell-pop-row"><label>性别：</label>
+        <select id="popGenderInput" class="cell-pop-input">
+            <option value="男">男</option>
+            <option value="女">女</option>
+        </select>
+    </div>
+    <div class="cell-pop-row"><label>身份证号：</label><input type="text" id="popIdCardInput" class="cell-pop-input" placeholder="18位"></div>
+    <div class="cell-pop-row"><label>家长1电话：</label><input type="text" id="popTel1Input" class="cell-pop-input" placeholder="11位数字"><button type="button" id="popTel1Dial" class="tel-btn" title="拨打">📞</button></div>
+    <div class="cell-pop-row"><label>家长2电话：</label><input type="text" id="popTel2Input" class="cell-pop-input" placeholder="11位数字"><button type="button" id="popTel2Dial" class="tel-btn" title="拨打">📞</button></div>
+    <div class="cell-pop-row"><label>家庭地址：</label><input type="text" id="popAddrInput" class="cell-pop-input"></div>
+    <div class="seat-pop-btns"><button id="popDeleteBtn">🗑️ 删除</button><button id="popSaveBtn">💾 保存</button></div>
+</div>
+</div>
+
+<!-- 课程单元格弹窗 -->
+<div class="seat-pop" id="cellPop">
+<div class="seat-pop-inner">
+    <button id="cellPopClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3 id="cellPopTitle">编辑课程</h3>
+    <div class="cell-pop-row" id="cellPopPeriodRow1"><label>节次名称：</label><input type="text" id="cellPopPeriodName" class="cell-pop-input"></div>
+    <div class="cell-pop-row" id="cellPopPeriodRow2"><label>时间段：</label><input type="text" id="cellPopPeriodTime" class="cell-pop-input" placeholder="如 8:00-8:40"></div>
+    <div class="cell-pop-row" id="cellPopSubjectRow"><label>科目：</label><input type="text" id="cellPopSubject" class="cell-pop-input" placeholder="如 语、数、英"></div>
+    <div class="cell-pop-row" id="cellPopTeacherRow"><label>任课教师：</label><input type="text" id="cellPopTeacher" class="cell-pop-input" placeholder="如 张老师"></div>
+    <div class="cell-pop-row" id="cellPopColorRow"><label>背景颜色：</label><div class="color-picker" id="cellPopColors">
+        <button data-color="0" title="无色"></button><button data-color="1" title="红"></button><button data-color="2" title="蓝"></button><button data-color="3" title="绿"></button><button data-color="4" title="黄"></button><button data-color="5" title="紫"></button><button data-color="6" title="橙"></button>
+    </div></div>
+    <button id="cellPopSave">💾 保存</button>
+</div>
+</div>
+
+<!-- 新建班级弹窗 -->
+<div class="seat-pop" id="classPop">
+<div class="seat-pop-inner">
+    <button id="classPopClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3>新建班级</h3>
+    <div class="cell-pop-row"><label>年级：</label><select id="classPopGrade" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班级：</label><select id="classPopNum" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classPopBadge" class="cell-pop-input" placeholder="如 张三（可留空）"></div>
+    <div class="me-error" id="classPopError" style="min-height:18px;margin-top:6px;color:#e74c3c;font-size:13px;text-align:center;"></div>
+    <button id="classPopSave" style="background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:16px;">💾 创建</button>
+</div>
+</div>
+
+<!-- 班级管理弹窗 -->
+<div class="seat-pop" id="classManagePop">
+<div class="seat-pop-inner">
+    <button id="classManageClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3 id="classManageTitle">班级管理</h3>
+    <div class="cell-pop-row"><label>年级：</label><select id="classManageGrade" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班级：</label><select id="classManageNum" class="cell-pop-input"></select></div>
+	<div class="cell-pop-row"><label>课节数：</label><select id="classManagePeriods" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classManageBadge" class="cell-pop-input" placeholder="如 张三（可留空）"></div>
+    <div class="me-error" id="classManageError" style="min-height:18px;margin-top:6px;color:#e74c3c;font-size:13px;text-align:center;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+        <button id="classManageDelete" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 删除</button>
+        <button id="classManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+    </div>
+</div>
+</div>
+
+<!-- Excel 导入目标班级选择弹窗 -->
+<div class="seat-pop" id="importTargetPop">
+<div class="seat-pop-inner">
+    <button id="importTargetClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3>选择导入目标班级</h3>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:12px;">Excel 文件第一个工作表的课程将导入到所选班级</p>
+    <div class="cell-pop-row"><label>年级：</label><select id="importTargetGrade" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班级：</label><select id="importTargetNum" class="cell-pop-input"></select></div>
+    <div class="me-error" id="importTargetError" style="min-height:18px;margin-top:6px;color:#e74c3c;font-size:13px;text-align:center;"></div>
+    <button id="importTargetConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">✅ 确定并选择文件</button>
+</div>
+</div>
+
+<!-- Excel 导出班级选择弹窗 -->
+<div class="seat-pop" id="exportSchedulePop">
+<div class="seat-pop-inner">
+    <button id="exportScheduleClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3>导出课程表</h3>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:12px;">选择要导出的班级（可多选）</p>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 6px;cursor:pointer;font-size:14px;color:var(--text-main);border-bottom:1px dashed var(--legend-item-border);margin-bottom:8px;font-weight:600;">
+        <input type="checkbox" id="exportScheduleAll" checked> 全选
+    </label>
+    <div id="exportScheduleList" style="max-height:320px;overflow:auto;border:1px solid var(--seat-border);border-radius:10px;padding:8px;"></div>
+    <div class="me-error" id="exportScheduleError" style="min-height:18px;margin-top:6px;color:#e74c3c;font-size:13px;text-align:center;"></div>
+    <button id="exportScheduleConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">✅ 导出</button>
+</div>
+</div>
+
+<!-- 用户数据详情弹窗 -->
+<div class="seat-pop" id="userDetailPop">
+<div class="seat-pop-inner user-detail-pop-inner">
+    <button id="userDetailClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3 id="userDetailTitle">用户数据</h3>
+    <div id="userDetailBody" style="max-height:72vh;overflow:auto;padding-right:6px;"></div>
+</div>
+</div>
+
+<!-- 过道设置弹窗 -->
+<div class="seat-pop" id="aislePop">
+<div class="seat-pop-inner">
+    <button id="aislePopClose" class="pop-close-x" aria-label="关闭">×</button>
+    <h3>设置过道</h3>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:12px;line-height:1.7;">
+        用 <b>+</b> 分隔每段座位，数字代表连续列数，段之间为过道。<br>
+        例：<code>2+4+1</code> 表示 2列 + 过道 + 4列 + 过道 + 1列<br>
+        <span id="aisleHint"></span>
+    </p>
+    <div class="cell-pop-row">
+        <label>过道格式：</label>
+        <input type="text" id="aisleInput" class="cell-pop-input" placeholder="如 3+2+3，留空则取消过道">
+    </div>
+    <div class="me-error" id="aisleError" style="min-height:18px;margin-top:6px;color:#e74c3c;font-size:13px;text-align:center;"></div>
+    <button id="aisleSave" style="width:100%;background:#7d5ba6;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">💾 保存</button>
+</div>
+</div>
+
+<input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none">
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
