@@ -37,7 +37,9 @@ window.addEventListener('unhandledrejection', function (e) {
   console.error('[Promise Rejection]', e.reason);
 });
 
-// 全局函数，供 HTML onclick 调用
+// ============ 全局函数 ============
+
+// 学生个人成绩报告弹窗（旧版，保留兼容，不再主动调用）
 window.openStudentReportPop = async function(studentName) {
   if (!studentName) return;
   $('studentReportPop').style.display = 'flex';
@@ -70,15 +72,14 @@ window.openStudentReportPop = async function(studentName) {
     `;
     $('studentReportBody').innerHTML = html;
 
-    // 绘制折线图
     setTimeout(() => {
       const chartDom = document.getElementById('chartHistory');
-      if (chartDom && history.length > 0) {
+      if (chartDom && history.length > 0 && typeof echarts !== 'undefined') {
         const myChart = echarts.init(chartDom);
         myChart.setOption({
           tooltip: { trigger: 'axis' },
-          xAxis: { 
-            type: 'category', 
+          xAxis: {
+            type: 'category',
             data: history.map(h => h.exam_name),
             axisLabel: { interval: 0, rotate: 30, fontSize: 10 }
           },
@@ -98,13 +99,17 @@ window.openStudentReportPop = async function(studentName) {
   }
 };
 
-// 在名次表右侧内联显示学生个人成绩走势
+// 在「成绩走势」Tab 内展示学生个人成绩走势
 window.showStudentReportInline = async function(studentName, subject, fullScore, gender) {
   const panel = document.getElementById('rankRightPanel');
   if (!panel) return;
   panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">加载中...</div>';
 
-  // 高亮选中的姓名行
+  // 同步下拉框
+  const sel = document.getElementById('trendStudentSelect');
+  if (sel && sel.value !== studentName) sel.value = studentName;
+
+  // 高亮名次表里对应行
   document.querySelectorAll('.rank-table .student-name a').forEach(a => a.classList.remove('selected'));
   document.querySelectorAll('.rank-table .student-name a').forEach(a => {
     if (a.textContent === studentName) a.classList.add('selected');
@@ -135,7 +140,7 @@ window.showStudentReportInline = async function(studentName, subject, fullScore,
 
     html += `
       <div class="report-section-title">历次成绩走势</div>
-      <div id="chartInlineHistory" style="width:100%;height:170px;"></div>
+      <div id="chartInlineHistory" style="width:100%;height:240px;"></div>
       <div class="report-section-title" style="margin-top:14px;">考试成绩明细</div>
       <div class="report-detail-list">
         ${history.slice().reverse().map(h => `
@@ -151,7 +156,6 @@ window.showStudentReportInline = async function(studentName, subject, fullScore,
     `;
     panel.innerHTML = html;
 
-    // 绘制折线图
     setTimeout(() => {
       const chartDom = document.getElementById('chartInlineHistory');
       if (!chartDom) return;
@@ -207,14 +211,13 @@ window.deleteExam = async function(examId) {
   }
 };
 
+// ============ 主逻辑 ============
 (async function () {
   'use strict';
 
-  // ============ 主/子标签状态 ============
   let activeTopTab = 'today';
   let activeSubTab = null;
 
-  // ============ 原有状态 ============
   let currentUser = null;
   let defaultPeriods = [];
   let defaultLegend = [];
@@ -236,7 +239,6 @@ window.deleteExam = async function(examId) {
   let seatEditOn = false;
   let rosterEditOn = false;
 
-  // ============ 学生模块状态 ============
   let currentRosterClassId = '';
   let currentRosterKeyword = '';
   let rosterList = [];
@@ -272,7 +274,6 @@ window.deleteExam = async function(examId) {
   const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
   const EXAM_NAMES = ['第一次月考', '第二次月考', '期中考试', '期末考试'];
 
-  // ============ DOM ============
   const $ = (id) => document.getElementById(id);
   const html = document.documentElement;
   const pageTitle = $('pageTitle');
@@ -288,7 +289,6 @@ window.deleteExam = async function(examId) {
   const attendanceContainer = $('attendanceContainer');
   const rosterContainer = $('rosterContainer');
 
-  // ============ Utilities ============
   let saveStatusTimer = null;
   function showSaveStatus(msg, isError) {
     const el = $('saveStatus');
@@ -331,7 +331,6 @@ window.deleteExam = async function(examId) {
     }, AUTO_SYNC_DELAY);
   }
 
-  // ---------- 年级/班级工具 ----------
   const CN_DIGITS = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
   function gradeLabel(g) {
     if (g >= 10) return '高' + (g - 9);
@@ -397,7 +396,6 @@ window.deleteExam = async function(examId) {
     });
   }
 
-  // ---------- 过道工具 ----------
   function getAisleSegments(aisle, cols) {
     if (!aisle) return [cols];
     const parts = String(aisle).split('+').map(s => parseInt(s.trim(), 10));
@@ -445,7 +443,6 @@ window.deleteExam = async function(examId) {
     return String(s).replace(/[^a-zA-Z0-9_-]/g, (ch) => '\\' + ch);
   }
 
-  // ============ Init ============
   async function init() {
     try {
       if (!API.getToken()) { showLoginRegister(); return; }
@@ -541,7 +538,6 @@ window.deleteExam = async function(examId) {
     } catch { /* ignore */ }
   }
 
-  // ============ 主/子标签 ============
   const SUB_TABS = {
     today:    [],
     students: [
@@ -681,7 +677,6 @@ window.deleteExam = async function(examId) {
     });
   }
 
-  // ============ 花名册工具条（一次性绑定） ============
   (function bindRosterToolbar() {
     const editBtn = $('rosterEditBtn');
     if (editBtn) {
@@ -720,7 +715,6 @@ window.deleteExam = async function(examId) {
     if (expImg) expImg.onclick = () => exportRosterImage();
   })();
 
-  // ============ 座位表标题 ============
   function updateSeatCardTitle() {
     const el = $('seatCardTitle');
     if (!el) return;
@@ -732,7 +726,6 @@ window.deleteExam = async function(examId) {
     }
   }
 
-  // ============ 班级筛选按钮 ============
   function renderFilterButtons() {
     const container = $('classFilterButtons');
     if (!container) return;
@@ -766,7 +759,6 @@ window.deleteExam = async function(examId) {
     });
   }
 
-  // ============ 编辑课表开关 ============
   const editToggleBtn = $('editToggleBtn');
   if (editToggleBtn) {
     editToggleBtn.onclick = (e) => {
@@ -777,7 +769,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 编辑座位开关 ============
   const seatEditToggle = $('seatEditToggle');
   if (seatEditToggle) {
     seatEditToggle.onclick = (e) => {
@@ -790,7 +781,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 班级卡片拖拽 ============
   function setupClassDrag(card, cls) {
     const header = card.querySelector('.card-header');
     if (!header) return;
@@ -941,7 +931,6 @@ window.deleteExam = async function(examId) {
     if (classDrag) finishClassDrag();
   });
 
-  // ============ 新建班级 ============
   async function openCreateClassPop() {
     const gradeSel = $('classPopGrade');
     const numSel = $('classPopNum');
@@ -1036,7 +1025,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 班级管理弹窗 ============
   function openClassManagePop(cls) {
     currentManageClassId = cls.class_id;
     $('classManageTitle').textContent = '班级管理 · ' + cls.name;
@@ -1118,7 +1106,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ Schedule Rendering ============
   function renderSchedule() {
     const container = scheduleContainer;
     if (!container) return;
@@ -1331,7 +1318,6 @@ window.deleteExam = async function(examId) {
   }
   function updateAllLegends() { classes.forEach(c => updateClassLegend(c.class_id)); }
 
-  // ============ Cell 编辑弹窗 ============
   function openCellPop(td) {
     currentCellIdx = +td.dataset.idx;
     currentCellType = td.dataset.type;
@@ -1429,7 +1415,6 @@ window.deleteExam = async function(examId) {
   const cellPopPeriodTime = $('cellPopPeriodTime');
   if (cellPopPeriodTime) cellPopPeriodTime.addEventListener('keydown', e => { if (e.key === 'Enter') $('cellPopSave').click(); });
 
-  // ============ Theme ============
   function setThemeBtn() {
     const isDark = html.hasAttribute('data-theme');
     const btn = $('themeToggle');
@@ -1449,7 +1434,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ Week Highlight ============
   const toggleWeekHighlight = $('toggleWeekHighlight');
   if (toggleWeekHighlight) {
     toggleWeekHighlight.onclick = () => {
@@ -1471,7 +1455,6 @@ window.deleteExam = async function(examId) {
     }
   }
 
-  // ============ More Panel (class) ============
   const moreToggle = $('moreToggle');
   if (moreToggle) {
     moreToggle.onclick = (e) => {
@@ -1484,7 +1467,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ Excel 基础工具 ============
   function readExcelFile(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1518,7 +1500,6 @@ window.deleteExam = async function(examId) {
     input.click();
   }
 
-  // ============ 课表导出 ============
   function openExportSchedulePop() {
     if (!classes.length) { alert('暂无班级可导出'); return; }
     const listEl = $('exportScheduleList');
@@ -1643,7 +1624,6 @@ window.deleteExam = async function(examId) {
     showSaveStatus('已导出 ' + list.length + ' 个班级', false);
   }
 
-  // ============ 课表导入 ============
   async function importScheduleExcel(file, targetClass) {
     if (!targetClass) { alert('未选择目标班级'); return; }
     const wb = await readExcelFile(file);
@@ -1727,7 +1707,6 @@ window.deleteExam = async function(examId) {
     }
   }
 
-  // ============ 花名册 Excel 导入 ============
   function matchRosterHeaderCell(cell) {
     const t = String(cell || '').trim();
     if (!t) return '';
@@ -1950,7 +1929,6 @@ window.deleteExam = async function(examId) {
     showSaveStatus('导入完成：成功 ' + ok + ' 条' + (fail ? '，失败 ' + fail + ' 条' : ''), fail > 0);
   }
 
-  // ============ 座位表导入 / 导出 ============
   function exportSeatExcel() {
     const rows = [['行', '列', '姓名', '性别', '身份证号', '家长1电话', '家长2电话', '家庭地址']];
     for (let r = 0; r < seat.rows; r++) {
@@ -2077,7 +2055,6 @@ window.deleteExam = async function(examId) {
     } catch { /* ignore */ }
   }
 
-  // ============ 导入目标选择弹窗 ============
   function openImportTargetPop(mode) {
     importTargetMode = mode || 'schedule';
     const gradeSel = $('importTargetGrade');
@@ -2183,7 +2160,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ Seat ============
   function displayToData(row, col) {
     if (seat.order === 'asc') return row * seat.cols + col;
     return (seat.rows - 1 - row) * seat.cols + (seat.cols - 1 - col);
@@ -2346,7 +2322,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 过道设置 ============
   const seatAisleBtn = $('seatAisleBtn');
   if (seatAisleBtn) {
     seatAisleBtn.onclick = () => {
@@ -2553,7 +2528,6 @@ window.deleteExam = async function(examId) {
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') $('popSaveBtn').click(); });
   });
 
-  // ============ Export Image (class) ============
   const exportBtn = $('exportBtn');
   if (exportBtn) {
     exportBtn.onclick = async () => {
@@ -2587,7 +2561,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ Cloud Sync ============
   async function doSyncPush() {
     try { await apiCall(API.pushSync); showSaveStatus('数据已推送到云端', false); } catch {}
   }
@@ -2600,7 +2573,6 @@ window.deleteExam = async function(examId) {
     } catch {}
   }
 
-  // ============ Diagnostics ============
   const diagBtn = $('diagBtn');
   if (diagBtn) {
     diagBtn.onclick = async () => {
@@ -2624,7 +2596,6 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 用户详情弹窗 ============
   const udClose = $('userDetailClose');
   if (udClose) udClose.onclick = () => { $('userDetailPop').style.display = 'none'; };
   const udPop = $('userDetailPop');
@@ -2777,7 +2748,6 @@ window.deleteExam = async function(examId) {
     return html;
   }
 
-  // ============ Me Page ============
   function renderMePage() {
     if (!currentUser) { showLoginRegister(); return; }
     meCard.classList.remove('auth-card');
@@ -3092,9 +3062,6 @@ window.deleteExam = async function(examId) {
     } catch (err) { errEl.textContent = err.message; }
   }
 
-  // ========================================================================
-  // 今天
-  // ========================================================================
   function renderToday() {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -3196,9 +3163,6 @@ window.deleteExam = async function(examId) {
     } catch (e) { el.textContent = '加载失败'; }
   }
 
-  // ========================================================================
-  // 学生 - 花名册
-  // ========================================================================
   async function renderRoster() {
     const classOptions = ['<option value="">全部班级</option>'].concat(
       classes.map(c => '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>')
@@ -3418,7 +3382,6 @@ window.deleteExam = async function(examId) {
     }
   });
 
-  // ============ 花名册 - 导出图片 ============
   async function exportRosterImage() {
     const card = rosterContainer.querySelector('.me-card');
     if (!card) { alert('无法获取花名册内容'); return; }
@@ -3445,7 +3408,6 @@ window.deleteExam = async function(examId) {
     }
   }
 
-  // ============ 花名册 - 打开导出弹窗 ============
   function openExportRosterPop() {
     const gradeSel = $('exportRosterGrade');
     const numSel = $('exportRosterNum');
@@ -3480,7 +3442,6 @@ window.deleteExam = async function(examId) {
     $('exportRosterPop').style.display = 'flex';
   }
 
-  // ============ 花名册 - 按班级导出 Excel（classId 为空 → 全部） ============
   async function exportRosterExcelByClass(classId) {
     let list = [];
     try {
@@ -3546,7 +3507,6 @@ window.deleteExam = async function(examId) {
     showSaveStatus('已导出 ' + list.length + ' 条', false);
   }
 
-  // ============ 花名册 - 导出弹窗事件（一次性绑定） ============
   (function bindExportRosterPop() {
     const closeBtn = $('exportRosterClose');
     if (closeBtn) closeBtn.onclick = () => { $('exportRosterPop').style.display = 'none'; };
@@ -3578,9 +3538,6 @@ window.deleteExam = async function(examId) {
     }
   })();
 
-  // ========================================================================
-  // 学生 - 成绩
-  // ========================================================================
   async function renderGrades() {
     const classOptions = classes.map(c =>
       '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>'
@@ -3650,7 +3607,6 @@ window.deleteExam = async function(examId) {
     }
     el.innerHTML = html;
 
-    // 绑定修改和删除事件
     el.querySelectorAll('.btn-edit-exam').forEach(btn => {
       btn.onclick = (ev) => {
         ev.stopPropagation();
@@ -3722,54 +3678,36 @@ window.deleteExam = async function(examId) {
     fillSubjectSelect($('examPopSubject'), exam ? exam.subject : currentGradesSubject);
     fillExamNameSelect($('examPopName'), exam ? exam.name : EXAM_NAMES[0]);
 
-    if (exam) {
-      // 编辑：读取已有值
-      const full = exam.full_score || 100;
-      $('examPopFull').value = full;
-      $('examPopPass').value = exam.pass_score || Math.round(full * 0.6);
-      $('examPopMedium').value = exam.medium_score || Math.round(full * 0.7);
-      $('examPopGood').value = exam.good_score || Math.round(full * 0.8);
-      $('examPopExcellent').value = exam.excellent_score || Math.round(full * 0.9);
-    } else {
-      // 新建：按百分比默认
-      const full = 100;
-      $('examPopFull').value = full;
-      $('examPopPass').value = Math.round(full * 0.6);
-      $('examPopMedium').value = Math.round(full * 0.7);
-      $('examPopGood').value = Math.round(full * 0.8);
-      $('examPopExcellent').value = Math.round(full * 0.9);
-    }
-
-    // 新建时，满分变化自动按百分比刷新各分数线
     const fullInput = $('examPopFull');
-    if (isNew) {
-      fullInput.oninput = () => {
-        const full = parseInt(fullInput.value, 10) || 100;
-        $('examPopPass').value = Math.round(full * 0.6);
-        $('examPopMedium').value = Math.round(full * 0.7);
-        $('examPopGood').value = Math.round(full * 0.8);
-        $('examPopExcellent').value = Math.round(full * 0.9);
-      };
-    } else {
-      fullInput.oninput = null;
+    const passInput = $('examPopPass');
+    const mediumInput = $('examPopMedium');
+    const goodInput = $('examPopGood');
+    const excellentInput = $('examPopExcellent');
+
+    const RATIOS = { pass: 0.6, medium: 0.7, good: 0.8, excellent: 0.9 };
+
+    function applyRatios() {
+      const full = parseInt(fullInput.value, 10) || 100;
+      passInput.value = Math.round(full * RATIOS.pass);
+      mediumInput.value = Math.round(full * RATIOS.medium);
+      goodInput.value = Math.round(full * RATIOS.good);
+      excellentInput.value = Math.round(full * RATIOS.excellent);
     }
 
-    $('examPopError').textContent = '';
-    $('examPopClass').disabled = !isNew;
-    $('examPopSubject').disabled = !isNew;
-    $('examPopName').disabled = !isNew;
-    $('examPop').dataset.id = isNew ? '' : exam.id;
-    $('examPop').style.display = 'flex';
-  }
-    if (classes.length === 0) { alert('请先创建班级'); return; }
-    const isNew = !exam;
-    $('examPopTitle').textContent = isNew ? '新建考试' : '编辑考试';
-    fillClassSelect($('examPopClass'), exam ? exam.class_id : currentGradesClassId);
-    fillSubjectSelect($('examPopSubject'), exam ? exam.subject : currentGradesSubject);
-    fillExamNameSelect($('examPopName'), exam ? exam.name : EXAM_NAMES[0]);
-    $('examPopFull').value = exam ? exam.full_score : 100;
-    $('examPopPass').value = exam ? exam.pass_score : 75;
-    $('examPopExcellent').value = exam ? exam.excellent_score : 100;
+    if (exam) {
+      const full = exam.full_score || 100;
+      fullInput.value = full;
+      passInput.value = exam.pass_score || Math.round(full * RATIOS.pass);
+      mediumInput.value = exam.medium_score || Math.round(full * RATIOS.medium);
+      goodInput.value = exam.good_score || Math.round(full * RATIOS.good);
+      excellentInput.value = exam.excellent_score || Math.round(full * RATIOS.excellent);
+    } else {
+      fullInput.value = 100;
+      applyRatios();
+    }
+
+    fullInput.oninput = applyRatios;
+
     $('examPopError').textContent = '';
     $('examPopClass').disabled = !isNew;
     $('examPopSubject').disabled = !isNew;
@@ -3811,8 +3749,17 @@ window.deleteExam = async function(examId) {
     };
   }
 
-  // ============ 从 Excel 导入成绩（仅填充到输入框，需手动保存） ============
-  // ============ 从 Excel 导入成绩（自动填充 + 自动保存） ============
+  function applyScoreLevel(input, exam) {
+    const v = parseFloat(input.value);
+    input.removeAttribute('data-level');
+    if (isNaN(v) || input.value === '') return;
+    if (v >= exam.excellent_score) input.setAttribute('data-level', 'excellent');
+    else if (v >= exam.good_score) input.setAttribute('data-level', 'good');
+    else if (v >= exam.medium_score) input.setAttribute('data-level', 'medium');
+    else if (v >= exam.pass_score) input.setAttribute('data-level', 'pass');
+    else input.setAttribute('data-level', 'fail');
+  }
+
   async function importScoresFromExcel(exam, onSaved) {
     const input = $('excelFileInput');
     if (!input) return;
@@ -3826,7 +3773,6 @@ window.deleteExam = async function(examId) {
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
         if (rows.length < 1) { alert('Excel 内容为空'); return; }
 
-        // 自动探测表头（前 5 行）
         let nameCol = -1, scoreCol = -1, headerRowIdx = -1;
         for (let i = 0; i < Math.min(5, rows.length); i++) {
           const row = rows[i];
@@ -3852,7 +3798,6 @@ window.deleteExam = async function(examId) {
           sc = 1;
         }
 
-        // 解析为 name → score
         const scoreMap = {};
         for (let i = dataStartIdx; i < rows.length; i++) {
           const r = rows[i];
@@ -3871,7 +3816,6 @@ window.deleteExam = async function(examId) {
           return;
         }
 
-        // 填充到输入框并收集待保存数据
         const toSave = [];
         const inputs = $('scoresInputBody').querySelectorAll('.score-input');
         const rosterNames = new Set();
@@ -3880,7 +3824,7 @@ window.deleteExam = async function(examId) {
           rosterNames.add(name);
           if (scoreMap[name] !== undefined) {
             inp.value = scoreMap[name];
-			applyScoreLevel(inp, exam);
+            applyScoreLevel(inp, exam);
             toSave.push({ student_name: name, score: scoreMap[name] });
           }
         });
@@ -3892,7 +3836,6 @@ window.deleteExam = async function(examId) {
           return;
         }
 
-        // ============ 自动保存 ============
         showSaveStatus('正在保存 ' + toSave.length + ' 条...', false);
         try {
           await apiCall(API.saveScores, exam.id, toSave);
@@ -3904,7 +3847,6 @@ window.deleteExam = async function(examId) {
           alert(msg);
           showSaveStatus('已导入并保存 ' + toSave.length + ' 条', false);
 
-          // 通知父组件刷新数据
           if (typeof onSaved === 'function') onSaved();
         } catch (err) {
           alert('保存失败：' + (err.message || err));
@@ -3917,18 +3859,6 @@ window.deleteExam = async function(examId) {
       }
     };
     input.click();
-  }
-
-  // 根据分数所在的区间，为输入框设置不同的颜色
-  function applyScoreLevel(input, exam) {
-    const v = parseFloat(input.value);
-    input.removeAttribute('data-level');
-    if (isNaN(v) || v === '') return;
-    if (v >= exam.excellent_score) input.setAttribute('data-level', 'excellent');
-    else if (v >= exam.good_score) input.setAttribute('data-level', 'good');
-    else if (v >= exam.medium_score) input.setAttribute('data-level', 'medium');
-    else if (v >= exam.pass_score) input.setAttribute('data-level', 'pass');
-    else input.setAttribute('data-level', 'fail');
   }
 
   async function openScoresPop(examId) {
@@ -3950,16 +3880,36 @@ window.deleteExam = async function(examId) {
       const clsName = (classes.find(c => c.class_id === exam.class_id) || {}).name || '';
       $('scoresPopTitle').textContent = exam.name + ' · ' + exam.subject + ' （' + clsName + '）';
 
-      // 构建 Tab 结构 —— 操作按钮放进「成绩录入」标签页内
+      const passLine = exam.pass_score;
+      const mediumLine = exam.medium_score;
+      const goodLine = exam.good_score;
+      const excellentLine = exam.excellent_score;
+      const fullScore = exam.full_score;
+
+      const bands = [
+        { label: '<' + passLine,                       name: '不及格', color: '#f28b82', min: -Infinity,     max: passLine },
+        { label: passLine + '~' + (mediumLine - 1),    name: '及格',   color: '#fb8c00', min: passLine,      max: mediumLine },
+        { label: mediumLine + '~' + (goodLine - 1),    name: '中等',   color: '#fdd835', min: mediumLine,    max: goodLine },
+        { label: goodLine + '~' + (excellentLine - 1), name: '良好',   color: '#8ab4f8', min: goodLine,      max: excellentLine },
+        { label: excellentLine + '~' + fullScore,      name: '优秀',   color: '#81c784', min: excellentLine, max: Infinity },
+      ];
+      const counts = bands.map(() => 0);
+      scores.forEach(s => {
+        for (let i = 0; i < bands.length; i++) {
+          if (s.score >= bands[i].min && s.score < bands[i].max) { counts[i]++; break; }
+        }
+      });
+
       let html = `
         <div class="tab-header">
           <button class="tab-btn active" data-tab="input">📝 成绩录入</button>
           <button class="tab-btn" data-tab="analysis">📊 分数段</button>
           <button class="tab-btn" data-tab="rank">🏆 名次表</button>
+          <button class="tab-btn" data-tab="trend">📈 成绩走势</button>
         </div>
         <div id="tab-content-input" class="tab-pane active">
           <div class="scores-stats" id="scoresPopStats"></div>
-          <div id="scoresInputBody" style="margin-top:12px;max-height:45vh;overflow:auto;"></div>
+          <div id="scoresInputBody" style="margin-top:12px;"></div>
           <div class="scores-action-bar">
             <button id="scoresImportBtn" class="btn-scores-import">📗 导入</button>
             <button id="scoresSaveBtn" class="btn-scores-save">💾 保存</button>
@@ -3969,12 +3919,20 @@ window.deleteExam = async function(examId) {
           <div id="chartDistribution" style="width:100%;height:300px;"></div>
         </div>
         <div id="tab-content-rank" class="tab-pane">
-          <div id="rankTableBody" style="max-height:50vh;overflow:auto;"></div>
+          <div id="rankTableBody"></div>
+        </div>
+        <div id="tab-content-trend" class="tab-pane">
+          <div class="trend-toolbar">
+            <label>选择学生：</label>
+            <select id="trendStudentSelect" class="cell-pop-input"></select>
+          </div>
+          <div class="rank-right" id="rankRightPanel">
+            <div class="rank-right-empty">请选择学生查看个人成绩走势</div>
+          </div>
         </div>
       `;
       $('scoresPopBody').innerHTML = html;
 
-      // 填充统计信息
       $('scoresPopStats').innerHTML =
         '<div class="stat-cell"><span class="k">平均分</span><span class="v">' + (stats.average ? stats.average.toFixed(1) : '—') + ' / ' + exam.full_score + '</span></div>' +
         '<div class="stat-cell"><span class="k">及格率</span><span class="v">' + (stats.pass_rate ? stats.pass_rate.toFixed(1) : '0.0') + '% (' + (stats.pass_count || 0) + '人 ≥' + exam.pass_score + ')</span></div>' +
@@ -3982,7 +3940,6 @@ window.deleteExam = async function(examId) {
         '<div class="stat-cell"><span class="k">最高/最低</span><span class="v">' + (stats.max_score || 0) + ' / ' + (stats.min_score || 0) + '</span></div>' +
         '<div class="stat-cell"><span class="k">已录人数</span><span class="v">' + (stats.count || 0) + ' / ' + roster.length + '</span></div>';
 
-      // 渲染成绩录入区（卡片式 + 头像 + 动态颜色）
       if (roster.length === 0) {
         $('scoresInputBody').innerHTML = '<div class="today-empty">该班级暂无花名册学生<br>请先到「学生 → 花名册」添加学生</div>';
       } else {
@@ -4007,25 +3964,18 @@ window.deleteExam = async function(examId) {
         });
         inputHtml += '</div>';
         $('scoresInputBody').innerHTML = inputHtml;
-
-        // 初始化颜色 + 绑定输入事件
         $('scoresInputBody').querySelectorAll('.score-input').forEach(inp => {
           applyScoreLevel(inp, exam);
           inp.addEventListener('input', () => applyScoreLevel(inp, exam));
         });
       }
 
-      // 渲染名次表
       if (roster.length === 0) {
         $('rankTableBody').innerHTML = '<div class="today-empty">暂无学生数据</div>';
       } else {
         const rankList = roster.map(stu => {
           const scoreObj = scores.find(s => s.student_name === stu.name);
-          return {
-            name: stu.name,
-            gender: stu.gender || '',
-            score: scoreObj ? scoreObj.score : null
-          };
+          return { name: stu.name, gender: stu.gender || '', score: scoreObj ? scoreObj.score : null };
         }).sort((a, b) => {
           if (a.score === null && b.score === null) return 0;
           if (a.score === null) return 1;
@@ -4033,25 +3983,22 @@ window.deleteExam = async function(examId) {
           return b.score - a.score;
         });
 
-        let rankTableHtml = '<table class="rank-table">' +
-          '<thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
+        let rankTableHtml = '<table class="rank-table"><thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
         let rank = 1;
         rankList.forEach((item) => {
           if (item.score === null) {
             rankTableHtml += `<tr><td class="rank-num">-</td><td class="student-name">${escapeHtml(item.name)}</td><td>${escapeHtml(item.gender)}</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>`;
             return;
           }
-          const level = item.score >= exam.excellent_score ? '优秀' : (item.score >= exam.pass_score ? '及格' : '不及格');
-          const levelColor = level === '优秀' ? '#27ae60' : (level === '及格' ? '#f39c12' : '#e74c3c');
-          // 用 data 属性携带信息，避免内联引号转义问题
+          let level, levelColor;
+          if (item.score >= exam.excellent_score) { level = '优秀'; levelColor = '#27ae60'; }
+          else if (item.score >= exam.good_score) { level = '良好'; levelColor = '#3498db'; }
+          else if (item.score >= exam.medium_score) { level = '中等'; levelColor = '#f39c12'; }
+          else if (item.score >= exam.pass_score) { level = '及格'; levelColor = '#e67e22'; }
+          else { level = '不及格'; levelColor = '#e74c3c'; }
           rankTableHtml += `<tr>
             <td class="rank-num">${rank++}</td>
-            <td class="student-name">
-              <a href="javascript:void(0)"
-                 class="rank-student-link"
-                 data-name="${escapeHtml(item.name)}"
-                 data-gender="${escapeHtml(item.gender)}">${escapeHtml(item.name)}</a>
-            </td>
+            <td class="student-name"><a href="javascript:void(0)" class="rank-student-link" data-name="${escapeHtml(item.name)}" data-gender="${escapeHtml(item.gender)}">${escapeHtml(item.name)}</a></td>
             <td>${escapeHtml(item.gender)}</td>
             <td class="score-val">${item.score}</td>
             <td>${exam.full_score}</td>
@@ -4059,48 +4006,59 @@ window.deleteExam = async function(examId) {
           </tr>`;
         });
         rankTableHtml += '</tbody></table>';
+        $('rankTableBody').innerHTML = rankTableHtml;
 
-        const rankFullHtml =
-          '<div class="rank-layout">' +
-            '<div class="rank-left">' + rankTableHtml + '</div>' +
-            '<div class="rank-right" id="rankRightPanel">' +
-              '<div class="rank-right-empty">👈 点击左侧学生姓名<br>查看个人成绩走势</div>' +
-            '</div>' +
-          '</div>';
-        $('rankTableBody').innerHTML = rankFullHtml;
+        const trendSel = $('trendStudentSelect');
+        if (trendSel) {
+          trendSel.innerHTML = '<option value="">— 请选择 —</option>' +
+            rankList.map(s => '<option value="' + escapeHtml(s.name) + '" data-gender="' + escapeHtml(s.gender) + '">' + escapeHtml(s.name) + '</option>').join('');
+          trendSel.onchange = () => {
+            const opt = trendSel.options[trendSel.selectedIndex];
+            if (!opt || !opt.value) {
+              const panel = document.getElementById('rankRightPanel');
+              if (panel) panel.innerHTML = '<div class="rank-right-empty">请选择学生查看个人成绩走势</div>';
+              return;
+            }
+            window.showStudentReportInline(opt.value, exam.subject, exam.full_score, opt.dataset.gender);
+          };
+        }
 
-        // 绑定姓名点击事件
         $('rankTableBody').querySelectorAll('.rank-student-link').forEach(a => {
           a.onclick = (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
+            $('scoresPopBody').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            $('scoresPopBody').querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            const trendBtn = $('scoresPopBody').querySelector('.tab-btn[data-tab="trend"]');
+            if (trendBtn) trendBtn.classList.add('active');
+            const trendPane = document.getElementById('tab-content-trend');
+            if (trendPane) trendPane.classList.add('active');
+            const sel2 = $('trendStudentSelect');
+            if (sel2) sel2.value = a.dataset.name;
             window.showStudentReportInline(a.dataset.name, exam.subject, exam.full_score, a.dataset.gender);
           };
         });
+      }
 
-      // ============ 绑定「导入」按钮 ============
       const importBtn = $('scoresImportBtn');
       if (importBtn) {
         importBtn.onclick = () => importScoresFromExcel(exam, () => {
-          // 导入保存后，重新拉取数据刷新统计/名次表
           openScoresPop(examId);
           loadExamStats(examId);
         });
       }
 
-      // ============ 绑定「保存成绩」按钮 ============
       const saveBtn = $('scoresSaveBtn');
       if (saveBtn) {
         saveBtn.onclick = async () => {
           const inputs = $('scoresInputBody').querySelectorAll('.score-input');
           const toSave = [];
           inputs.forEach(inp => {
-            const name = inp.dataset.name;
             const v = inp.value.trim();
             if (v === '') return;
             const score = parseFloat(v);
             if (isNaN(score)) return;
-            toSave.push({ student_name: name, score });
+            toSave.push({ student_name: inp.dataset.name, score });
           });
           if (toSave.length === 0) { alert('请至少录入一个成绩'); return; }
           try {
@@ -4112,7 +4070,6 @@ window.deleteExam = async function(examId) {
         };
       }
 
-      // 绑定 Tab 切换事件
       $('scoresPopBody').querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = () => {
           $('scoresPopBody').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -4124,69 +4081,48 @@ window.deleteExam = async function(examId) {
             setTimeout(() => {
               const chartDom = document.getElementById('chartDistribution');
               if (!chartDom) return;
-
               if (typeof echarts === 'undefined') {
-                chartDom.innerHTML = '<div class="today-empty">图表库加载失败，请检查网络或替换 CDN</div>';
+                chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>';
                 return;
               }
-
               let myChart = echarts.getInstanceByDom(chartDom);
-              if (!myChart) {
-                myChart = echarts.init(chartDom);
-              }
+              if (!myChart) myChart = echarts.init(chartDom);
 
-              const bands = ['<60', '60-69', '70-79', '80-89', '90-99', '100+'];
-              const dist = stats.distribution || {};
-              const colors = ['#f28b82', '#fb8c00', '#fdd835', '#8ab4f8', '#81c784', '#81c784'];
-              const names = ['不及格', '及格', '中等', '良好', '优秀', '优秀'];
-
-              const seriesList = names.map((n, i) => ({
-                name: n,
+              const seriesList = bands.map((b, i) => ({
+                name: b.name,
                 type: 'bar',
                 barWidth: '55%',
                 barGap: '-100%',
-                data: bands.map((_, j) => j === i ? (dist[bands[i]] || 0) : 0),
-                itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] },
-                label: {
-                  show: true,
-                  position: 'top',
-                  fontWeight: 'bold',
-                  formatter: (p) => p.value > 0 ? p.value : ''
-                }
+                data: bands.map((_, j) => j === i ? counts[i] : 0),
+                itemStyle: { color: b.color, borderRadius: [4, 4, 0, 0] },
+                label: { show: true, position: 'top', fontWeight: 'bold', formatter: (p) => p.value > 0 ? p.value : '' }
               }));
 
               myChart.setOption({
-                title: {
-                  text: exam.subject + ' 分数段分布',
-                  left: 'center',
-                  textStyle: { fontSize: 14, fontWeight: 'bold' }
-                },
+                title: { text: exam.subject + ' 分数段分布', left: 'center', textStyle: { fontSize: 14, fontWeight: 'bold' } },
                 tooltip: { trigger: 'axis' },
-                legend: {
-                  bottom: 0,
-                  left: 'center',
-                  icon: 'circle',
-                  textStyle: { fontWeight: 'bold', fontSize: 12 }
-                },
+                legend: { bottom: 0, left: 'center', icon: 'circle', textStyle: { fontWeight: 'bold', fontSize: 12 } },
                 grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-                xAxis: {
-                  type: 'category',
-                  data: bands,
-                  axisLabel: { fontWeight: 'bold' },
-                  axisLine: { lineStyle: { width: 2 } }
-                },
-                yAxis: {
-                  type: 'value',
-                  axisLabel: { fontWeight: 'bold' },
-                  axisLine: { lineStyle: { width: 2 } },
-                  splitLine: { lineStyle: { width: 1.5 } }
-                },
+                xAxis: { type: 'category', data: bands.map(b => b.label), axisLabel: { fontWeight: 'bold', fontSize: 11 }, axisLine: { lineStyle: { width: 2 } } },
+                yAxis: { type: 'value', axisLabel: { fontWeight: 'bold' }, axisLine: { lineStyle: { width: 2 } }, splitLine: { lineStyle: { width: 1.5 } } },
                 series: seriesList
               });
-
               myChart.resize();
               setTimeout(() => myChart.resize(), 300);
             }, 200);
+          }
+
+          if (btn.dataset.tab === 'trend') {
+            const sel = document.getElementById('trendStudentSelect');
+            if (sel && !sel.value && sel.options.length > 1) {
+              for (let i = 1; i < sel.options.length; i++) {
+                if (sel.options[i].value) {
+                  sel.selectedIndex = i;
+                  window.showStudentReportInline(sel.options[i].value, exam.subject, exam.full_score, sel.options[i].dataset.gender);
+                  break;
+                }
+              }
+            }
           }
         };
       });
@@ -4201,16 +4137,11 @@ window.deleteExam = async function(examId) {
   const scoresPopEl = $('scoresPop');
   if (scoresPopEl) scoresPopEl.addEventListener('click', e => { if (e.target === scoresPopEl) scoresPopEl.style.display = 'none'; });
 
-
-  // 绑定学生成绩报告弹窗关闭事件
   const studentReportClose = $('studentReportClose');
   if (studentReportClose) studentReportClose.onclick = () => { $('studentReportPop').style.display = 'none'; };
   const studentReportPopEl = $('studentReportPop');
   if (studentReportPopEl) studentReportPopEl.addEventListener('click', e => { if (e.target === studentReportPopEl) studentReportPopEl.style.display = 'none'; });
 
-  // ========================================================================
-  // 学生 - 考勤
-  // ========================================================================
   async function renderAttendance() {
     const classOptions = classes.map(c =>
       '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>'
@@ -4277,9 +4208,7 @@ window.deleteExam = async function(examId) {
       el.innerHTML = roster.map(stu => {
         const cur = statusMap[stu.name] || { status: '', remark: '' };
         const safeName = String(stu.name || '');
-        // 获取姓名首字母，若为空则显示问号
         const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
-        // 根据性别赋予不同的CSS类
         const genderClass = stu.gender === '女' ? 'female' : 'male';
 
         return '<div class="att-row">' +
@@ -4352,6 +4281,5 @@ window.deleteExam = async function(examId) {
     } catch {}
   }
 
-  // ============ Start ============
   init();
 })();
