@@ -47,6 +47,13 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
+	// ============ 新增：CSP 安全策略中间件 ============
+	// 允许 unsafe-eval（供 ECharts 等库使用），允许 data: 和 blob:（供 html2canvas 图片导出使用）
+	r.Use(func(c *gin.Context) {
+		c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; img-src 'self' data: blob:;")
+		c.Next()
+	})
+
 	webDir := getWebDir()
 	if _, err := os.Stat(webDir); err == nil {
 		r.Static("/static", filepath.Join(webDir, "css"))
