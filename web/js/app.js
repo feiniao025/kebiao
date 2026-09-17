@@ -3921,13 +3921,22 @@ window.deleteExam = async function(examId) {
 
       el.innerHTML = roster.map(stu => {
         const cur = statusMap[stu.name] || { status: '', remark: '' };
+        const safeName = String(stu.name || '');
+        // 获取姓名首字母，若为空则显示问号
+        const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
+        // 根据性别赋予不同的CSS类
+        const genderClass = stu.gender === '女' ? 'female' : 'male';
+
         return '<div class="att-row">' +
-                  '<span class="att-name">' + escapeHtml(stu.name) + (stu.gender ? ' <span class="r-gender">' + escapeHtml(stu.gender) + '</span>' : '') + '</span>' +
+                  '<div class="att-student-info">' +
+                    '<div class="att-avatar ' + genderClass + '">' + initial + '</div>' +
+                    '<span class="att-name">' + escapeHtml(safeName) + '</span>' +
+                  '</div>' +
                   '<div class="att-status-group">' +
                     STATUSES.map(s =>
-                      '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') + '" data-name="' + escapeHtml(stu.name) + '" data-status="' + s + '">' + s + '</button>'
+                      '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') + '" data-name="' + escapeHtml(safeName) + '" data-status="' + s + '">' + s + '</button>'
                     ).join('') +
-                    '<input type="text" class="att-remark" data-name="' + escapeHtml(stu.name) + '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
+                    '<input type="text" class="att-remark" data-name="' + escapeHtml(safeName) + '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
                   '</div>' +
                 '</div>';
       }).join('');
