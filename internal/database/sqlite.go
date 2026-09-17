@@ -163,8 +163,10 @@ func (s *SQLite) migrate() error {
 		subject TEXT NOT NULL,
 		name TEXT NOT NULL,
 		full_score INTEGER DEFAULT 100,
-		pass_score INTEGER DEFAULT 75,
-		excellent_score INTEGER DEFAULT 100,
+		pass_score INTEGER DEFAULT 60,
+		medium_score INTEGER DEFAULT 70,
+		good_score INTEGER DEFAULT 80,
+		excellent_score INTEGER DEFAULT 90,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(user_id, class_id, subject, name)
@@ -208,6 +210,12 @@ func (s *SQLite) migrate() error {
 	_, _ = s.db.Exec(`ALTER TABLE roster_students ADD COLUMN tel1 TEXT DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE roster_students ADD COLUMN tel2 TEXT DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE roster_students ADD COLUMN address TEXT DEFAULT ''`)
+	// 考试：中等线、良好线
+	_, _ = s.db.Exec(`ALTER TABLE exams ADD COLUMN medium_score INTEGER DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE exams ADD COLUMN good_score INTEGER DEFAULT 0`)
+	// 老数据回填
+	_, _ = s.db.Exec(`UPDATE exams SET medium_score = CAST(full_score * 0.7 AS INTEGER) WHERE medium_score IS NULL OR medium_score = 0`)
+	_, _ = s.db.Exec(`UPDATE exams SET good_score = CAST(full_score * 0.8 AS INTEGER) WHERE good_score IS NULL OR good_score = 0`)
 
 	// 回填 classes 老数据
 	_, _ = s.db.Exec(`UPDATE classes SET grade=7, class_num=CAST(class_id AS INTEGER)
@@ -619,7 +627,6 @@ func (s *SQLite) GetSeatConfig(userID int64) (*model.SeatConfig, error) {
 			userID,
 		)
 		if err != nil {
-			// 不返回错误，直接把默认值返回，避免上层拿到 nil
 			return sc, nil
 		}
 		return s.GetSeatConfig(userID)
@@ -880,11 +887,15 @@ func (s *SQLite) GetExams(userID int64, classID string) ([]model.Exam, error) {
 	)
 	if classID == "" {
 		rows, err = s.db.Query(
-			`SELECT id, user_id, class_id, subject, name, full_score, pass_score, excellent_score, created_at, updated_at
+			`SELECT id, user_id, class_id, subject, name, full_score, pass_score,
+			        COALESCE(medium_score, 0), COALESCE(good_score, 0), excellent_score,
+			        created_at, updated_at
 			 FROM exams WHERE user_id = ? ORDER BY updated_at DESC`, userID)
 	} else {
 		rows, err = s.db.Query(
-			`SELECT id, user_id, class_id, subject, name, full_score, pass_score, excellent_score, created_at, updated_at
+			`SELECT id, user_id, class_id, subject, name, full_score, pass_score,
+			        COALESCE(medium_score, 0), COALESCE(good_score, 0), excellent_score,
+			        created_at, updated_at
 			 FROM exams WHERE user_id = ? AND class_id = ? ORDER BY updated_at DESC`, userID, classID)
 	}
 	if err != nil {
@@ -896,7 +907,8 @@ func (s *SQLite) GetExams(userID int64, classID string) ([]model.Exam, error) {
 	for rows.Next() {
 		var e model.Exam
 		if err := rows.Scan(&e.ID, &e.UserID, &e.ClassID, &e.Subject, &e.Name,
-			&e.FullScore, &e.PassScore, &e.ExcellentScore, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			&e.FullScore, &e.PassScore, &e.MediumScore, &e.GoodScore, &e.ExcellentScore,
+			&e.CreatedAt, &e.UpdatedAt); err != nil {
 			continue
 		}
 		list = append(list, e)
@@ -907,10 +919,13 @@ func (s *SQLite) GetExams(userID int64, classID string) ([]model.Exam, error) {
 func (s *SQLite) GetExamByID(userID, examID int64) (*model.Exam, error) {
 	e := &model.Exam{}
 	err := s.db.QueryRow(
-		`SELECT id, user_id, class_id, subject, name, full_score, pass_score, excellent_score, created_at, updated_at
+		`SELECT id, user_id, class_id, subject, name, full_score, pass_score,
+		        COALESCE(medium_score, 0), COALESCE(good_score, 0), excellent_score,
+		        created_at, updated_at
 		 FROM exams WHERE id = ? AND user_id = ?`, examID, userID,
 	).Scan(&e.ID, &e.UserID, &e.ClassID, &e.Subject, &e.Name,
-		&e.FullScore, &e.PassScore, &e.ExcellentScore, &e.CreatedAt, &e.UpdatedAt)
+		&e.FullScore, &e.PassScore, &e.MediumScore, &e.GoodScore, &e.ExcellentScore,
+		&e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -920,11 +935,14 @@ func (s *SQLite) GetExamByID(userID, examID int64) (*model.Exam, error) {
 func (s *SQLite) GetExamByName(userID int64, classID, subject, name string) (*model.Exam, error) {
 	e := &model.Exam{}
 	err := s.db.QueryRow(
-		`SELECT id, user_id, class_id, subject, name, full_score, pass_score, excellent_score, created_at, updated_at
+		`SELECT id, user_id, class_id, subject, name, full_score, pass_score,
+		        COALESCE(medium_score, 0), COALESCE(good_score, 0), excellent_score,
+		        created_at, updated_at
 		 FROM exams WHERE user_id = ? AND class_id = ? AND subject = ? AND name = ?`,
 		userID, classID, subject, name,
 	).Scan(&e.ID, &e.UserID, &e.ClassID, &e.Subject, &e.Name,
-		&e.FullScore, &e.PassScore, &e.ExcellentScore, &e.CreatedAt, &e.UpdatedAt)
+		&e.FullScore, &e.PassScore, &e.MediumScore, &e.GoodScore, &e.ExcellentScore,
+		&e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -936,15 +954,22 @@ func (s *SQLite) CreateExam(e *model.Exam) error {
 		e.FullScore = 100
 	}
 	if e.PassScore <= 0 {
-		e.PassScore = 75
+		e.PassScore = int(float64(e.FullScore) * 0.6)
+	}
+	if e.MediumScore <= 0 {
+		e.MediumScore = int(float64(e.FullScore) * 0.7)
+	}
+	if e.GoodScore <= 0 {
+		e.GoodScore = int(float64(e.FullScore) * 0.8)
 	}
 	if e.ExcellentScore <= 0 {
-		e.ExcellentScore = 100
+		e.ExcellentScore = int(float64(e.FullScore) * 0.9)
 	}
 	res, err := s.db.Exec(
-		`INSERT INTO exams (user_id, class_id, subject, name, full_score, pass_score, excellent_score)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		e.UserID, e.ClassID, e.Subject, e.Name, e.FullScore, e.PassScore, e.ExcellentScore)
+		`INSERT INTO exams (user_id, class_id, subject, name, full_score, pass_score, medium_score, good_score, excellent_score)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.UserID, e.ClassID, e.Subject, e.Name, e.FullScore, e.PassScore,
+		e.MediumScore, e.GoodScore, e.ExcellentScore)
 	if err != nil {
 		return err
 	}
@@ -954,9 +979,10 @@ func (s *SQLite) CreateExam(e *model.Exam) error {
 
 func (s *SQLite) UpdateExam(e *model.Exam) error {
 	_, err := s.db.Exec(
-		`UPDATE exams SET full_score = ?, pass_score = ?, excellent_score = ?, updated_at = CURRENT_TIMESTAMP
+		`UPDATE exams SET full_score = ?, pass_score = ?, medium_score = ?, good_score = ?, excellent_score = ?,
+		        updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ? AND user_id = ?`,
-		e.FullScore, e.PassScore, e.ExcellentScore, e.ID, e.UserID)
+		e.FullScore, e.PassScore, e.MediumScore, e.GoodScore, e.ExcellentScore, e.ID, e.UserID)
 	return err
 }
 

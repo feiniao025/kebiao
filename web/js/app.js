@@ -3623,6 +3623,52 @@ window.deleteExam = async function(examId) {
     fillClassSelect($('examPopClass'), exam ? exam.class_id : currentGradesClassId);
     fillSubjectSelect($('examPopSubject'), exam ? exam.subject : currentGradesSubject);
     fillExamNameSelect($('examPopName'), exam ? exam.name : EXAM_NAMES[0]);
+
+    if (exam) {
+      // 编辑：读取已有值
+      const full = exam.full_score || 100;
+      $('examPopFull').value = full;
+      $('examPopPass').value = exam.pass_score || Math.round(full * 0.6);
+      $('examPopMedium').value = exam.medium_score || Math.round(full * 0.7);
+      $('examPopGood').value = exam.good_score || Math.round(full * 0.8);
+      $('examPopExcellent').value = exam.excellent_score || Math.round(full * 0.9);
+    } else {
+      // 新建：按百分比默认
+      const full = 100;
+      $('examPopFull').value = full;
+      $('examPopPass').value = Math.round(full * 0.6);
+      $('examPopMedium').value = Math.round(full * 0.7);
+      $('examPopGood').value = Math.round(full * 0.8);
+      $('examPopExcellent').value = Math.round(full * 0.9);
+    }
+
+    // 新建时，满分变化自动按百分比刷新各分数线
+    const fullInput = $('examPopFull');
+    if (isNew) {
+      fullInput.oninput = () => {
+        const full = parseInt(fullInput.value, 10) || 100;
+        $('examPopPass').value = Math.round(full * 0.6);
+        $('examPopMedium').value = Math.round(full * 0.7);
+        $('examPopGood').value = Math.round(full * 0.8);
+        $('examPopExcellent').value = Math.round(full * 0.9);
+      };
+    } else {
+      fullInput.oninput = null;
+    }
+
+    $('examPopError').textContent = '';
+    $('examPopClass').disabled = !isNew;
+    $('examPopSubject').disabled = !isNew;
+    $('examPopName').disabled = !isNew;
+    $('examPop').dataset.id = isNew ? '' : exam.id;
+    $('examPop').style.display = 'flex';
+  }
+    if (classes.length === 0) { alert('请先创建班级'); return; }
+    const isNew = !exam;
+    $('examPopTitle').textContent = isNew ? '新建考试' : '编辑考试';
+    fillClassSelect($('examPopClass'), exam ? exam.class_id : currentGradesClassId);
+    fillSubjectSelect($('examPopSubject'), exam ? exam.subject : currentGradesSubject);
+    fillExamNameSelect($('examPopName'), exam ? exam.name : EXAM_NAMES[0]);
     $('examPopFull').value = exam ? exam.full_score : 100;
     $('examPopPass').value = exam ? exam.pass_score : 75;
     $('examPopExcellent').value = exam ? exam.excellent_score : 100;
@@ -3644,13 +3690,16 @@ window.deleteExam = async function(examId) {
     examPopSave.onclick = async () => {
       const errEl = $('examPopError');
       errEl.textContent = '';
+      const full = parseInt($('examPopFull').value, 10) || 100;
       const data = {
         class_id: $('examPopClass').value,
         subject: $('examPopSubject').value,
         name: $('examPopName').value,
-        full_score: parseInt($('examPopFull').value, 10) || 100,
-        pass_score: parseInt($('examPopPass').value, 10) || 75,
-        excellent_score: parseInt($('examPopExcellent').value, 10) || 100,
+        full_score: full,
+        pass_score: parseInt($('examPopPass').value, 10) || Math.round(full * 0.6),
+        medium_score: parseInt($('examPopMedium').value, 10) || Math.round(full * 0.7),
+        good_score: parseInt($('examPopGood').value, 10) || Math.round(full * 0.8),
+        excellent_score: parseInt($('examPopExcellent').value, 10) || Math.round(full * 0.9),
       };
       if (!data.class_id || !data.subject || !data.name) { errEl.textContent = '请填写完整'; return; }
       try {
@@ -3662,6 +3711,126 @@ window.deleteExam = async function(examId) {
         await loadExams();
       } catch (err) { errEl.textContent = err.message || '保存失败'; }
     };
+  }
+
+  // ============ 从 Excel 导入成绩（仅填充到输入框，需手动保存） ============
+  // ============ 从 Excel 导入成绩（自动填充 + 自动保存） ============
+  async function importScoresFromExcel(exam, onSaved) {
+    const input = $('excelFileInput');
+    if (!input) return;
+    input.value = '';
+    input.onchange = async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        const wb = await readExcelFile(file);
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (rows.length < 1) { alert('Excel 内容为空'); return; }
+
+        // 自动探测表头（前 5 行）
+        let nameCol = -1, scoreCol = -1, headerRowIdx = -1;
+        for (let i = 0; i < Math.min(5, rows.length); i++) {
+          const row = rows[i];
+          if (!Array.isArray(row)) continue;
+          row.forEach((cell, ci) => {
+            const t = String(cell || '').trim();
+            if (!t) return;
+            if (nameCol < 0 && /^(姓名|名字|学生姓名|学生|name)$/i.test(t)) nameCol = ci;
+            if (scoreCol < 0 && /^(分数|成绩|得分|score)$/i.test(t)) scoreCol = ci;
+          });
+          if (nameCol >= 0 && scoreCol >= 0) { headerRowIdx = i; break; }
+        }
+
+        let dataStartIdx, nc, sc;
+        if (headerRowIdx >= 0) {
+          dataStartIdx = headerRowIdx + 1;
+          nc = nameCol;
+          sc = scoreCol;
+        } else {
+          if (!confirm('未找到「姓名」「分数」表头。\n\n是否按第一列姓名、第二列分数解析？')) return;
+          dataStartIdx = 0;
+          nc = 0;
+          sc = 1;
+        }
+
+        // 解析为 name → score
+        const scoreMap = {};
+        for (let i = dataStartIdx; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r) continue;
+          const name = String(r[nc] || '').trim();
+          if (!name) continue;
+          const raw = r[sc];
+          if (raw === undefined || raw === null || String(raw).trim() === '') continue;
+          const score = parseFloat(raw);
+          if (isNaN(score)) continue;
+          scoreMap[name] = score;
+        }
+
+        if (Object.keys(scoreMap).length === 0) {
+          alert('未从 Excel 中解析到有效的成绩数据');
+          return;
+        }
+
+        // 填充到输入框并收集待保存数据
+        const toSave = [];
+        const inputs = $('scoresInputBody').querySelectorAll('.score-input');
+        const rosterNames = new Set();
+        inputs.forEach(inp => {
+          const name = inp.dataset.name;
+          rosterNames.add(name);
+          if (scoreMap[name] !== undefined) {
+            inp.value = scoreMap[name];
+			applyScoreLevel(inp, exam);
+            toSave.push({ student_name: name, score: scoreMap[name] });
+          }
+        });
+
+        const unmatched = Object.keys(scoreMap).filter(n => !rosterNames.has(n));
+
+        if (toSave.length === 0) {
+          alert('Excel 中的姓名与当前花名册都不匹配，未保存任何数据');
+          return;
+        }
+
+        // ============ 自动保存 ============
+        showSaveStatus('正在保存 ' + toSave.length + ' 条...', false);
+        try {
+          await apiCall(API.saveScores, exam.id, toSave);
+          let msg = '✅ 已导入并保存 ' + toSave.length + ' 名学生的成绩';
+          if (unmatched.length > 0) {
+            msg += '\n\n⚠️ 有 ' + unmatched.length + ' 名学生不在当前花名册，已跳过：\n' + unmatched.slice(0, 8).join('、');
+            if (unmatched.length > 8) msg += ' …等';
+          }
+          alert(msg);
+          showSaveStatus('已导入并保存 ' + toSave.length + ' 条', false);
+
+          // 通知父组件刷新数据
+          if (typeof onSaved === 'function') onSaved();
+        } catch (err) {
+          alert('保存失败：' + (err.message || err));
+          showSaveStatus('导入保存失败', true);
+        }
+      } catch (err) {
+        alert('导入失败：' + (err.message || err));
+      } finally {
+        input.value = '';
+      }
+    };
+    input.click();
+  }
+
+  // 根据分数所在的区间，为输入框设置不同的颜色
+  function applyScoreLevel(input, exam) {
+    const v = parseFloat(input.value);
+    input.removeAttribute('data-level');
+    if (isNaN(v) || v === '') return;
+    if (v >= exam.excellent_score) input.setAttribute('data-level', 'excellent');
+    else if (v >= exam.good_score) input.setAttribute('data-level', 'good');
+    else if (v >= exam.medium_score) input.setAttribute('data-level', 'medium');
+    else if (v >= exam.pass_score) input.setAttribute('data-level', 'pass');
+    else input.setAttribute('data-level', 'fail');
   }
 
   async function openScoresPop(examId) {
@@ -3683,21 +3852,25 @@ window.deleteExam = async function(examId) {
       const clsName = (classes.find(c => c.class_id === exam.class_id) || {}).name || '';
       $('scoresPopTitle').textContent = exam.name + ' · ' + exam.subject + ' （' + clsName + '）';
 
-      // 构建 Tab 结构
+      // 构建 Tab 结构 —— 操作按钮放进「成绩录入」标签页内
       let html = `
         <div class="tab-header">
           <button class="tab-btn active" data-tab="input">📝 成绩录入</button>
-          <button class="tab-btn" data-tab="analysis">📊 分数段分析</button>
+          <button class="tab-btn" data-tab="analysis">📊 分数段</button>
           <button class="tab-btn" data-tab="rank">🏆 名次表</button>
         </div>
         <div id="tab-content-input" class="tab-pane active">
           <div class="scores-stats" id="scoresPopStats"></div>
-          <div id="scoresInputBody" style="margin-top:12px;max-height:50vh;overflow:auto;"></div>
+          <div id="scoresInputBody" style="margin-top:12px;max-height:45vh;overflow:auto;"></div>
+          <div class="scores-action-bar">
+            <button id="scoresImportBtn" class="btn-scores-import">📗 导入</button>
+            <button id="scoresSaveBtn" class="btn-scores-save">💾 保存</button>
+          </div>
         </div>
-        <div id="tab-content-analysis" class="tab-pane" style="display:none;">
+        <div id="tab-content-analysis" class="tab-pane">
           <div id="chartDistribution" style="width:100%;height:300px;"></div>
         </div>
-        <div id="tab-content-rank" class="tab-pane" style="display:none;">
+        <div id="tab-content-rank" class="tab-pane">
           <div id="rankTableBody" style="max-height:50vh;overflow:auto;"></div>
         </div>
       `;
@@ -3711,22 +3884,37 @@ window.deleteExam = async function(examId) {
         '<div class="stat-cell"><span class="k">最高/最低</span><span class="v">' + (stats.max_score || 0) + ' / ' + (stats.min_score || 0) + '</span></div>' +
         '<div class="stat-cell"><span class="k">已录人数</span><span class="v">' + (stats.count || 0) + ' / ' + roster.length + '</span></div>';
 
-      // 渲染成绩录入区
+      // 渲染成绩录入区（卡片式 + 头像 + 动态颜色）
       if (roster.length === 0) {
         $('scoresInputBody').innerHTML = '<div class="today-empty">该班级暂无花名册学生<br>请先到「学生 → 花名册」添加学生</div>';
       } else {
         const scoreMap = {};
         scores.forEach(s => { scoreMap[s.student_name] = s.score; });
-        let inputHtml = '<table class="scores-table"><thead><tr><th>姓名</th><th>分数</th></tr></thead><tbody>';
+        let inputHtml = '<div class="scores-input-list">';
         roster.forEach(stu => {
           const val = scoreMap[stu.name];
-          inputHtml += '<tr>' +
-                    '<td>' + escapeHtml(stu.name) + (stu.gender ? ' <span class="r-gender">' + escapeHtml(stu.gender) + '</span>' : '') + '</td>' +
-                    '<td><input type="number" class="score-input" data-name="' + escapeHtml(stu.name) + '" value="' + (val !== undefined ? val : '') + '" min="0" max="' + exam.full_score + '" step="0.5"></td>' +
-                  '</tr>';
+          const safeName = String(stu.name || '');
+          const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
+          const genderClass = stu.gender === '女' ? 'female' : (stu.gender === '男' ? 'male' : 'unknown');
+          inputHtml += '<div class="scores-input-row">' +
+                        '<div class="scores-input-info">' +
+                          '<div class="scores-avatar ' + genderClass + '">' + initial + '</div>' +
+                          '<span class="scores-name">' + escapeHtml(safeName) + '</span>' +
+                        '</div>' +
+                        '<div class="scores-input-wrap">' +
+                          '<input type="number" class="score-input" data-name="' + escapeHtml(safeName) + '" value="' + (val !== undefined ? val : '') + '" min="0" max="' + exam.full_score + '" step="0.5" inputmode="decimal">' +
+                          '<span class="scores-max">/ ' + exam.full_score + '</span>' +
+                        '</div>' +
+                      '</div>';
         });
-        inputHtml += '</tbody></table>';
+        inputHtml += '</div>';
         $('scoresInputBody').innerHTML = inputHtml;
+
+        // 初始化颜色 + 绑定输入事件
+        $('scoresInputBody').querySelectorAll('.score-input').forEach(inp => {
+          applyScoreLevel(inp, exam);
+          inp.addEventListener('input', () => applyScoreLevel(inp, exam));
+        });
       }
 
       // 渲染名次表
@@ -3770,6 +3958,40 @@ window.deleteExam = async function(examId) {
         $('rankTableBody').innerHTML = rankHtml;
       }
 
+      // ============ 绑定「导入」按钮 ============
+      const importBtn = $('scoresImportBtn');
+      if (importBtn) {
+        importBtn.onclick = () => importScoresFromExcel(exam, () => {
+          // 导入保存后，重新拉取数据刷新统计/名次表
+          openScoresPop(examId);
+          loadExamStats(examId);
+        });
+      }
+
+      // ============ 绑定「保存成绩」按钮 ============
+      const saveBtn = $('scoresSaveBtn');
+      if (saveBtn) {
+        saveBtn.onclick = async () => {
+          const inputs = $('scoresInputBody').querySelectorAll('.score-input');
+          const toSave = [];
+          inputs.forEach(inp => {
+            const name = inp.dataset.name;
+            const v = inp.value.trim();
+            if (v === '') return;
+            const score = parseFloat(v);
+            if (isNaN(score)) return;
+            toSave.push({ student_name: name, score });
+          });
+          if (toSave.length === 0) { alert('请至少录入一个成绩'); return; }
+          try {
+            await apiCall(API.saveScores, examId, toSave);
+            showSaveStatus('已保存 ' + toSave.length + ' 条成绩', false);
+            await openScoresPop(examId);
+            loadExamStats(examId);
+          } catch {}
+        };
+      }
+
       // 绑定 Tab 切换事件
       $('scoresPopBody').querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = () => {
@@ -3777,46 +3999,74 @@ window.deleteExam = async function(examId) {
           $('scoresPopBody').querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
           btn.classList.add('active');
           $('tab-content-' + btn.dataset.tab).classList.add('active');
-          
+
           if (btn.dataset.tab === 'analysis') {
             setTimeout(() => {
               const chartDom = document.getElementById('chartDistribution');
-              if (chartDom) {
-                if (typeof echarts === 'undefined') {
-                  chartDom.innerHTML = '<div class="today-empty">图表库加载失败，请检查网络或切换 CDN</div>';
-                  return;
-                }
-                let myChart = echarts.getInstanceByDom(chartDom);
-                if (!myChart) {
-                  myChart = echarts.init(chartDom);
-                }
-                const bands = ['<60', '60-69', '70-79', '80-89', '90-99', '100+'];
-                const dist = stats.distribution || {};
-                const data = bands.map(b => dist[b] || 0);
-                
-                myChart.setOption({
-                  title: { text: exam.subject + ' 分数段分布', left: 'center', textStyle: { fontSize: 14 } },
-                  tooltip: { trigger: 'axis' },
-                  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                  xAxis: { type: 'category', data: bands },
-                  yAxis: { type: 'value' },
-                  series: [{
-                    data: data,
-                    type: 'bar',
-                    barWidth: '50%',
-                    itemStyle: {
-                      color: function(params) {
-                        const colors = ['#f28b82', '#fbbc04', '#fdd663', '#8ab4f8', '#a8dab5'];
-                        return colors[params.dataIndex] || '#8ab4f8';
-                      },
-                      borderRadius: [4, 4, 0, 0]
-                    },
-                    label: { show: true, position: 'top' }
-                  }]
-                });
-                myChart.resize();
+              if (!chartDom) return;
+
+              if (typeof echarts === 'undefined') {
+                chartDom.innerHTML = '<div class="today-empty">图表库加载失败，请检查网络或替换 CDN</div>';
+                return;
               }
-            }, 150);
+
+              let myChart = echarts.getInstanceByDom(chartDom);
+              if (!myChart) {
+                myChart = echarts.init(chartDom);
+              }
+
+              const bands = ['<60', '60-69', '70-79', '80-89', '90-99', '100+'];
+              const dist = stats.distribution || {};
+              const colors = ['#f28b82', '#fb8c00', '#fdd835', '#8ab4f8', '#81c784', '#81c784'];
+              const names = ['不及格', '及格', '中等', '良好', '优秀', '优秀'];
+
+              const seriesList = names.map((n, i) => ({
+                name: n,
+                type: 'bar',
+                barWidth: '55%',
+                barGap: '-100%',
+                data: bands.map((_, j) => j === i ? (dist[bands[i]] || 0) : 0),
+                itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] },
+                label: {
+                  show: true,
+                  position: 'top',
+                  fontWeight: 'bold',
+                  formatter: (p) => p.value > 0 ? p.value : ''
+                }
+              }));
+
+              myChart.setOption({
+                title: {
+                  text: exam.subject + ' 分数段分布',
+                  left: 'center',
+                  textStyle: { fontSize: 14, fontWeight: 'bold' }
+                },
+                tooltip: { trigger: 'axis' },
+                legend: {
+                  bottom: 0,
+                  left: 'center',
+                  icon: 'circle',
+                  textStyle: { fontWeight: 'bold', fontSize: 12 }
+                },
+                grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+                xAxis: {
+                  type: 'category',
+                  data: bands,
+                  axisLabel: { fontWeight: 'bold' },
+                  axisLine: { lineStyle: { width: 2 } }
+                },
+                yAxis: {
+                  type: 'value',
+                  axisLabel: { fontWeight: 'bold' },
+                  axisLine: { lineStyle: { width: 2 } },
+                  splitLine: { lineStyle: { width: 1.5 } }
+                },
+                series: seriesList
+              });
+
+              myChart.resize();
+              setTimeout(() => myChart.resize(), 300);
+            }, 200);
           }
         };
       });
@@ -3831,34 +4081,6 @@ window.deleteExam = async function(examId) {
   const scoresPopEl = $('scoresPop');
   if (scoresPopEl) scoresPopEl.addEventListener('click', e => { if (e.target === scoresPopEl) scoresPopEl.style.display = 'none'; });
 
-  const scoresPopSave = $('scoresPopSave');
-  if (scoresPopSave) {
-    scoresPopSave.onclick = async () => {
-      const examId = parseInt($('scoresPop').dataset.id, 10);
-      if (!examId) return;
-      // 如果当前不在录入 Tab，则不能保存
-      const inputPane = document.getElementById('tab-content-input');
-      if (!inputPane || !inputPane.classList.contains('active')) {
-        alert('请先切换到「成绩录入」标签页进行修改');
-        return;
-      }
-      const inputs = $('scoresInputBody').querySelectorAll('.score-input');
-      const scores = [];
-      inputs.forEach(inp => {
-        const name = inp.dataset.name;
-        const v = inp.value.trim();
-        if (v === '') return;
-        scores.push({ student_name: name, score: parseFloat(v) });
-      });
-      if (scores.length === 0) { alert('请至少录入一个成绩'); return; }
-      try {
-        await apiCall(API.saveScores, examId, scores);
-        showSaveStatus('已保存 ' + scores.length + ' 条成绩', false);
-        await openScoresPop(examId); // 重新加载数据以刷新统计和排名
-        loadExamStats(examId);
-      } catch {}
-    };
-  }
 
   // 绑定学生成绩报告弹窗关闭事件
   const studentReportClose = $('studentReportClose');

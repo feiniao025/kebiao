@@ -904,6 +904,187 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     }
 }
 
+/* ============ 成绩弹窗：底部操作栏（导入 + 保存） ============ */
+.scores-action-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.btn-scores-import {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: #3498db;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-scores-import:hover { background: #2980b9; }
+.btn-scores-import:active { transform: translateY(1px); }
+
+.btn-scores-save {
+  flex: 2;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: #16a085;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-scores-save:hover { background: #1abc9c; }
+.btn-scores-save:active { transform: translateY(1px); }
+
+@media (max-width: 768px) {
+  .scores-action-bar { gap: 8px; margin-top: 10px; }
+  .btn-scores-import, .btn-scores-save {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
+/* ============ 成绩录入：卡片式布局 ============ */
+.scores-input-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scores-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--table-row-alt);
+  border-radius: 10px;
+  transition: background .15s;
+}
+.scores-input-row:hover {
+  background: var(--seat-hover);
+}
+
+.scores-input-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.scores-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.scores-avatar.male    { background: #3b82f6; }
+.scores-avatar.female  { background: #ec4899; }
+.scores-avatar.unknown { background: #94a3b8; }
+
+.scores-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scores-input-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.score-input {
+  width: 76px;
+  padding: 7px 10px;
+  border: 2px solid var(--seat-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, color .2s;
+  -moz-appearance: textfield;
+  box-sizing: border-box;
+}
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.score-input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52,152,219,.15);
+}
+
+/* 根据分数所在区间着色 */
+.score-input[data-level="excellent"] {
+  border-color: #27ae60;
+  color: #27ae60;
+  background: rgba(39,174,96,0.06);
+}
+.score-input[data-level="good"] {
+  border-color: #3498db;
+  color: #2980b9;
+  background: rgba(52,152,219,0.06);
+}
+.score-input[data-level="medium"] {
+  border-color: #f39c12;
+  color: #d68910;
+  background: rgba(243,156,18,0.06);
+}
+.score-input[data-level="pass"] {
+  border-color: #e67e22;
+  color: #d35400;
+  background: rgba(230,126,34,0.06);
+}
+.score-input[data-level="fail"] {
+  border-color: #e74c3c;
+  color: #c0392b;
+  background: rgba(231,76,60,0.06);
+}
+
+[data-theme="dark"] .score-input[data-level="excellent"] { background: rgba(39,174,96,0.15); color: #6ee7a8; border-color: #2ecc71; }
+[data-theme="dark"] .score-input[data-level="good"]      { background: rgba(52,152,219,0.15); color: #93c5fd; border-color: #3498db; }
+[data-theme="dark"] .score-input[data-level="medium"]    { background: rgba(243,156,18,0.15); color: #fbbf24; border-color: #f39c12; }
+[data-theme="dark"] .score-input[data-level="pass"]      { background: rgba(230,126,34,0.15); color: #fdba74; border-color: #e67e22; }
+[data-theme="dark"] .score-input[data-level="fail"]      { background: rgba(231,76,60,0.15); color: #fca5a5; border-color: #e74c3c; }
+
+.scores-max {
+  font-size: 12px;
+  color: var(--text-sub);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .scores-input-row { padding: 8px 10px; }
+  .scores-avatar { width: 28px; height: 28px; font-size: 13px; }
+  .scores-name { font-size: 13px; }
+  .score-input { width: 64px; padding: 6px 8px; font-size: 14px; }
+  .scores-max { font-size: 11px; }
+}
+
 @media print{
     .control-bar,.seat-tools,#saveStatus,#diagPanel,.bottom-nav,.sub-nav,.global-theme-toggle{display:none!important}
     body{background:#fff!important;padding:20px}

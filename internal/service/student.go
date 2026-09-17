@@ -62,7 +62,8 @@ func (s *StudentService) GetExamWithScores(userID, examID int64) (*model.Exam, [
 	return e, scores, nil
 }
 
-func (s *StudentService) GetOrCreateExam(userID int64, classID, subject, name string, fullScore, passScore, excellentScore int) (*model.Exam, error) {
+func (s *StudentService) GetOrCreateExam(userID int64, classID, subject, name string,
+	fullScore, passScore, mediumScore, goodScore, excellentScore int) (*model.Exam, error) {
 	e, err := s.db.GetExamByName(userID, classID, subject, name)
 	if err == nil {
 		return e, nil
@@ -71,10 +72,16 @@ func (s *StudentService) GetOrCreateExam(userID int64, classID, subject, name st
 		fullScore = 100
 	}
 	if passScore <= 0 {
-		passScore = 75
+		passScore = int(float64(fullScore) * 0.6)
+	}
+	if mediumScore <= 0 {
+		mediumScore = int(float64(fullScore) * 0.7)
+	}
+	if goodScore <= 0 {
+		goodScore = int(float64(fullScore) * 0.8)
 	}
 	if excellentScore <= 0 {
-		excellentScore = 100
+		excellentScore = int(float64(fullScore) * 0.9)
 	}
 	e = &model.Exam{
 		UserID:         userID,
@@ -83,6 +90,8 @@ func (s *StudentService) GetOrCreateExam(userID int64, classID, subject, name st
 		Name:           name,
 		FullScore:      fullScore,
 		PassScore:      passScore,
+		MediumScore:    mediumScore,
+		GoodScore:      goodScore,
 		ExcellentScore: excellentScore,
 	}
 	if err := s.db.CreateExam(e); err != nil {
@@ -96,10 +105,16 @@ func (s *StudentService) UpdateExam(userID int64, e *model.Exam) error {
 		e.FullScore = 100
 	}
 	if e.PassScore <= 0 {
-		e.PassScore = 75
+		e.PassScore = int(float64(e.FullScore) * 0.6)
+	}
+	if e.MediumScore <= 0 {
+		e.MediumScore = int(float64(e.FullScore) * 0.7)
+	}
+	if e.GoodScore <= 0 {
+		e.GoodScore = int(float64(e.FullScore) * 0.8)
 	}
 	if e.ExcellentScore <= 0 {
-		e.ExcellentScore = 100
+		e.ExcellentScore = int(float64(e.FullScore) * 0.9)
 	}
 	e.UserID = userID
 	return s.db.UpdateExam(e)
@@ -159,8 +174,8 @@ func (s *StudentService) GetExamStats(userID, examID int64) (*model.ExamStats, e
 		if s.Score < st.MinScore {
 			st.MinScore = s.Score
 		}
-		
-		// 分数段统计
+
+		// 分数段统计（按固定区间划分，不依赖及格线/优秀线）
 		score := s.Score
 		switch {
 		case score < 60:
@@ -185,9 +200,9 @@ func (s *StudentService) GetExamStats(userID, examID int64) (*model.ExamStats, e
 	return st, nil
 }
 
-// 新增：获取学生某科目的历次成绩
+// 获取学生某科目的历次成绩
 func (s *StudentService) GetStudentHistory(userID int64, studentName, subject string) ([]model.StudentHistoryItem, error) {
-	exams, err := s.db.GetExams(userID, "") // 获取所有考试
+	exams, err := s.db.GetExams(userID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +211,6 @@ func (s *StudentService) GetStudentHistory(userID int64, studentName, subject st
 		if exam.Subject != subject {
 			continue
 		}
-		// 查询该考试该学生的成绩
 		scores, _ := s.db.GetExamScores(exam.ID)
 		for _, sc := range scores {
 			if sc.StudentName == studentName {

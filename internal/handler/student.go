@@ -123,6 +123,8 @@ type examReq struct {
 	Name           string `json:"name" binding:"required"`
 	FullScore      int    `json:"full_score"`
 	PassScore      int    `json:"pass_score"`
+	MediumScore    int    `json:"medium_score"`
+	GoodScore      int    `json:"good_score"`
 	ExcellentScore int    `json:"excellent_score"`
 }
 
@@ -134,7 +136,7 @@ func (h *StudentHandler) CreateExam(c *gin.Context) {
 	}
 	userID := c.GetInt64("user_id")
 	e, err := h.svc.GetOrCreateExam(userID, req.ClassID, req.Subject, req.Name,
-		req.FullScore, req.PassScore, req.ExcellentScore)
+		req.FullScore, req.PassScore, req.MediumScore, req.GoodScore, req.ExcellentScore)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -161,6 +163,8 @@ func (h *StudentHandler) UpdateExam(c *gin.Context) {
 		Name:           req.Name,
 		FullScore:      req.FullScore,
 		PassScore:      req.PassScore,
+		MediumScore:    req.MediumScore,
+		GoodScore:      req.GoodScore,
 		ExcellentScore: req.ExcellentScore,
 	}
 	if err := h.svc.UpdateExam(userID, e); err != nil {
@@ -207,7 +211,7 @@ func (h *StudentHandler) GetExamDetail(c *gin.Context) {
 	})
 }
 
-// 新增：获取学生历次成绩
+// 获取学生历次成绩
 func (h *StudentHandler) GetStudentHistory(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	name := c.Query("name")

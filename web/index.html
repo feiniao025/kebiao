@@ -6,8 +6,7 @@
 <title>教师工作台</title>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<!-- 新增 ECharts -->
-<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -281,6 +280,7 @@
 </div>
 
 <!-- 新建/编辑考试弹窗 -->
+<!-- 新建/编辑考试弹窗 -->
 <div class="seat-pop" id="examPop">
   <div class="seat-pop-inner">
     <button id="examPopClose" class="pop-close-x">×</button>
@@ -289,20 +289,22 @@
     <div class="cell-pop-row"><label>科目：</label><select id="examPopSubject" class="cell-pop-input"></select></div>
     <div class="cell-pop-row"><label>考试：</label><select id="examPopName" class="cell-pop-input"></select></div>
     <div class="cell-pop-row"><label>满分：</label><input type="number" id="examPopFull" class="cell-pop-input" value="100"></div>
-    <div class="cell-pop-row"><label>及格线：</label><input type="number" id="examPopPass" class="cell-pop-input" value="75"></div>
-    <div class="cell-pop-row"><label>优秀线：</label><input type="number" id="examPopExcellent" class="cell-pop-input" value="100"></div>
+    <div class="cell-pop-row"><label>及格线：</label><input type="number" id="examPopPass" class="cell-pop-input" value="60"></div>
+    <div class="cell-pop-row"><label>中等线：</label><input type="number" id="examPopMedium" class="cell-pop-input" value="70"></div>
+    <div class="cell-pop-row"><label>良好线：</label><input type="number" id="examPopGood" class="cell-pop-input" value="80"></div>
+    <div class="cell-pop-row"><label>优秀线：</label><input type="number" id="examPopExcellent" class="cell-pop-input" value="90"></div>
     <div class="me-error" id="examPopError" style="min-height:18px;margin-top:6px;"></div>
     <button id="examPopSave" style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">💾 保存</button>
   </div>
 </div>
 
 <!-- 成绩录入/分析弹窗 -->
+<!-- 成绩录入/分析弹窗 -->
 <div class="seat-pop" id="scoresPop">
   <div class="seat-pop-inner user-detail-pop-inner">
     <button id="scoresPopClose" class="pop-close-x">×</button>
     <h3 id="scoresPopTitle">成绩详情</h3>
     <div id="scoresPopBody" style="max-height:70vh;overflow:auto;margin-top:10px;"></div>
-    <button id="scoresPopSave" style="width:100%;background:#16a085;color:#fff;padding:11px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:14px;font-family:inherit;">💾 保存成绩</button>
   </div>
 </div>
 

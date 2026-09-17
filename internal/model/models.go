@@ -121,6 +121,8 @@ type Exam struct {
 	Name           string      `json:"name"`
 	FullScore      int         `json:"full_score"`
 	PassScore      int         `json:"pass_score"`
+	MediumScore    int         `json:"medium_score"`
+	GoodScore      int         `json:"good_score"`
 	ExcellentScore int         `json:"excellent_score"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
