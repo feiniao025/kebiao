@@ -809,8 +809,34 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     .sync-row button{min-width:70px;height:36px;font-size:12px;padding:0 10px}
     .reg-lock-toggle{min-width:100px;height:36px;font-size:12px;padding:0 10px}
 
-    .user-detail-pop-inner{min-width:0;width:100%;max-width:100%;padding:20px 14px}
-    .user-detail-pop-inner h3{font-size:18px}
+    /* ====== 修复移动端成绩分析弹窗过宽问题 ====== */
+    .seat-pop { padding: 10px; } /* 减小弹窗外层边距，防止溢出 */
+    .user-detail-pop-inner { 
+      min-width: 0 !important; /* 强制覆盖之前的内联样式，解决超出边距问题 */
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 20px 14px;
+      box-sizing: border-box;
+    }
+    .user-detail-pop-inner h3 { font-size: 18px; padding-right: 24px; }
+    
+    /* 成绩录入表格适配 */
+    .scores-table th, .scores-table td {
+      padding: 6px 4px !important;
+      font-size: 13px !important;
+    }
+    .scores-table .score-input {
+      width: 60px !important;
+      padding: 4px !important;
+      font-size: 13px !important;
+    }
+    .scores-table td:first-child {
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .admin-seat-grid{grid-template-columns:repeat(var(--admin-cols,8),minmax(30px,1fr))!important;gap:3px!important}
     .admin-seat-cell{font-size:11px;min-height:28px;padding:4px 2px}
     .admin-schedule-table{font-size:11px}
@@ -860,7 +886,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     /* 成绩分析移动端调整 */
     .tab-header { gap: 6px; flex-wrap: wrap; }
     .tab-btn { padding: 5px 10px; font-size: 12px; }
-    .user-detail-pop-inner { min-width: 0; width: 100% !important; }
     .rank-table th, .rank-table td { padding: 6px 4px; font-size: 12px; }
 
     .global-theme-toggle{
