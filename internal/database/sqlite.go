@@ -625,6 +625,9 @@ func (s *SQLite) GetSeatConfig(userID int64) (*model.SeatConfig, error) {
 		return s.GetSeatConfig(userID)
 	}
 
+	return sc, nil
+}
+
 func (s *SQLite) UpdateSeatConfig(userID int64, rows, cols int, order string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO seat_configs (user_id, rows, cols, "order", updated_at)
