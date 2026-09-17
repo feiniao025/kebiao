@@ -3730,41 +3730,45 @@ window.deleteExam = async function(examId) {
       }
 
       // 渲染名次表
-      const rankList = roster.map(stu => {
-        const scoreObj = scores.find(s => s.student_name === stu.name);
-        return {
-          name: stu.name,
-          gender: stu.gender || '',
-          score: scoreObj ? scoreObj.score : null
-        };
-      }).sort((a, b) => {
-        if (a.score === null && b.score === null) return 0;
-        if (a.score === null) return 1;
-        if (b.score === null) return -1;
-        return b.score - a.score;
-      });
+      if (roster.length === 0) {
+        $('rankTableBody').innerHTML = '<div class="today-empty">暂无学生数据</div>';
+      } else {
+        const rankList = roster.map(stu => {
+          const scoreObj = scores.find(s => s.student_name === stu.name);
+          return {
+            name: stu.name,
+            gender: stu.gender || '',
+            score: scoreObj ? scoreObj.score : null
+          };
+        }).sort((a, b) => {
+          if (a.score === null && b.score === null) return 0;
+          if (a.score === null) return 1;
+          if (b.score === null) return -1;
+          return b.score - a.score;
+        });
 
-      let rankHtml = '<table class="rank-table">' +
-        '<thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
-      let rank = 1;
-      rankList.forEach((item, idx) => {
-        if (item.score === null) {
-          rankHtml += `<tr><td class="rank-num">-</td><td class="student-name">${escapeHtml(item.name)}</td><td>${escapeHtml(item.gender)}</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>`;
-          return;
-        }
-        const level = item.score >= exam.excellent_score ? '优秀' : (item.score >= exam.pass_score ? '及格' : '不及格');
-        const levelColor = level === '优秀' ? '#27ae60' : (level === '及格' ? '#f39c12' : '#e74c3c');
-        rankHtml += `<tr>
-          <td class="rank-num">${rank++}</td>
-          <td class="student-name"><a href="javascript:void(0)" onclick="openStudentReportPop('${escapeHtml(item.name)}')">${escapeHtml(item.name)}</a></td>
-          <td>${escapeHtml(item.gender)}</td>
-          <td class="score-val">${item.score}</td>
-          <td>${exam.full_score}</td>
-          <td><span style="color:${levelColor};font-weight:600;">${level}</span></td>
-        </tr>`;
-      });
-      rankHtml += '</tbody></table>';
-      $('rankTableBody').innerHTML = rankHtml;
+        let rankHtml = '<table class="rank-table">' +
+          '<thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
+        let rank = 1;
+        rankList.forEach((item) => {
+          if (item.score === null) {
+            rankHtml += `<tr><td class="rank-num">-</td><td class="student-name">${escapeHtml(item.name)}</td><td>${escapeHtml(item.gender)}</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>`;
+            return;
+          }
+          const level = item.score >= exam.excellent_score ? '优秀' : (item.score >= exam.pass_score ? '及格' : '不及格');
+          const levelColor = level === '优秀' ? '#27ae60' : (level === '及格' ? '#f39c12' : '#e74c3c');
+          rankHtml += `<tr>
+            <td class="rank-num">${rank++}</td>
+            <td class="student-name"><a href="javascript:void(0)" onclick="openStudentReportPop('${escapeHtml(item.name)}')">${escapeHtml(item.name)}</a></td>
+            <td>${escapeHtml(item.gender)}</td>
+            <td class="score-val">${item.score}</td>
+            <td>${exam.full_score}</td>
+            <td><span style="color:${levelColor};font-weight:600;">${level}</span></td>
+          </tr>`;
+        });
+        rankHtml += '</tbody></table>';
+        $('rankTableBody').innerHTML = rankHtml;
+      }
 
       // 绑定 Tab 切换事件
       $('scoresPopBody').querySelectorAll('.tab-btn').forEach(btn => {
@@ -3774,14 +3778,22 @@ window.deleteExam = async function(examId) {
           btn.classList.add('active');
           $('tab-content-' + btn.dataset.tab).classList.add('active');
           
-          // 切换到分析 Tab 时初始化图表
           if (btn.dataset.tab === 'analysis') {
             setTimeout(() => {
               const chartDom = document.getElementById('chartDistribution');
               if (chartDom) {
-                const myChart = echarts.init(chartDom);
+                if (typeof echarts === 'undefined') {
+                  chartDom.innerHTML = '<div class="today-empty">图表库加载失败，请检查网络或切换 CDN</div>';
+                  return;
+                }
+                let myChart = echarts.getInstanceByDom(chartDom);
+                if (!myChart) {
+                  myChart = echarts.init(chartDom);
+                }
                 const bands = ['<60', '60-69', '70-79', '80-89', '90-99', '100+'];
-                const data = bands.map(b => stats.distribution ? stats.distribution[b] || 0 : 0);
+                const dist = stats.distribution || {};
+                const data = bands.map(b => dist[b] || 0);
+                
                 myChart.setOption({
                   title: { text: exam.subject + ' 分数段分布', left: 'center', textStyle: { fontSize: 14 } },
                   tooltip: { trigger: 'axis' },
@@ -3802,8 +3814,9 @@ window.deleteExam = async function(examId) {
                     label: { show: true, position: 'top' }
                   }]
                 });
+                myChart.resize();
               }
-            }, 100);
+            }, 150);
           }
         };
       });
