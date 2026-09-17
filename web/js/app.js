@@ -98,6 +98,104 @@ window.openStudentReportPop = async function(studentName) {
   }
 };
 
+// 在名次表右侧内联显示学生个人成绩走势
+window.showStudentReportInline = async function(studentName, subject, fullScore, gender) {
+  const panel = document.getElementById('rankRightPanel');
+  if (!panel) return;
+  panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">加载中...</div>';
+
+  // 高亮选中的姓名行
+  document.querySelectorAll('.rank-table .student-name a').forEach(a => a.classList.remove('selected'));
+  document.querySelectorAll('.rank-table .student-name a').forEach(a => {
+    if (a.textContent === studentName) a.classList.add('selected');
+  });
+
+  try {
+    const resp = await API.getStudentHistory(studentName, subject);
+    const history = resp.history || [];
+
+    const initial = studentName ? escapeHtml(studentName.charAt(0)) : '?';
+    const genderClass = gender === '女' ? 'female' : (gender === '男' ? 'male' : 'unknown');
+
+    let html = `
+      <div class="report-header">
+        <div class="report-avatar ${genderClass}">${initial}</div>
+        <div class="report-header-info">
+          <div class="report-name">${escapeHtml(studentName)}</div>
+          <div class="report-sub">${escapeHtml(subject)} · 共 ${history.length} 次</div>
+        </div>
+      </div>
+    `;
+
+    if (history.length === 0) {
+      html += '<div class="today-empty">暂无该科目的历史成绩记录</div>';
+      panel.innerHTML = html;
+      return;
+    }
+
+    html += `
+      <div class="report-section-title">历次成绩走势</div>
+      <div id="chartInlineHistory" style="width:100%;height:170px;"></div>
+      <div class="report-section-title" style="margin-top:14px;">考试成绩明细</div>
+      <div class="report-detail-list">
+        ${history.slice().reverse().map(h => `
+          <div class="report-detail-row">
+            <div class="report-detail-info">
+              <div class="report-detail-name">${escapeHtml(h.exam_name)}</div>
+              <div class="report-detail-date">${escapeHtml(h.date)}</div>
+            </div>
+            <div class="report-detail-score">${h.score}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    panel.innerHTML = html;
+
+    // 绘制折线图
+    setTimeout(() => {
+      const chartDom = document.getElementById('chartInlineHistory');
+      if (!chartDom) return;
+      if (typeof echarts === 'undefined') {
+        chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>';
+        return;
+      }
+      let chart = echarts.getInstanceByDom(chartDom);
+      if (!chart) chart = echarts.init(chartDom);
+
+      chart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 36, right: 12, top: 20, bottom: 40, containLabel: true },
+        xAxis: {
+          type: 'category',
+          data: history.map(h => h.exam_name),
+          axisLabel: { interval: 0, fontSize: 10, rotate: 25, fontWeight: 'bold' },
+          axisLine: { lineStyle: { width: 1.5 } }
+        },
+        yAxis: {
+          type: 'value',
+          max: fullScore || 100,
+          axisLabel: { fontSize: 10, fontWeight: 'bold' },
+          splitLine: { lineStyle: { width: 1 } }
+        },
+        series: [{
+          data: history.map(h => h.score),
+          type: 'line',
+          smooth: true,
+          symbolSize: 7,
+          itemStyle: { color: '#3498db' },
+          lineStyle: { width: 2.5 },
+          areaStyle: { color: 'rgba(52,152,219,0.12)' },
+          label: { show: true, position: 'top', fontSize: 10, fontWeight: 'bold', color: '#3498db' }
+        }]
+      });
+      chart.resize();
+      setTimeout(() => chart.resize(), 200);
+    }, 100);
+  } catch (err) {
+    panel.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>';
+  }
+};
+
 window.deleteExam = async function(examId) {
   if (!confirm('确认删除该考试及所有成绩记录？')) return;
   try {
@@ -3935,28 +4033,50 @@ window.deleteExam = async function(examId) {
           return b.score - a.score;
         });
 
-        let rankHtml = '<table class="rank-table">' +
+        let rankTableHtml = '<table class="rank-table">' +
           '<thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
         let rank = 1;
         rankList.forEach((item) => {
           if (item.score === null) {
-            rankHtml += `<tr><td class="rank-num">-</td><td class="student-name">${escapeHtml(item.name)}</td><td>${escapeHtml(item.gender)}</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>`;
+            rankTableHtml += `<tr><td class="rank-num">-</td><td class="student-name">${escapeHtml(item.name)}</td><td>${escapeHtml(item.gender)}</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>`;
             return;
           }
           const level = item.score >= exam.excellent_score ? '优秀' : (item.score >= exam.pass_score ? '及格' : '不及格');
           const levelColor = level === '优秀' ? '#27ae60' : (level === '及格' ? '#f39c12' : '#e74c3c');
-          rankHtml += `<tr>
+          // 用 data 属性携带信息，避免内联引号转义问题
+          rankTableHtml += `<tr>
             <td class="rank-num">${rank++}</td>
-            <td class="student-name"><a href="javascript:void(0)" onclick="openStudentReportPop('${escapeHtml(item.name)}')">${escapeHtml(item.name)}</a></td>
+            <td class="student-name">
+              <a href="javascript:void(0)"
+                 class="rank-student-link"
+                 data-name="${escapeHtml(item.name)}"
+                 data-gender="${escapeHtml(item.gender)}">${escapeHtml(item.name)}</a>
+            </td>
             <td>${escapeHtml(item.gender)}</td>
             <td class="score-val">${item.score}</td>
             <td>${exam.full_score}</td>
             <td><span style="color:${levelColor};font-weight:600;">${level}</span></td>
           </tr>`;
         });
-        rankHtml += '</tbody></table>';
-        $('rankTableBody').innerHTML = rankHtml;
-      }
+        rankTableHtml += '</tbody></table>';
+
+        const rankFullHtml =
+          '<div class="rank-layout">' +
+            '<div class="rank-left">' + rankTableHtml + '</div>' +
+            '<div class="rank-right" id="rankRightPanel">' +
+              '<div class="rank-right-empty">👈 点击左侧学生姓名<br>查看个人成绩走势</div>' +
+            '</div>' +
+          '</div>';
+        $('rankTableBody').innerHTML = rankFullHtml;
+
+        // 绑定姓名点击事件
+        $('rankTableBody').querySelectorAll('.rank-student-link').forEach(a => {
+          a.onclick = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            window.showStudentReportInline(a.dataset.name, exam.subject, exam.full_score, a.dataset.gender);
+          };
+        });
 
       // ============ 绑定「导入」按钮 ============
       const importBtn = $('scoresImportBtn');
