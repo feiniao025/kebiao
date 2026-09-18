@@ -92,11 +92,14 @@ func (h *ScheduleHandler) ListClasses(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"classes": classes})
 }
 
+// createClassReq 同时用于创建与更新班级
+// 如果 CustomName 非空，则忽略 ClassNum，使用自定义名称作为班级名
 type createClassReq struct {
-	Grade    int    `json:"grade" binding:"required"`
-	ClassNum int    `json:"class_num" binding:"required"`
-	Badge    string `json:"badge"`
+	Grade       int    `json:"grade" binding:"required"`
+	ClassNum    int    `json:"class_num"`
+	Badge       string `json:"badge"`
 	PeriodCount int    `json:"period_count"`
+	CustomName  string `json:"custom_name"`
 }
 
 func (h *ScheduleHandler) CreateClass(c *gin.Context) {
@@ -106,7 +109,7 @@ func (h *ScheduleHandler) CreateClass(c *gin.Context) {
 		return
 	}
 	userID := c.GetInt64("user_id")
-	cls, err := h.svc.CreateClass(userID, req.Grade, req.ClassNum, req.Badge)
+	cls, err := h.svc.CreateClass(userID, req.Grade, req.ClassNum, req.Badge, req.CustomName)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -122,8 +125,11 @@ func (h *ScheduleHandler) UpdateClass(c *gin.Context) {
 	}
 	userID := c.GetInt64("user_id")
 
+	// 计算新名称：优先自定义名称，其次由年级+班号格式化
 	name := ""
-	if req.Grade >= 1 && req.ClassNum >= 1 {
+	if req.CustomName != "" {
+		name = req.CustomName
+	} else if req.Grade >= 1 && req.ClassNum >= 1 {
 		name = service.FormatClassName(req.Grade, req.ClassNum)
 	}
 

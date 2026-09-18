@@ -37,9 +37,7 @@ window.addEventListener('unhandledrejection', function (e) {
   console.error('[Promise Rejection]', e.reason);
 });
 
-// ============ 全局函数 ============
-
-// 学生个人成绩报告弹窗（旧版，保留兼容，不再主动调用）
+// 学生个人成绩报告弹窗（旧版，保留兼容）
 window.openStudentReportPop = async function(studentName) {
   if (!studentName) return;
   $('studentReportPop').style.display = 'flex';
@@ -99,107 +97,6 @@ window.openStudentReportPop = async function(studentName) {
   }
 };
 
-// 在「成绩走势」Tab 内展示学生个人成绩走势
-window.showStudentReportInline = async function(studentName, subject, fullScore, gender) {
-  const panel = document.getElementById('rankRightPanel');
-  if (!panel) return;
-  panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">加载中...</div>';
-
-  // 同步下拉框
-  const sel = document.getElementById('trendStudentSelect');
-  if (sel && sel.value !== studentName) sel.value = studentName;
-
-  // 高亮名次表里对应行
-  document.querySelectorAll('.rank-table .student-name a').forEach(a => a.classList.remove('selected'));
-  document.querySelectorAll('.rank-table .student-name a').forEach(a => {
-    if (a.textContent === studentName) a.classList.add('selected');
-  });
-
-  try {
-    const resp = await API.getStudentHistory(studentName, subject);
-    const history = resp.history || [];
-
-    const initial = studentName ? escapeHtml(studentName.charAt(0)) : '?';
-    const genderClass = gender === '女' ? 'female' : (gender === '男' ? 'male' : 'unknown');
-
-    let html = `
-      <div class="report-header">
-        <div class="report-avatar ${genderClass}">${initial}</div>
-        <div class="report-header-info">
-          <div class="report-name">${escapeHtml(studentName)}</div>
-          <div class="report-sub">${escapeHtml(subject)} · 共 ${history.length} 次</div>
-        </div>
-      </div>
-    `;
-
-    if (history.length === 0) {
-      html += '<div class="today-empty">暂无该科目的历史成绩记录</div>';
-      panel.innerHTML = html;
-      return;
-    }
-
-    html += `
-      <div class="report-section-title">历次成绩走势</div>
-      <div id="chartInlineHistory" style="width:100%;height:240px;"></div>
-      <div class="report-section-title" style="margin-top:14px;">考试成绩明细</div>
-      <div class="report-detail-list">
-        ${history.slice().reverse().map(h => `
-          <div class="report-detail-row">
-            <div class="report-detail-info">
-              <div class="report-detail-name">${escapeHtml(h.exam_name)}</div>
-              <div class="report-detail-date">${escapeHtml(h.date)}</div>
-            </div>
-            <div class="report-detail-score">${h.score}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-    panel.innerHTML = html;
-
-    setTimeout(() => {
-      const chartDom = document.getElementById('chartInlineHistory');
-      if (!chartDom) return;
-      if (typeof echarts === 'undefined') {
-        chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>';
-        return;
-      }
-      let chart = echarts.getInstanceByDom(chartDom);
-      if (!chart) chart = echarts.init(chartDom);
-
-      chart.setOption({
-        tooltip: { trigger: 'axis' },
-        grid: { left: 36, right: 12, top: 20, bottom: 40, containLabel: true },
-        xAxis: {
-          type: 'category',
-          data: history.map(h => h.exam_name),
-          axisLabel: { interval: 0, fontSize: 10, rotate: 25, fontWeight: 'bold' },
-          axisLine: { lineStyle: { width: 1.5 } }
-        },
-        yAxis: {
-          type: 'value',
-          max: fullScore || 100,
-          axisLabel: { fontSize: 10, fontWeight: 'bold' },
-          splitLine: { lineStyle: { width: 1 } }
-        },
-        series: [{
-          data: history.map(h => h.score),
-          type: 'line',
-          smooth: true,
-          symbolSize: 7,
-          itemStyle: { color: '#3498db' },
-          lineStyle: { width: 2.5 },
-          areaStyle: { color: 'rgba(52,152,219,0.12)' },
-          label: { show: true, position: 'top', fontSize: 10, fontWeight: 'bold', color: '#3498db' }
-        }]
-      });
-      chart.resize();
-      setTimeout(() => chart.resize(), 200);
-    }, 100);
-  } catch (err) {
-    panel.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>';
-  }
-};
-
 window.deleteExam = async function(examId) {
   if (!confirm('确认删除该考试及所有成绩记录？')) return;
   try {
@@ -238,6 +135,9 @@ window.deleteExam = async function(examId) {
   let editAllOn = false;
   let seatEditOn = false;
   let rosterEditOn = false;
+  let dutyEditOn = false;
+  let currentDutyClassId = '';
+  let currentTodayClass = localStorage.getItem('kebiao_today_class') || 'all';
 
   let currentRosterClassId = '';
   let currentRosterKeyword = '';
@@ -270,6 +170,16 @@ window.deleteExam = async function(examId) {
 
   const BREAK_CELL_INDEX = 1000;
   const BREAK_AFTER_PERIOD = 4;
+
+  const DUTY_DAYS = 5;
+  const DEFAULT_DUTY_NOTE = `值日要求：
+所有值日生值日当天7:20到校，晚放学后值完日立即离校。值日期间禁止打闹。禁止在校内和上下学途中逗留。所有扫除用具用完之后及时清洗干净，放回原处，摆放整齐。
+1.擦黑板和讲桌：每节课下课用湿抹布将黑板和讲桌擦干净，无多余水渍。
+2.扫地和拖地：每日三次打扫（早晨到校、午饭后、晚放学后）先扫地，再拖地。扫后地面无垃圾，拖后地面无多余水渍，保持地面干净整洁。
+3.摆桌椅：全天保持桌椅摆放整齐，轻推轻放，放学后必须将桌椅再次摆整齐。
+4.擦窗台：每日用湿抹布擦两遍，早晨到校擦一遍，午饭后擦一遍。拉窗帘：每日午休结束后立即将窗帘拉开，系上。禁止窗帘飘在窗外。关窗户：每日放学前关好窗户。
+5.擦门镜：每日用卫生纸擦两遍，早晨到校擦一遍，午饭后擦一遍。里外都擦干净。
+关风扇、关灯、关门：每日放学后关闭风扇、关灯、关门，关掉所有电源。`;
 
   const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
   const EXAM_NAMES = ['第一次月考', '第二次月考', '期中考试', '期末考试'];
@@ -354,7 +264,8 @@ window.deleteExam = async function(examId) {
       sel.appendChild(opt);
     }
   }
-  function fillClassNumSelect(sel, defaultNum) {
+  // 修改：新增第三个参数 allowCustom，用于在 1-30 班之后追加"自定义班级名称"选项
+  function fillClassNumSelect(sel, defaultNum, allowCustom) {
     if (!sel) return;
     sel.innerHTML = '';
     for (let c = 1; c <= 30; c++) {
@@ -363,6 +274,14 @@ window.deleteExam = async function(examId) {
       opt.textContent = c + ' 班';
       if (c === defaultNum) opt.selected = true;
       sel.appendChild(opt);
+    }
+    // 追加"自定义班级名称"选项
+    if (allowCustom) {
+      const customOpt = document.createElement('option');
+      customOpt.value = 'custom';
+      customOpt.textContent = '自定义班级名称';
+      if (defaultNum === 'custom' || defaultNum === 0) customOpt.selected = true;
+      sel.appendChild(customOpt);
     }
   }
   function fillPeriodCountSelect(sel, defaultVal) {
@@ -505,6 +424,7 @@ window.deleteExam = async function(examId) {
         if (!currentRosterClassId) currentRosterClassId = '';
         if (!currentGradesClassId) currentGradesClassId = classes[0].class_id;
         if (!currentAttendanceClassId) currentAttendanceClassId = classes[0].class_id;
+        if (!currentDutyClassId) currentDutyClassId = classes[0].class_id;
       }
 
       renderSchedule();
@@ -548,6 +468,7 @@ window.deleteExam = async function(examId) {
     classes: [
       { key: 'schedule', label: '课表' },
       { key: 'seat',     label: '座位' },
+      { key: 'duty',     label: '值日' },
     ],
     me: [],
   };
@@ -606,9 +527,10 @@ window.deleteExam = async function(examId) {
 
     const isScheduleTab = (activeTopTab === 'classes' && activeSubTab === 'schedule');
     const isSeatTab = (activeTopTab === 'classes' && activeSubTab === 'seat');
+    const isDutyTab = (activeTopTab === 'classes' && activeSubTab === 'duty');
     const isRosterTab = (activeTopTab === 'students' && activeSubTab === 'roster');
 
-    const showClassCtrl = isScheduleTab || isSeatTab;
+    const showClassCtrl = isScheduleTab || isSeatTab || isDutyTab;
     const classCtrl = $('classControlBar');
     if (classCtrl) classCtrl.style.display = showClassCtrl ? 'flex' : 'none';
 
@@ -644,6 +566,9 @@ window.deleteExam = async function(examId) {
           seatCard.style.display = 'block';
           updateSeatCardTitle();
           renderSeats();
+        } else if (activeSubTab === 'duty') {
+          scheduleContainer.style.display = 'block';
+          renderDuty();
         }
         break;
       case 'me':
@@ -662,6 +587,13 @@ window.deleteExam = async function(examId) {
       document.querySelectorAll('#classControlBar .seat-only').forEach(b => {
         b.style.display = isSeatTab ? '' : 'none';
       });
+      document.querySelectorAll('#classControlBar .duty-only').forEach(b => {
+        b.style.display = isDutyTab ? '' : 'none';
+      });
+      const twBtn = $('toggleWeekHighlight');
+      if (twBtn) {
+        twBtn.style.display = (isScheduleTab || isDutyTab) ? '' : 'none';
+      }
     }
   }
 
@@ -781,6 +713,386 @@ window.deleteExam = async function(examId) {
     };
   }
 
+  // ============ 编辑值日开关 ============
+  const dutyEditToggle = $('dutyEditToggle');
+  if (dutyEditToggle) {
+    dutyEditToggle.onclick = (e) => {
+      e.stopPropagation();
+      dutyEditOn = !dutyEditOn;
+      dutyEditToggle.classList.toggle('active', dutyEditOn);
+      showSaveStatus(dutyEditOn ? '已开启编辑值日' : '已锁定', false);
+    };
+  }
+
+  // ============ 值日菜单弹窗 ============
+  function openDutyManagePop() {
+    if (classes.length === 0) {
+      alert('请先创建至少一个班级');
+      return;
+    }
+
+    const cls = classes.find(c => c.class_id === getDutyClassId()) || classes[0];
+    fillGradeSelect($('dutyManageGrade'), cls.grade || 7);
+    fillClassNumSelect($('dutyManageNum'), cls.class_num || 1);
+
+    loadDutyConfigIntoPop(cls.class_id);
+
+    const onClassChange = () => {
+      const g = parseInt($('dutyManageGrade').value, 10);
+      const n = parseInt($('dutyManageNum').value, 10);
+      const target = classes.find(c => c.grade === g && c.class_num === n);
+      if (!target) return;
+      loadDutyConfigIntoPop(target.class_id);
+    };
+    $('dutyManageGrade').onchange = onClassChange;
+    $('dutyManageNum').onchange = onClassChange;
+
+    $('dutyManageError').textContent = '';
+    $('dutyManagePop').style.display = 'flex';
+  }
+
+  function loadDutyConfigIntoPop(classId) {
+    const rows = getDutyRows(classId);
+    const sel = $('dutyManageRows');
+    sel.innerHTML = '';
+    for (let n = 1; n <= 12; n++) {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n + ' 项';
+      if (n === rows) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    $('dutyManageNote').value = getDutyNote(classId);
+    $('dutyManagePop').dataset.classId = classId;
+  }
+
+  const dutyManageClose = $('dutyManageClose');
+  if (dutyManageClose) dutyManageClose.onclick = () => { $('dutyManagePop').style.display = 'none'; };
+  const dutyManagePopEl = $('dutyManagePop');
+  if (dutyManagePopEl) dutyManagePopEl.addEventListener('click', e => { if (e.target === dutyManagePopEl) dutyManagePopEl.style.display = 'none'; });
+
+  const dutyManageSave = $('dutyManageSave');
+  if (dutyManageSave) {
+    dutyManageSave.onclick = async () => {
+      const classId = $('dutyManagePop').dataset.classId;
+      if (!classId) return;
+      const n = parseInt($('dutyManageRows').value, 10) || 4;
+      const note = $('dutyManageNote').value;
+      try {
+        await setDutyConfig(classId, n, note);
+        currentDutyClassId = classId;
+        renderDuty();
+        showSaveStatus('已保存', false);
+        scheduleAutoSync();
+        $('dutyManagePop').style.display = 'none';
+      } catch (e) {
+        $('dutyManageError').textContent = e.message || '保存失败';
+      }
+    };
+  }
+
+  const dutyManageClear = $('dutyManageClear');
+  if (dutyManageClear) {
+    dutyManageClear.onclick = async () => {
+      if (!confirm('确认清空该班级的值日表？此操作不可恢复。')) return;
+      const classId = $('dutyManagePop').dataset.classId;
+      if (!classId) return;
+      try {
+        const storageId = getDutyStorageId(classId);
+        const rows = getDutyRows(classId);
+        const batch = [];
+        for (let row = 0; row < rows; row++) {
+          batch.push({
+            class_id: storageId, cell_index: row * 6, cell_type: 'duty_period',
+            period_name: '', period_time: '', subject: '', teacher: '', bg_color: '0'
+          });
+          for (let d = 0; d < DUTY_DAYS; d++) {
+            batch.push({
+              class_id: storageId, cell_index: row * 6 + d + 1, cell_type: 'duty',
+              period_name: '', period_time: '', subject: '', teacher: '', bg_color: '0'
+            });
+          }
+        }
+        await apiCall(API.batchUpsert, batch);
+        await reloadCellData();
+        renderDuty();
+        showSaveStatus('值日表已清空', false);
+        scheduleAutoSync();
+        $('dutyManagePop').style.display = 'none';
+      } catch (e) {
+        $('dutyManageError').textContent = e.message || '清空失败';
+      }
+    };
+  }
+
+  // ============ 值日表渲染（按班级独立，storage key 与课表隔离） ============
+  function getDutyClassId() {
+    if (currentDutyClassId) return currentDutyClassId;
+    if (classes.length > 0) return classes[0].class_id;
+    return '';
+  }
+
+  // 值日数据使用独立的 storage key（前缀 _duty_），避免与课表 cellData 冲突
+  function getDutyStorageId(classId) {
+    return '_duty_' + classId;
+  }
+
+  function getDutyRows(classId) {
+    if (!classId) return 4;
+    const storageId = getDutyStorageId(classId);
+    const key = storageId + '_cell_-1';
+    const c = cellData[key];
+    if (c && c.period_name) {
+      try {
+        const j = JSON.parse(c.period_name);
+        if (j && j.rows >= 1 && j.rows <= 12) return j.rows;
+      } catch (e) {
+        const n = parseInt(c.period_name, 10);
+        if (n >= 1 && n <= 12) return n;
+      }
+    }
+    return 4;
+  }
+
+  function getDutyNote(classId) {
+    if (!classId) return DEFAULT_DUTY_NOTE;
+    const storageId = getDutyStorageId(classId);
+    const key = storageId + '_cell_-2';
+    const c = cellData[key];
+    return (c && c.subject) || DEFAULT_DUTY_NOTE;
+  }
+
+  async function setDutyConfig(classId, rows, note) {
+    const storageId = getDutyStorageId(classId);
+    await apiCall(API.upsertCell, {
+      class_id: storageId, cell_index: -1, cell_type: 'duty_config',
+      period_name: JSON.stringify({ rows: rows }), period_time: '',
+      subject: '', teacher: '', bg_color: '0'
+    });
+    cellData[storageId + '_cell_-1'] = {
+      class_id: storageId, cell_index: -1, cell_type: 'duty_config',
+      period_name: JSON.stringify({ rows: rows }), subject: '', teacher: '', bg_color: '0'
+    };
+    await apiCall(API.upsertCell, {
+      class_id: storageId, cell_index: -2, cell_type: 'duty_note',
+      period_name: '', period_time: '',
+      subject: note, teacher: '', bg_color: '0'
+    });
+    cellData[storageId + '_cell_-2'] = {
+      class_id: storageId, cell_index: -2, cell_type: 'duty_note',
+      period_name: '', subject: note, teacher: '', bg_color: '0'
+    };
+  }
+
+  function renderDuty() {
+    const container = scheduleContainer;
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (classes.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'card';
+      empty.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-sub);">请先在「班级 → 课表」中创建班级</div>';
+      container.appendChild(empty);
+      return;
+    }
+
+    if (!currentDutyClassId || !classes.find(c => c.class_id === currentDutyClassId)) {
+      currentDutyClassId = classes[0].class_id;
+    }
+    const classId = currentDutyClassId;
+    const storageId = getDutyStorageId(classId);
+    const clsInfo = classes.find(c => c.class_id === classId);
+    const title = clsInfo ? ('🧹 值日表 · ' + clsInfo.name) : '🧹 值日表';
+
+    const card = document.createElement('div');
+    card.className = 'card class-card duty-card';
+
+    const header = document.createElement('div');
+    header.className = 'card-header';
+    header.innerHTML =
+      '<h2>' + escapeHtml(title) + '</h2>' +
+      '<div class="legend">' +
+      '<button class="mini-toggle" id="dutyCardMenuBtn">菜单</button>' +
+      '</div>';
+    card.appendChild(header);
+
+    const menuBtn = header.querySelector('#dutyCardMenuBtn');
+    if (menuBtn) {
+      menuBtn.onclick = (e) => {
+        e.stopPropagation();
+        openDutyManagePop();
+      };
+    }
+
+    const table = document.createElement('table');
+    table.className = 'schedule-table duty-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>值日项目</th><th>星期一</th><th>星期二</th><th>星期三</th><th>星期四</th><th>星期五</th></tr>';
+    table.appendChild(thead);
+
+    const rows = getDutyRows(classId);
+    const tbody = document.createElement('tbody');
+    for (let row = 0; row < rows; row++) {
+      const tr = document.createElement('tr');
+
+      const tdP = document.createElement('td');
+      tdP.dataset.type = 'duty_period';
+      tdP.dataset.idx = String(row * 6);
+      tdP.dataset.classId = storageId;
+      const pKey = storageId + '_cell_' + (row * 6);
+      const pCell = cellData[pKey];
+      const pName = (pCell && pCell.period_name) || '';
+      if (pName) {
+        tdP.innerHTML = '<span class="cell-period-name">' + escapeHtml(pName) + '</span>';
+      } else {
+        tdP.innerHTML = '<span class="cell-empty">＋ 项目</span>';
+        tdP.classList.add('empty');
+      }
+      tr.appendChild(tdP);
+
+      for (let d = 0; d < DUTY_DAYS; d++) {
+        const td = document.createElement('td');
+        const idx = row * 6 + d + 1;
+        td.dataset.type = 'duty';
+        td.dataset.idx = String(idx);
+        td.dataset.classId = storageId;
+        const cKey = storageId + '_cell_' + idx;
+        const cCell = cellData[cKey];
+        const students = (cCell && cCell.subject) || '';
+        if (students) {
+          const lines = students.split('\n').map(s => s.trim()).filter(Boolean);
+          td.innerHTML = lines.map(s => '<span class="cell-student">' + escapeHtml(s) + '</span>').join('');
+        } else {
+          td.innerHTML = '<span class="cell-empty">＋</span>';
+          td.classList.add('empty');
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    card.appendChild(table);
+
+    const noteText = getDutyNote(classId);
+    if (noteText && noteText.trim()) {
+      const noteEl = document.createElement('div');
+      noteEl.className = 'duty-note';
+      noteEl.textContent = noteText;
+      card.appendChild(noteEl);
+    }
+
+    container.appendChild(card);
+
+    table.querySelectorAll('tbody td').forEach(td => {
+      td.onclick = () => {
+        if (!dutyEditOn) {
+          showSaveStatus('请点击顶部「✏️ 编辑值日」开启编辑', true);
+          return;
+        }
+        openDutyPop(td);
+      };
+    });
+    renderWeekHighlight();
+  }
+
+  function openDutyPop(td) {
+    const type = td.dataset.type;
+    const idx = parseInt(td.dataset.idx, 10);
+    const classId = td.dataset.classId;
+
+    currentCellIdx = idx;
+    currentCellType = type;
+    currentCellClassId = classId;
+
+    const isPeriod = (type === 'duty_period');
+    $('dutyPopPeriodRow').style.display = isPeriod ? 'flex' : 'none';
+    $('dutyPopStudentsRow').style.display = isPeriod ? 'none' : 'flex';
+    $('dutyPopTitle').textContent = isPeriod ? '编辑值日项目' : '编辑值日学生';
+    $('dutyPopError').textContent = '';
+
+    if (isPeriod) {
+      const nameEl = td.querySelector('.cell-period-name');
+      $('dutyPopPeriodName').value = nameEl ? nameEl.textContent : '';
+    } else {
+      const cKey = classId + '_cell_' + idx;
+      const cCell = cellData[cKey];
+      $('dutyPopStudents').value = (cCell && cCell.subject) || '';
+    }
+
+    $('dutyPop').style.display = 'flex';
+    setTimeout(() => {
+      if (isPeriod) $('dutyPopPeriodName').focus();
+      else $('dutyPopStudents').focus();
+    }, 100);
+  }
+
+  const dutyPopClose = $('dutyPopClose');
+  if (dutyPopClose) dutyPopClose.onclick = () => { $('dutyPop').style.display = 'none'; };
+  const dutyPopEl = $('dutyPop');
+  if (dutyPopEl) dutyPopEl.addEventListener('click', e => { if (e.target === dutyPopEl) dutyPopEl.style.display = 'none'; });
+
+  const dutyPopSave = $('dutyPopSave');
+  if (dutyPopSave) {
+    dutyPopSave.onclick = async () => {
+      if (currentCellIdx === null) return;
+      const classId = currentCellClassId;
+      const idx = currentCellIdx;
+      const type = currentCellType;
+      const errEl = $('dutyPopError');
+      errEl.textContent = '';
+
+      if (type === 'duty_period') {
+        const name = $('dutyPopPeriodName').value.trim();
+        try {
+          await apiCall(API.upsertCell, {
+            class_id: classId, cell_index: idx, cell_type: 'duty_period',
+            period_name: name, period_time: '',
+            subject: '', teacher: '', bg_color: '0'
+          });
+          const key = classId + '_cell_' + idx;
+          cellData[key] = {
+            class_id: classId, cell_index: idx, cell_type: 'duty_period',
+            period_name: name, subject: '', teacher: '', bg_color: '0'
+          };
+          renderDuty();
+          showSaveStatus('已保存', false);
+          scheduleAutoSync();
+          $('dutyPop').style.display = 'none';
+        } catch (e) {
+          errEl.textContent = e.message || '保存失败';
+        }
+      } else {
+        const raw = $('dutyPopStudents').value;
+        const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+        if (lines.length > 3) {
+          errEl.textContent = '最多 3 名学生';
+          return;
+        }
+        const students = lines.join('\n');
+        try {
+          await apiCall(API.upsertCell, {
+            class_id: classId, cell_index: idx, cell_type: 'duty',
+            subject: students, teacher: '', bg_color: '0',
+            period_name: '', period_time: ''
+          });
+          const key = classId + '_cell_' + idx;
+          cellData[key] = {
+            class_id: classId, cell_index: idx, cell_type: 'duty',
+            subject: students, teacher: '', bg_color: '0'
+          };
+          renderDuty();
+          showSaveStatus('已保存', false);
+          scheduleAutoSync();
+          $('dutyPop').style.display = 'none';
+        } catch (e) {
+          errEl.textContent = e.message || '保存失败';
+        }
+      }
+    };
+  }
+
+  // ============ 班级卡片拖拽 ============
   function setupClassDrag(card, cls) {
     const header = card.querySelector('.card-header');
     if (!header) return;
@@ -938,6 +1250,59 @@ window.deleteExam = async function(examId) {
     if (errEl) errEl.textContent = '';
 
     fillGradeSelect(gradeSel, 7);
+    fillClassNumSelect(numSel, 1, true); // 允许自定义
+    $('classPopBadge').value = '';
+
+    // 自定义名称行
+    const customRow = $('classPopCustomNameRow');
+    const customInput = $('classPopCustomName');
+    if (customRow && customInput) {
+      customRow.style.display = 'none';
+      customInput.value = '';
+    }
+
+    // 班级下拉框切换 → 显示/隐藏自定义名称输入框
+    numSel.onchange = () => {
+      if (!customRow) return;
+      if (numSel.value === 'custom') {
+        customRow.style.display = 'flex';
+        setTimeout(() => customInput && customInput.focus(), 100);
+      } else {
+        customRow.style.display = 'none';
+      }
+    };
+
+    const rosterRow = $('classPopRosterRow');
+    const rosterSel = $('classPopRoster');
+    if (rosterRow && rosterSel) {
+      rosterRow.style.display = 'none';
+      rosterSel.innerHTML = '';
+      try {
+        const resp = await API.listRoster('');
+        const all = resp.students || [];
+        const classIds = new Set(classes.map(c => c.class_id));
+        const pending = new Set();
+        all.forEach(s => {
+          if (s.class_id && !classIds.has(s.class_id)) pending.add(s.class_id);
+        });
+        if (pending.size > 0) {
+          rosterSel.innerHTML = '<option value="">（不关联）</option>' +
+            Array.from(pending).sort().map(n =>
+              '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '（可导入）</option>'
+            ).join('');
+          rosterRow.style.display = 'flex';
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    $('classPop').style.display = 'flex';
+  }
+    const gradeSel = $('classPopGrade');
+    const numSel = $('classPopNum');
+    const errEl = $('classPopError');
+    if (errEl) errEl.textContent = '';
+
+    fillGradeSelect(gradeSel, 7);
     fillClassNumSelect(numSel, 1);
     $('classPopBadge').value = '';
 
@@ -984,21 +1349,34 @@ window.deleteExam = async function(examId) {
   if (classPopSave) {
     classPopSave.onclick = async () => {
       const grade = parseInt($('classPopGrade').value, 10);
-      const classNum = parseInt($('classPopNum').value, 10);
+      const numVal = $('classPopNum').value;
+      const isCustom = numVal === 'custom';
+      const classNum = isCustom ? 0 : parseInt(numVal, 10);
+      const customName = isCustom ? ($('classPopCustomName').value || '').trim() : '';
       const badgeName = $('classPopBadge').value.trim();
       const pendingName = ($('classPopRoster') || {}).value || '';
       const errEl = $('classPopError');
       errEl.textContent = '';
 
       if (!grade || grade < 1 || grade > 12) { errEl.textContent = '请选择年级'; return; }
-      if (!classNum || classNum < 1 || classNum > 30) { errEl.textContent = '请选择班级'; return; }
-      if (classes.some(c => c.grade === grade && c.class_num === classNum)) {
-        errEl.textContent = '该班级已存在';
-        return;
+
+      if (isCustom) {
+        if (!customName) { errEl.textContent = '请输入自定义班级名称'; return; }
+        if (customName.length > 30) { errEl.textContent = '自定义名称不能超过 30 个字符'; return; }
+        if (classes.some(c => c.name === customName)) {
+          errEl.textContent = '该班级名称已存在';
+          return;
+        }
+      } else {
+        if (!classNum || classNum < 1 || classNum > 30) { errEl.textContent = '请选择班级'; return; }
+        if (classes.some(c => c.grade === grade && c.class_num === classNum)) {
+          errEl.textContent = '该班级已存在';
+          return;
+        }
       }
 
       try {
-        const resp = await apiCall(API.createClass, grade, classNum, withBadgePrefix(badgeName));
+        const resp = await apiCall(API.createClass, grade, classNum, withBadgePrefix(badgeName), customName);
         classes.push(resp.class);
         classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
@@ -1029,9 +1407,34 @@ window.deleteExam = async function(examId) {
     currentManageClassId = cls.class_id;
     $('classManageTitle').textContent = '班级管理 · ' + cls.name;
     fillGradeSelect($('classManageGrade'), cls.grade || 7);
-    fillClassNumSelect($('classManageNum'), cls.class_num || 1);
+
+    const numSel = $('classManageNum');
+    const isCustom = (cls.class_num === 0 || !cls.class_num);
+    fillClassNumSelect(numSel, isCustom ? 'custom' : (cls.class_num || 1), true);
     fillPeriodCountSelect($('classManagePeriods'), cls.period_count || 8);
     $('classManageBadge').value = stripBadgePrefix(cls.badge);
+
+    const customRow = $('classManageCustomNameRow');
+    const customInput = $('classManageCustomName');
+
+    if (isCustom && customRow && customInput) {
+      customRow.style.display = 'flex';
+      customInput.value = cls.name;
+    } else if (customRow && customInput) {
+      customRow.style.display = 'none';
+      customInput.value = '';
+    }
+
+    numSel.onchange = () => {
+      if (!customRow) return;
+      if (numSel.value === 'custom') {
+        customRow.style.display = 'flex';
+        setTimeout(() => customInput && customInput.focus(), 100);
+      } else {
+        customRow.style.display = 'none';
+      }
+    };
+
     const errEl = $('classManageError');
     errEl.textContent = '';
     $('classManagePop').style.display = 'flex';
@@ -1049,26 +1452,40 @@ window.deleteExam = async function(examId) {
       const cls = classes.find(c => c.class_id === currentManageClassId);
       if (!cls) return;
       const grade = parseInt($('classManageGrade').value, 10);
-      const classNum = parseInt($('classManageNum').value, 10);
+      const numVal = $('classManageNum').value;
+      const isCustom = numVal === 'custom';
+      const classNum = isCustom ? 0 : parseInt(numVal, 10);
+      const customName = isCustom ? ($('classManageCustomName').value || '').trim() : '';
       const periodCount = parseInt(($('classManagePeriods') || {}).value, 10) || 8;
       const badgeName = $('classManageBadge').value.trim();
       const errEl = $('classManageError');
       errEl.textContent = '';
 
-      if (!grade || !classNum) { errEl.textContent = '请选择年级和班级'; return; }
-      if (classes.some(c => c.class_id !== cls.class_id && c.grade === grade && c.class_num === classNum)) {
-        errEl.textContent = '该班级已存在';
-        return;
+      if (!grade) { errEl.textContent = '请选择年级'; return; }
+
+      if (isCustom) {
+        if (!customName) { errEl.textContent = '请输入自定义班级名称'; return; }
+        if (classes.some(c => c.class_id !== cls.class_id && c.name === customName)) {
+          errEl.textContent = '该班级名称已存在';
+          return;
+        }
+      } else {
+        if (!classNum) { errEl.textContent = '请选择班级'; return; }
+        if (classes.some(c => c.class_id !== cls.class_id && c.grade === grade && c.class_num === classNum)) {
+          errEl.textContent = '该班级已存在';
+          return;
+        }
       }
 
       try {
-        const newName = formatClassName(grade, classNum);
+        const newName = isCustom ? customName : formatClassName(grade, classNum);
         await apiCall(API.updateClass, cls.class_id, {
           name: newName,
           badge: withBadgePrefix(badgeName),
           grade: grade,
           class_num: classNum,
           period_count: periodCount,
+          custom_name: isCustom ? customName : '',
         });
         cls.name = newName;
         cls.badge = withBadgePrefix(badgeName);
@@ -3070,6 +3487,20 @@ window.deleteExam = async function(examId) {
     const dateStr = yyyy + '-' + mm + '-' + dd;
     const wd = ['日', '一', '二', '三', '四', '五', '六'][now.getDay()];
 
+    // 校验：如果当前选中的班级已被删除，重置为"全部"
+    if (currentTodayClass !== 'all' && !classes.find(c => c.class_id === currentTodayClass)) {
+      currentTodayClass = 'all';
+      localStorage.setItem('kebiao_today_class', 'all');
+    }
+
+    // 今日课程筛选：全部 + 每个班级
+    const classFilterOptions =
+      '<option value="all">全部班级</option>' +
+      classes.map(c =>
+        '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>'
+      ).join('');
+
+    // 今日考勤选择班级
     const classOptions = classes.map(c =>
       '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>'
     ).join('');
@@ -3079,7 +3510,10 @@ window.deleteExam = async function(examId) {
         '<div class="me-card">' +
           '<div class="today-date">' + yyyy + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日 星期' + wd + '</div>' +
           '<div class="today-section">' +
-            '<h4>📚 今日课程</h4>' +
+            '<div class="today-section-header">' +
+              '<h4>📚 今日课程</h4>' +
+              '<select id="todayClassFilter" class="cell-pop-input today-grade-filter">' + classFilterOptions + '</select>' +
+            '</div>' +
             '<div id="todayClasses" class="today-course-list">' + renderTodayCourses(now.getDay()) + '</div>' +
           '</div>' +
           '<div class="today-section">' +
@@ -3095,6 +3529,18 @@ window.deleteExam = async function(examId) {
         '</div>' +
       '</div>';
 
+    // 绑定班级筛选
+    const classSel = $('todayClassFilter');
+    if (classSel) {
+      classSel.value = currentTodayClass;
+      classSel.onchange = () => {
+        currentTodayClass = classSel.value;
+        localStorage.setItem('kebiao_today_class', currentTodayClass);
+        const listEl = $('todayClasses');
+        if (listEl) listEl.innerHTML = renderTodayCourses(now.getDay());
+      };
+    }
+
     const sel = $('todayAttendanceClass');
     if (sel && classes.length > 0) {
       sel.onchange = () => loadTodayAttendanceSummary(sel.value, dateStr);
@@ -3106,8 +3552,15 @@ window.deleteExam = async function(examId) {
     if (wd === 0 || wd === 6) return '<div class="today-empty">周末无课程安排 🎉</div>';
     if (classes.length === 0) return '<div class="today-empty">暂无班级</div>';
 
+    // 按班级筛选
+    let list = classes;
+    if (currentTodayClass !== 'all') {
+      list = classes.filter(c => c.class_id === currentTodayClass);
+    }
+    if (list.length === 0) return '<div class="today-empty">该班级不存在</div>';
+
     let html = '';
-    classes.forEach(cls => {
+    list.forEach(cls => {
       const lessons = [];
       const periodCount = (cls.period_count && cls.period_count > 0) ? cls.period_count : defaultPeriods.length;
       for (let pIdx = 0; pIdx < periodCount; pIdx++) {
@@ -3859,6 +4312,255 @@ window.deleteExam = async function(examId) {
       }
     };
     input.click();
+  }
+
+  // ============ 成绩走势：上下文 ============
+  let trendCtx = { studentName: '', gender: '', fullScore: 0, subject: '' };
+
+  window.showStudentReportInline = async function (studentName, subject, fullScore, gender) {
+    const panel = document.getElementById('rankRightPanel');
+    if (!panel) return;
+
+    if (trendCtx.studentName !== studentName) {
+      trendCtx.studentName = studentName;
+      trendCtx.gender = gender || '';
+      trendCtx.fullScore = fullScore || 100;
+      trendCtx.subject = subject || '语文';
+    } else {
+      if (subject) trendCtx.subject = subject;
+      if (fullScore) trendCtx.fullScore = fullScore;
+      if (gender) trendCtx.gender = gender;
+    }
+
+    const sel = document.getElementById('trendStudentSelect');
+    if (sel && sel.value !== studentName) sel.value = studentName;
+    document.querySelectorAll('.rank-table .student-name a').forEach(a => a.classList.remove('selected'));
+    document.querySelectorAll('.rank-table .student-name a').forEach(a => {
+      if (a.textContent === studentName) a.classList.add('selected');
+    });
+
+    await renderTrendPanel(panel);
+  };
+
+  function bindSubjectTabs(panel) {
+    panel.querySelectorAll('.report-subject-tab').forEach(btn => {
+      btn.onclick = () => {
+        const s = btn.dataset.subject;
+        if (!s || s === trendCtx.subject) return;
+        trendCtx.subject = s;
+        renderTrendPanel(panel);
+      };
+    });
+  }
+
+  async function renderTrendPanel(panel) {
+    const studentName = trendCtx.studentName;
+    const gender = trendCtx.gender;
+    const subject = trendCtx.subject;
+    let fullScore = trendCtx.fullScore || 100;
+
+    panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">加载中...</div>';
+
+    try {
+      const examsResp = await API.listExams(currentGradesClassId);
+      const allExams = examsResp.exams || [];
+      const subjectExams = allExams.filter(e => e.subject === subject);
+
+      const details = await Promise.all(subjectExams.map(e => API.getExamDetail(e.id).catch(() => null)));
+      const rows = [];
+      for (const d of details) {
+        if (!d || !d.exam || !d.scores) continue;
+        const exam = d.exam;
+        const scores = d.scores;
+        const stu = scores.find(s => s.student_name === studentName);
+        if (!stu) continue;
+        const sum = scores.reduce((a, b) => a + b.score, 0);
+        const avg = scores.length ? sum / scores.length : 0;
+        const sorted = scores.slice().sort((a, b) => b.score - a.score);
+        const rank = sorted.findIndex(s => s.student_name === studentName) + 1;
+        rows.push({
+          examName: exam.name,
+          date: exam.created_at ? String(exam.created_at).slice(0, 10) : '',
+          score: stu.score,
+          fullScore: exam.full_score || fullScore,
+          average: avg,
+          rank: rank,
+          totalCount: scores.length,
+        });
+      }
+      rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      const initial = studentName ? escapeHtml(studentName.charAt(0)) : '?';
+      const genderClass = gender === '女' ? 'female' : (gender === '男' ? 'male' : 'unknown');
+
+      const subjectTabsHtml = SUBJECTS.map(s =>
+        '<button class="report-subject-tab' + (s === subject ? ' active' : '') + '" data-subject="' + escapeHtml(s) + '">' + escapeHtml(s) + '</button>'
+      ).join('');
+
+      let html = `
+        <div class="report-header">
+          <div class="report-avatar ${genderClass}">${initial}</div>
+          <div class="report-header-info">
+            <div class="report-name">${escapeHtml(studentName)}</div>
+            <div class="report-sub">${escapeHtml(subject)} · 共 ${rows.length} 次</div>
+          </div>
+        </div>
+        <div class="report-subject-tabs">${subjectTabsHtml}</div>
+      `;
+
+      if (rows.length === 0) {
+        html += '<div class="today-empty">暂无「' + escapeHtml(subject) + '」科目的历史成绩记录</div>';
+        panel.innerHTML = html;
+        bindSubjectTabs(panel);
+        return;
+      }
+
+      const lastRow = rows[rows.length - 1];
+      html += `
+        <div class="report-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>历次成绩走势</span>
+          <span class="report-count-badge">名次 ${lastRow.rank} → ${lastRow.totalCount}</span>
+        </div>
+        <div id="chartInlineHistory" style="width:100%;height:240px;"></div>
+        <div class="report-section-title" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
+          <span>考试成绩明细</span>
+          <span class="report-count-badge">${rows.length}次</span>
+        </div>
+        <div class="report-detail-list">
+          ${rows.slice().reverse().map(r => `
+            <div class="report-detail-row">
+              <div class="report-detail-info">
+                <div class="report-detail-name">${escapeHtml(r.examName)}</div>
+                <div class="report-detail-date">${escapeHtml(r.date)} · ${escapeHtml(subject)}</div>
+              </div>
+              <div class="report-detail-score">${r.score}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      panel.innerHTML = html;
+
+      bindSubjectTabs(panel);
+
+      setTimeout(() => {
+        const chartDom = document.getElementById('chartInlineHistory');
+        if (!chartDom) return;
+        if (typeof echarts === 'undefined') {
+          chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>';
+          return;
+        }
+        let chart = echarts.getInstanceByDom(chartDom);
+        if (!chart) chart = echarts.init(chartDom);
+
+        const maxFull = Math.max.apply(null, rows.map(r => r.fullScore || fullScore).concat([fullScore]));
+        const maxTotal = Math.max.apply(null, rows.map(r => r.totalCount).concat([10]));
+
+        chart.setOption({
+          tooltip: {
+            trigger: 'axis',
+            textStyle: { fontWeight: 'bold' }
+          },
+          legend: {
+            bottom: 0,
+            left: 'center',
+            icon: 'roundRect',
+            itemWidth: 14,
+            itemHeight: 3,
+            itemGap: 16,
+            textStyle: { fontSize: 12, fontWeight: 'bold' }
+          },
+          grid: { left: 46, right: 60, top: 30, bottom: 56 },
+          xAxis: {
+            type: 'category',
+            data: rows.map(r => r.examName),
+            axisLabel: { interval: 0, fontSize: 11, fontWeight: 'bold', margin: 10 },
+            axisTick: { show: false }
+          },
+          yAxis: [
+            {
+              type: 'value',
+              name: '分数',
+              min: 0,
+              max: maxFull,
+              nameTextStyle: { fontSize: 11, fontWeight: 'bold', padding: [0, 0, 6, 0] },
+              axisLabel: { fontSize: 11, fontWeight: 'bold' },
+              splitLine: { lineStyle: { color: '#f0f0f0' } },
+              axisLine: { show: false },
+              axisTick: { show: false }
+            },
+            {
+              type: 'value',
+              name: '排名',
+              min: 1,
+              max: maxTotal,
+              inverse: true,
+              nameTextStyle: { fontSize: 11, fontWeight: 'bold', padding: [0, 0, 6, 0] },
+              axisLabel: { fontSize: 11, fontWeight: 'bold', formatter: '名次{value}' },
+              splitLine: { show: false },
+              axisLine: { show: false },
+              axisTick: { show: false }
+            }
+          ],
+          series: [
+            {
+              name: '学生成绩',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: rows.map(r => r.score),
+              itemStyle: { color: '#1e3a8a' },
+              lineStyle: { width: 3 },
+              label: { show: true, position: 'top', fontSize: 11, fontWeight: 'bold', color: '#1e3a8a' }
+            },
+            {
+              name: '班级平均',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: rows.map(r => Math.round(r.average * 10) / 10),
+              itemStyle: { color: '#94a3b8' },
+              lineStyle: { width: 3 },
+              label: { show: true, position: 'top', fontSize: 11, fontWeight: 'bold', color: '#64748b' }
+            },
+            {
+              name: '学生排名',
+              type: 'line',
+              yAxisIndex: 1,
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: rows.map(r => r.rank),
+              itemStyle: { color: '#f59e0b' },
+              lineStyle: { width: 3 },
+              label: { show: true, position: 'top', fontSize: 11, fontWeight: 'bold', color: '#f59e0b' }
+            }
+          ]
+        });
+
+        if (chartDom.__trendRO) {
+          try { chartDom.__trendRO.disconnect(); } catch (e) {}
+          chartDom.__trendRO = null;
+        }
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => {
+            if (chart && !chart.isDisposed()) chart.resize();
+          });
+          ro.observe(chartDom);
+          chartDom.__trendRO = ro;
+        }
+
+        chart.resize();
+        requestAnimationFrame(() => { if (chart) chart.resize(); });
+        setTimeout(() => { if (chart) chart.resize(); }, 100);
+        setTimeout(() => { if (chart) chart.resize(); }, 300);
+        setTimeout(() => { if (chart) chart.resize(); }, 600);
+      }, 100);
+
+    } catch (err) {
+      panel.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>';
+    }
   }
 
   async function openScoresPop(examId) {

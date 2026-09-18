@@ -142,8 +142,8 @@ body{font-family:'Segoe UI','PingFang SC',Roboto,'Helvetica Neue',sans-serif;bac
 .cell-pop-input:focus{border-color:#3498db}
 .cell-pop-input[readonly]{background-color:var(--table-row-alt);cursor:default;border-color:transparent}
 .cell-pop-input[readonly]:focus{border-color:transparent}
+textarea.cell-pop-input{line-height:1.6;resize:vertical}
 
-/* ============ select 下拉箭头 ============ */
 .select-wrap{position:relative;display:flex;flex:1;min-width:0}
 .select-wrap > select.cell-pop-input{flex:1;padding-right:36px !important;appearance:none;-webkit-appearance:none;-moz-appearance:none}
 .select-wrap::after{content:'';position:absolute;right:14px;top:50%;width:9px;height:9px;border-right:2.5px solid var(--text-sub);border-bottom:2.5px solid var(--text-sub);transform:translateY(-70%) rotate(45deg);pointer-events:none}
@@ -301,7 +301,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .class-drag-ghost .card-header{cursor:grabbing}
 .class-drag-ghost *{pointer-events:none}
 
-/* ============ 底部导航 ============ */
 .bottom-nav{
   position:fixed;left:0;right:0;bottom:0;height:58px;
   background:var(--card-bg);border-top:1px solid var(--table-border);
@@ -371,6 +370,46 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-summary-grid .info .num{color:#3498db}
 .today-summary-grid .bad .num{color:#e74c3c}
 
+/* ============ 今天 - 今日课程标题栏（带班级筛选） ============ */
+.today-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--legend-item-border);
+  flex-wrap: nowrap;
+}
+.today-section-header h4 {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  border: none;
+  white-space: nowrap;
+}
+/* 关键：覆盖 .select-wrap 的 flex:1，避免撑满整行 */
+.today-section-header .select-wrap,
+.today-section-header .today-grade-filter {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 100px;
+  max-width: 180px;
+}
+.today-section-header .today-grade-filter {
+  padding: 5px 30px 5px 12px;
+  font-size: 13px;
+  border-radius: 10px;
+  background-color: var(--table-row-alt);
+  border-color: transparent;
+}
+.today-section-header .today-grade-filter:focus {
+  border-color: #3498db;
+}
+
 .roster-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .roster-toolbar .cell-pop-input{min-width:0;font-size:13px;padding:8px 10px}
 
@@ -405,7 +444,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .stat-cell .v{display:block;font-size:13px;color:var(--text-main);font-weight:600;word-break:break-word}
 .scores-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:10px;background:var(--table-row-alt);border-radius:10px}
 
-/* ============ 考勤页面：头像圆圈 + 状态药丸 ============ */
 .att-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:8px;background:var(--table-row-alt);border-radius:12px;flex-wrap:wrap}
 .att-student-info{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .att-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
@@ -426,7 +464,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .att-remark{padding:6px 10px;border:1px solid var(--seat-border);border-radius:8px;background-color:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;min-width:90px;flex:1;max-width:140px}
 .att-remark:focus{border-color:#3498db}
 
-/* ============ 考试操作按钮 ============ */
 .exam-actions{display:flex;gap:8px}
 .btn-sm{padding:4px 10px;font-size:12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-weight:600;transition:all 0.2s}
 .btn-edit-exam{background:#3498db;color:#fff}
@@ -434,7 +471,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .btn-del-exam{background:#e74c3c;color:#fff}
 .btn-del-exam:hover{background:#c0392b}
 
-/* ============ 弹窗内部 Tab 切换 ============ */
 .tab-header{display:flex;gap:10px;margin-bottom:15px;border-bottom:1px solid var(--table-border);padding-bottom:10px;flex-wrap:wrap}
 .tab-btn{padding:6px 16px;border:none;background:transparent;cursor:pointer;color:var(--text-sub);font-weight:600;border-radius:8px;transition:all 0.2s;font-family:inherit;font-size:14px}
 .tab-btn:hover{background:var(--table-row-alt);color:var(--text-main)}
@@ -442,7 +478,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .tab-pane{display:none}
 .tab-pane.active{display:block}
 
-/* ============ 排名表样式 ============ */
 .rank-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
 .rank-table th,.rank-table td{padding:10px;border-bottom:1px solid var(--table-border);text-align:left;color:var(--text-main)}
 .rank-table th{background:var(--table-row-alt);font-size:12px;color:var(--text-sub);font-weight:600;position:sticky;top:0}
@@ -453,7 +488,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
 #chartDistribution, #chartHistory{width:100%;border-radius:8px}
 
-/* ============ 成绩弹窗：底部操作栏（吸底） ============ */
 .scores-action-bar{
   position:sticky;bottom:0;
   display:flex;gap:10px;margin-top:14px;padding:12px 0 4px;
@@ -468,7 +502,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .btn-scores-save:hover{background:#1abc9c}
 .btn-scores-save:active{transform:translateY(1px)}
 
-/* ============ 成绩录入：卡片式布局 ============ */
 .scores-input-list{display:flex;flex-direction:column;gap:6px}
 .scores-input-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--table-row-alt);border-radius:10px;transition:background .15s}
 .scores-input-row:hover{background:var(--seat-hover)}
@@ -495,7 +528,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .score-input[data-level="fail"]{background:rgba(231,76,60,0.15);color:#fca5a5;border-color:#e74c3c}
 .scores-max{font-size:12px;color:var(--text-sub);font-weight:500}
 
-/* ============ 名次表 Tab ============ */
 .rank-table .student-name a.rank-student-link{
   color:#3498db;text-decoration:none;padding:2px 6px;border-radius:6px;
   transition:background .15s,color .15s;font-weight:600;cursor:pointer;
@@ -503,7 +535,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .rank-table .student-name a.rank-student-link:hover{background:rgba(52,152,219,0.12)}
 .rank-table .student-name a.rank-student-link.selected{background:#3498db;color:#fff}
 
-/* ============ 右侧报告：头部 ============ */
 .report-header{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--legend-item-border);margin-bottom:12px}
 .report-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
 .report-avatar.male{background:#3b82f6}
@@ -521,14 +552,143 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .report-detail-date{font-size:11px;color:var(--text-sub);margin-top:2px}
 .report-detail-score{font-size:16px;font-weight:700;color:#3498db;flex-shrink:0}
 
-/* ============ 成绩走势 Tab ============ */
 .trend-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--table-row-alt);border-radius:10px}
 .trend-toolbar label{font-size:13px;color:var(--text-sub);flex-shrink:0}
 .trend-toolbar .cell-pop-input{flex:1;min-width:0}
-.rank-right{width:100%;min-width:0;padding:14px;background:var(--table-row-alt);border-radius:12px;border:1px solid var(--table-border);margin-top:12px}
+.rank-right{width:100%;min-width:0;box-sizing:border-box;padding:14px;background:var(--table-row-alt);border-radius:12px;border:1px solid var(--table-border);margin-top:12px}
 .rank-right-empty{text-align:center;color:var(--text-sub);font-size:13px;line-height:1.8;padding:30px 12px}
 
-/* ============ 响应式 ============ */
+.report-subject-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--legend-item-border);
+}
+.report-subject-tab {
+  padding: 5px 16px;
+  border-radius: 16px;
+  border: none;
+  background: var(--card-bg);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s;
+}
+.report-subject-tab:hover {
+  background: var(--seat-hover);
+  color: var(--text-main);
+}
+.report-subject-tab.active {
+  background: #1e3a8a;
+  color: #fff;
+  font-weight: 600;
+}
+[data-theme="dark"] .report-subject-tab {
+  background: #374151;
+}
+[data-theme="dark"] .report-subject-tab.active {
+  background: #3b82f6;
+}
+
+.report-count-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ============ 值日表 ============ */
+.duty-card .card-header h2 {
+  color: var(--text-main);
+}
+.duty-table tbody td {
+  cursor: pointer;
+}
+.duty-table tbody td:first-child {
+  font-weight: 700;
+  min-width: 100px;
+  color: var(--text-main);
+}
+.duty-table tbody td .cell-student {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+[data-theme="dark"] .duty-table tbody td .cell-student {
+  color: #e6e9f0;
+}
+.duty-table tbody td .cell-empty {
+  color: var(--empty-text);
+  font-weight: 400;
+  font-size: 13px;
+}
+.duty-table tbody td.empty {
+  background: var(--table-row-alt);
+}
+.duty-table tbody td[data-type="duty_period"] {
+  background: var(--table-row-alt);
+  border-right: 1px solid var(--table-border);
+}
+
+/* 值日卡片头部"菜单"按钮 */
+.duty-card .card-header .legend button.mini-toggle {
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(0,0,0,0.06);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .2s;
+}
+.duty-card .card-header .legend button.mini-toggle:hover {
+  background: rgba(0,0,0,0.12);
+  color: var(--text-main);
+}
+[data-theme="dark"] .duty-card .card-header .legend button.mini-toggle {
+  background: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .duty-card .card-header .legend button.mini-toggle:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+/* ============ 值日表备注 ============ */
+.duty-note {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: var(--table-row-alt);
+  border-radius: 12px;
+  border-left: 4px solid #16a085;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+[data-theme="dark"] .duty-note {
+  background: #232836;
+}
+
+#tab-content-trend {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#chartInlineHistory {
+  width: 100% !important;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
 @media (max-width: 992px){.legend-grid{grid-template-columns:repeat(3,1fr);gap:8px 16px}}
 
 @media (max-width: 768px) {
@@ -594,23 +754,19 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .exam-stats,.scores-stats{grid-template-columns:repeat(2,1fr)}
   .today-summary-grid{grid-template-columns:repeat(3,1fr)}
 
-  /* 移动端考勤 */
   .att-row{padding:8px 10px;gap:8px}
   .att-avatar{width:30px;height:30px;font-size:14px}
   .att-name{font-size:14px;min-width:50px}
   .att-status-btn{padding:4px 12px;font-size:12px}
   .att-remark{max-width:100px;padding:4px 8px}
 
-  /* 成绩分析移动端 */
   .tab-header{gap:6px;flex-wrap:wrap}
   .tab-btn{padding:5px 10px;font-size:12px}
   .rank-table th,.rank-table td{padding:6px 4px;font-size:12px}
 
-  /* 成绩操作栏吸底 */
   .scores-action-bar{gap:8px;margin-top:10px;padding:10px 0 4px;border-top:1px solid var(--table-border)}
   .btn-scores-import,.btn-scores-save{padding:10px;font-size:14px}
 
-  /* 成绩录入卡片 */
   .scores-input-row{padding:8px 10px}
   .scores-avatar{width:28px;height:28px;font-size:13px}
   .scores-name{font-size:13px}
@@ -619,11 +775,26 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
   .report-avatar{width:34px;height:34px;font-size:14px}
   .report-name{font-size:15px}
-  #chartInlineHistory{height:150px !important}
+  #chartInlineHistory{height:200px !important}
 
-  /* 成绩走势 */
   .trend-toolbar{padding:8px 10px;gap:8px}
   .rank-right{padding:10px}
+  .report-subject-tab{padding:4px 12px;font-size:12px}
+
+  .duty-table tbody td .cell-student{font-size:12px}
+  .duty-table tbody td:first-child{min-width:70px}
+  .duty-note{padding:12px 14px;font-size:12px;line-height:1.8}
+
+  .today-section-header h4{font-size:14px}
+  .today-section-header .select-wrap,
+  .today-section-header .today-grade-filter{
+    min-width:90px;
+    max-width:140px;
+  }
+  .today-section-header .today-grade-filter{
+    font-size:12px;
+    padding:4px 26px 4px 10px;
+  }
 
   .global-theme-toggle{top:10px;right:10px;width:28px;height:28px;font-size:18px;box-shadow:0 4px 14px rgba(0,0,0,.14)}
   .select-wrap::after{right:12px;width:8px;height:8px}

@@ -31,7 +31,15 @@ const API = (function () {
     upsertCell: function (c) { return request('PUT', '/schedule/cell', c); },
     batchUpsert: function (c) { return request('POST', '/schedule/batch', { cells: c }); },
     listClasses: function () { return request('GET', '/classes'); },
-    createClass: function (g, n, b) { return request('POST', '/classes', { grade: g, class_num: n, badge: b || '' }); },
+    // 新增 customName 参数：为空字符串时表示普通班级（年级+班号）
+    createClass: function (g, n, b, customName) {
+      return request('POST', '/classes', {
+        grade: g,
+        class_num: n,
+        badge: b || '',
+        custom_name: customName || ''
+      });
+    },
     updateClass: function (id, d) { return request('PUT', '/classes/' + encodeURIComponent(id), d); },
     deleteClass: function (id) { return request('DELETE', '/classes/' + encodeURIComponent(id)); },
     updateClassOrder: function (ids) { return request('PUT', '/classes/order', { class_ids: ids }); },

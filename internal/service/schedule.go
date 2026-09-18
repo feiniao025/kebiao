@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,36 +62,58 @@ func (s *ScheduleService) GetClasses(userID int64) ([]model.Class, error) {
 	return s.db.GetClasses(userID)
 }
 
-func (s *ScheduleService) CreateClass(userID int64, grade, classNum int, badge string) (*model.Class, error) {
+// CreateClass 创建班级
+//   - customName 为空：按年级+班号创建，class_num 必须 1-30，且同年级同班号唯一
+//   - customName 非空：使用自定义名称创建，class_num 记为 0，班级名称全局唯一
+func (s *ScheduleService) CreateClass(userID int64, grade, classNum int, badge, customName string) (*model.Class, error) {
 	if grade < 1 || grade > 12 {
 		return nil, fmt.Errorf("年级需在 1-12 之间")
 	}
-	if classNum < 1 || classNum > 30 {
-		return nil, fmt.Errorf("班级需在 1-30 之间")
-	}
 
 	existing, _ := s.db.GetClasses(userID)
-	for _, c := range existing {
-		if c.Grade == grade && c.ClassNum == classNum {
-			return nil, fmt.Errorf("该班级已存在")
+	customName = strings.TrimSpace(customName)
+
+	if customName == "" {
+		if classNum < 1 || classNum > 30 {
+			return nil, fmt.Errorf("班级需在 1-30 之间")
+		}
+		for _, c := range existing {
+			if c.Grade == grade && c.ClassNum == classNum {
+				return nil, fmt.Errorf("该班级已存在")
+			}
+		}
+	} else {
+		if len(customName) > 30 {
+			return nil, fmt.Errorf("自定义名称不能超过 30 个字符")
+		}
+		for _, c := range existing {
+			if c.Name == customName {
+				return nil, fmt.Errorf("该班级名称已存在")
+			}
 		}
 	}
 
 	classID := "c_" + uuid.NewString()[:8]
+	className := customName
+	if className == "" {
+		className = FormatClassName(grade, classNum)
+	}
+
 	cls := &model.Class{
-		UserID:    userID,
-		ClassID:   classID,
-		Name:      FormatClassName(grade, classNum),
-		Badge:     badge,
-		Grade:     grade,
-		ClassNum:  classNum,
+		UserID:      userID,
+		ClassID:     classID,
+		Name:        className,
+		Badge:       badge,
+		Grade:       grade,
+		ClassNum:    classNum,
 		PeriodCount: len(defaultPeriods),
-		SortOrder: len(existing),
+		SortOrder:   len(existing),
 	}
 	if err := s.db.CreateClass(cls); err != nil {
 		return nil, fmt.Errorf("create class: %w", err)
 	}
 
+	// 初始化默认节次
 	for i, p := range defaultPeriods {
 		cell := &model.ScheduleCell{
 			UserID:     userID,

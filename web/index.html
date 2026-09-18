@@ -14,7 +14,6 @@
 <div id="saveStatus"></div>
 <div id="diagPanel"></div>
 
-<!-- 全局主题切换（固定右上角悬浮，只显示图标） -->
 <button id="themeToggle" class="global-theme-toggle" title="切换浅色/深色">☀️</button>
 
 <header class="top-bar">
@@ -22,17 +21,17 @@
   <p class="page-sub" id="pageSub" style="display:none;"></p>
 </header>
 
-<!-- 二级分类栏（班级/学生下的子分类） -->
 <div class="sub-nav" id="subNav" style="display:none;"></div>
 
-<!-- 顶部工具条（仅「班级 → 课表 / 座位」时显示） -->
+<!-- 班级工具条 -->
 <div class="control-bar" id="classControlBar" style="display:none;">
   <button data-filter="all" class="active schedule-only">全部显示</button>
   <span id="classFilterButtons" style="display:contents;"></span>
   <button id="createClassBtn" class="schedule-only" style="background:#16a085;">＋ 新建班级</button>
-  <button id="toggleWeekHighlight" class="active schedule-only">🔆 当日高亮</button>
+  <button id="toggleWeekHighlight" class="active">🔆 当日高亮</button>
   <button id="editToggleBtn" class="schedule-only">✏️ 编辑课表</button>
   <button id="seatEditToggle" class="seat-only" style="display:none;">✏️ 编辑座位</button>
+  <button id="dutyEditToggle" class="duty-only" style="display:none;">✏️ 编辑值日</button>
   <button id="moreToggle" class="more-ctrl">⚙️ 更多</button>
   <div id="morePanel" class="more-panel">
     <button id="exportBtn">📷 导出图片</button>
@@ -42,7 +41,7 @@
   </div>
 </div>
 
-<!-- 花名册工具条（仅「学生 → 花名册」时显示） -->
+<!-- 花名册工具条 -->
 <div class="control-bar" id="rosterControlBar" style="display:none;">
   <button id="rosterEditBtn">✏️ 编辑名册</button>
   <button id="rosterMoreToggle" class="more-ctrl">⚙️ 更多</button>
@@ -53,25 +52,13 @@
   </div>
 </div>
 
-<!-- 主内容区 -->
 <main class="main-content">
-
-  <!-- 今天 -->
   <div id="todayContainer" style="display:none;"></div>
-
-  <!-- 学生 - 成绩 -->
   <div id="gradesContainer" style="display:none;"></div>
-
-  <!-- 学生 - 考勤 -->
   <div id="attendanceContainer" style="display:none;"></div>
-
-  <!-- 学生 - 花名册 -->
   <div id="rosterContainer" style="display:none;"></div>
-
-  <!-- 班级 - 课表 -->
   <div id="scheduleContainer" style="display:none;"></div>
 
-  <!-- 班级 - 座位 -->
   <div class="card" id="seatCard" style="display:none;">
     <div class="card-header">
       <h2><span id="seatCardTitle"></span><span class="badge" id="seatSizeInfo">7行×8列</span></h2>
@@ -92,11 +79,9 @@
     <div class="seat-legend">💡 单击看名片 · 点击「✏️ 编辑座位」后长按可拖动换位、可增删改学生</div>
   </div>
 
-  <!-- 我的 -->
   <div id="meContainer" style="display:none;">
     <div class="me-page"><div class="me-card" id="meCard"></div></div>
   </div>
-
 </main>
 
 <!-- 底部导航 -->
@@ -141,7 +126,6 @@
 
 <!-- ================= 弹窗们 ================= -->
 
-<!-- 学生信息弹窗（座位表用） -->
 <div class="seat-pop" id="seatPop">
 <div class="seat-pop-inner">
   <button id="popCloseBtn" class="pop-close-x">×</button>
@@ -158,7 +142,6 @@
 </div>
 </div>
 
-<!-- 课程单元格弹窗 -->
 <div class="seat-pop" id="cellPop">
 <div class="seat-pop-inner">
   <button id="cellPopClose" class="pop-close-x">×</button>
@@ -175,13 +158,16 @@
 </div>
 </div>
 
-<!-- 新建班级弹窗 -->
 <div class="seat-pop" id="classPop">
 <div class="seat-pop-inner">
   <button id="classPopClose" class="pop-close-x">×</button>
   <h3>新建班级</h3>
   <div class="cell-pop-row"><label>年级：</label><select id="classPopGrade" class="cell-pop-input"></select></div>
   <div class="cell-pop-row"><label>班级：</label><select id="classPopNum" class="cell-pop-input"></select></div>
+  <div class="cell-pop-row" id="classPopCustomNameRow" style="display:none;">
+    <label>自定义名称：</label>
+    <input type="text" id="classPopCustomName" class="cell-pop-input" placeholder="如：竞赛班、特色班">
+  </div>
   <div class="cell-pop-row" id="classPopRosterRow" style="display:none;">
     <label>从花名册：</label>
     <select id="classPopRoster" class="cell-pop-input"></select>
@@ -192,13 +178,16 @@
 </div>
 </div>
 
-<!-- 班级管理弹窗 -->
 <div class="seat-pop" id="classManagePop">
 <div class="seat-pop-inner">
   <button id="classManageClose" class="pop-close-x">×</button>
   <h3 id="classManageTitle">班级管理</h3>
   <div class="cell-pop-row"><label>年级：</label><select id="classManageGrade" class="cell-pop-input"></select></div>
   <div class="cell-pop-row"><label>班级：</label><select id="classManageNum" class="cell-pop-input"></select></div>
+  <div class="cell-pop-row" id="classManageCustomNameRow" style="display:none;">
+    <label>自定义名称：</label>
+    <input type="text" id="classManageCustomName" class="cell-pop-input" placeholder="如：竞赛班、特色班">
+  </div>
   <div class="cell-pop-row"><label>课节数：</label><select id="classManagePeriods" class="cell-pop-input"></select></div>
   <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classManageBadge" class="cell-pop-input"></div>
   <div class="me-error" id="classManageError" style="min-height:18px;margin-top:6px;"></div>
@@ -209,7 +198,28 @@
 </div>
 </div>
 
-<!-- Excel 导入目标班级 -->
+<!-- ============ 值日表设置弹窗 ============ -->
+<div class="seat-pop" id="dutyManagePop">
+  <div class="seat-pop-inner user-detail-pop-inner">
+    <button id="dutyManageClose" class="pop-close-x">×</button>
+    <h3>值日表设置</h3>
+    <div class="cell-pop-row"><label>年级：</label><select id="dutyManageGrade" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班级：</label><select id="dutyManageNum" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>项目数：</label><select id="dutyManageRows" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row" style="align-items:flex-start;">
+      <label style="padding-top:9px;">值日备注：</label>
+      <textarea id="dutyManageNote" class="cell-pop-input" rows="12"
+                placeholder="值日要求...（点击「✏️ 编辑值日」后可修改）"
+                style="resize:vertical;font-family:inherit;line-height:1.7;min-height:160px;"></textarea>
+    </div>
+    <div class="me-error" id="dutyManageError" style="min-height:18px;margin-top:6px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="dutyManageClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 清空值日表</button>
+      <button id="dutyManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="seat-pop" id="importTargetPop">
   <div class="seat-pop-inner">
     <button id="importTargetClose" class="pop-close-x">×</button>
@@ -231,7 +241,6 @@
   </div>
 </div>
 
-<!-- Excel 导出班级选择（课程表） -->
 <div class="seat-pop" id="exportSchedulePop">
   <div class="seat-pop-inner">
     <button id="exportScheduleClose" class="pop-close-x">×</button>
@@ -245,7 +254,6 @@
   </div>
 </div>
 
-<!-- 花名册导出目标选择 -->
 <div class="seat-pop" id="exportRosterPop">
   <div class="seat-pop-inner">
     <button id="exportRosterClose" class="pop-close-x">×</button>
@@ -266,7 +274,6 @@
   </div>
 </div>
 
-<!-- 用户详情弹窗 -->
 <div class="seat-pop" id="userDetailPop">
   <div class="seat-pop-inner user-detail-pop-inner">
     <button id="userDetailClose" class="pop-close-x">×</button>
@@ -275,7 +282,6 @@
   </div>
 </div>
 
-<!-- 过道设置弹窗 -->
 <div class="seat-pop" id="aislePop">
   <div class="seat-pop-inner">
     <button id="aislePopClose" class="pop-close-x">×</button>
@@ -289,7 +295,6 @@
   </div>
 </div>
 
-<!-- 新增/编辑花名册学生 -->
 <div class="seat-pop" id="rosterPop">
   <div class="seat-pop-inner">
     <button id="rosterPopClose" class="pop-close-x">×</button>
@@ -311,7 +316,6 @@
   </div>
 </div>
 
-<!-- 新建/编辑考试弹窗 -->
 <div class="seat-pop" id="examPop">
   <div class="seat-pop-inner">
     <button id="examPopClose" class="pop-close-x">×</button>
@@ -349,7 +353,6 @@
   </div>
 </div>
 
-<!-- 成绩录入/分析弹窗 -->
 <div class="seat-pop" id="scoresPop">
   <div class="seat-pop-inner user-detail-pop-inner">
     <button id="scoresPopClose" class="pop-close-x">×</button>
@@ -358,12 +361,33 @@
   </div>
 </div>
 
-<!-- 学生个人成绩报告弹窗 -->
 <div class="seat-pop" id="studentReportPop">
   <div class="seat-pop-inner user-detail-pop-inner">
     <button id="studentReportClose" class="pop-close-x">×</button>
     <h3 id="studentReportTitle">学生成绩报告</h3>
     <div id="studentReportBody" style="max-height:75vh;overflow:auto;padding-right:6px;"></div>
+  </div>
+</div>
+
+<div class="seat-pop" id="dutyPop">
+  <div class="seat-pop-inner">
+    <button id="dutyPopClose" class="pop-close-x">×</button>
+    <h3 id="dutyPopTitle">编辑值日</h3>
+    <div class="cell-pop-row" id="dutyPopPeriodRow">
+      <label>值日项目：</label>
+      <input type="text" id="dutyPopPeriodName" class="cell-pop-input" placeholder="如：扫地">
+    </div>
+    <div class="cell-pop-row" id="dutyPopStudentsRow">
+      <label>值日学生：</label>
+      <textarea id="dutyPopStudents" class="cell-pop-input" rows="4"
+                placeholder="每行一位学生，最多 3 位&#10;例如：&#10;张三&#10;李四&#10;王五"
+                style="resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
+    </div>
+    <div class="me-error" id="dutyPopError" style="min-height:18px;"></div>
+    <button id="dutyPopSave"
+            style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">
+      💾 保存
+    </button>
   </div>
 </div>
 
