@@ -1,5 +1,7 @@
 /* ============================================================
    app-students.js —— 学生模块（花名册 / 成绩 / 考勤）
+   本地化后：ensureXLSX / ensureECharts / ensureHtml2Canvas 全部
+   放进 try 里兜底，避免移动端网络问题导致卡在"加载中..."
    ============================================================ */
 
 /* ---------- 花名册 ---------- */
@@ -123,7 +125,9 @@ window.openRosterPop = function (student) {
 };
 
 window.exportRosterImage = async function () {
-  await ensureHtml2Canvas();
+  try { await ensureHtml2Canvas(); }
+  catch (e) { alert('图片导出库加载失败，请检查网络：' + (e.message || e)); return; }
+
   const card = rosterContainer.querySelector('.me-card');
   if (!card) { alert('无法获取花名册内容'); return; }
   const wrap = document.createElement('div');
@@ -140,7 +144,7 @@ window.exportRosterImage = async function () {
     link.href = canvas.toDataURL('image/png');
     link.click();
     showSaveStatus('已导出图片', false);
-  } catch (e) { alert('导出失败：' + e.message); }
+  } catch (e) { alert('导出失败：' + (e.message || e)); }
   finally { wrap.remove(); }
 };
 
@@ -168,7 +172,9 @@ window.openExportRosterPop = function () {
 };
 
 window.exportRosterExcelByClass = async function (classId) {
-  await ensureXLSX();
+  try { await ensureXLSX(); }
+  catch (e) { alert('Excel 导出库加载失败，请检查网络'); return; }
+
   let list = [];
   try { const resp = await apiCall(API.listRoster, classId || ''); list = resp.students || []; } catch (e) { return; }
   if (list.length === 0) { alert(classId ? '该班级暂无学生' : '暂无学生数据'); return; }
@@ -223,7 +229,10 @@ window.matchRosterHeaderCell = function (cell) {
 window.importRosterExcel = async function (file, targetClass, gradeHint) {
   const isAllMode = !targetClass;
   gradeHint = gradeHint || 0;
-  const wb = await readExcelFile(file);
+  let wb;
+  try { wb = await readExcelFile(file); }
+  catch (e) { showSaveStatus('Excel 解析库加载失败，请检查网络', true); return; }
+
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
   if (rows.length < 1) { alert('Excel 内容为空'); return; }
@@ -516,7 +525,10 @@ window.importScoresFromExcel = async function (exam, onSaved) {
     const file = input.files && input.files[0];
     if (!file) return;
     try {
-      const wb = await readExcelFile(file);
+      let wb;
+      try { wb = await readExcelFile(file); }
+      catch (e) { alert('Excel 解析库加载失败，请检查网络'); return; }
+
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       if (rows.length < 1) { alert('Excel 内容为空'); return; }
@@ -695,11 +707,17 @@ window.renderTrendPanel = async function (panel) {
     panel.innerHTML = html;
     bindSubjectTabs(panel);
 
-    await ensureECharts();
+    // 本地化后：图表库加载失败不阻塞主流程，只记录警告
+    try { await ensureECharts(); }
+    catch (e) { console.warn('[renderTrendPanel] echarts 加载失败:', e); }
+
     setTimeout(() => {
       const chartDom = document.getElementById('chartInlineHistory');
       if (!chartDom) return;
-      if (typeof echarts === 'undefined') { chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>'; return; }
+      if (typeof echarts === 'undefined') {
+        chartDom.innerHTML = '<div class="today-empty">图表库未加载，无法显示走势图</div>';
+        return;
+      }
       let chart = echarts.getInstanceByDom(chartDom);
       if (!chart) chart = echarts.init(chartDom);
       const maxFull = Math.max.apply(null, rows.map(r => r.fullScore || fullScore).concat([fullScore]));
@@ -740,7 +758,10 @@ window.openScoresPop = async function (examId) {
   $('scoresPop').style.display = 'flex';
   $('scoresPopBody').innerHTML = '<div style="text-align:center;padding:20px;">加载中...</div>';
   $('scoresPop').dataset.id = examId;
-  await ensureECharts();
+
+  // ★ 关键修复：把 ensureECharts 放进 try 里，移动端 CDN/本地加载失败也不会卡死
+  try { await ensureECharts(); }
+  catch (e) { console.warn('[openScoresPop] echarts 加载失败:', e); }
 
   try {
     const [detail, rosterResp] = await Promise.all([API.getExamDetail(examId), API.listRoster(currentGradesClassId)]);
@@ -921,7 +942,7 @@ window.openScoresPop = async function (examId) {
           setTimeout(() => {
             const chartDom = document.getElementById('chartDistribution');
             if (!chartDom) return;
-            if (typeof echarts === 'undefined') { chartDom.innerHTML = '<div class="today-empty">图表库加载失败</div>'; return; }
+            if (typeof echarts === 'undefined') { chartDom.innerHTML = '<div class="today-empty">图表库未加载，无法显示分数段</div>'; return; }
             let myChart = echarts.getInstanceByDom(chartDom);
             if (!myChart) myChart = echarts.init(chartDom);
             const seriesList = bands.map((b, i) => ({

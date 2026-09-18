@@ -42,7 +42,7 @@ window.addEventListener('unhandledrejection', function (e) {
   console.error('[Promise Rejection]', e.reason);
 });
 
-/* ========== 3. CDN 库懒加载 ========== */
+/* ========== 3. 本地库懒加载 ========== */
 window._loadedScripts = {};
 window.loadScript = function (src) {
   if (window._loadedScripts[src]) return window._loadedScripts[src];
@@ -55,17 +55,20 @@ window.loadScript = function (src) {
   });
   return window._loadedScripts[src];
 };
+
 window.ensureECharts = function () {
   if (typeof echarts !== 'undefined') return Promise.resolve();
-  return window.loadScript('https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js');
+  return window.loadScript('/js/lib/echarts.min.js');   // 本地
 };
+
 window.ensureXLSX = function () {
   if (typeof XLSX !== 'undefined') return Promise.resolve();
-  return window.loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+  return window.loadScript('/js/lib/xlsx.full.min.js'); // 本地
 };
+
 window.ensureHtml2Canvas = function () {
   if (typeof html2canvas !== 'undefined') return Promise.resolve();
-  return window.loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+  return window.loadScript('/js/lib/html2canvas.min.js'); // 本地
 };
 
 /* ========== 4. 全局状态 ========== */

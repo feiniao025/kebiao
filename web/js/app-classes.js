@@ -1,5 +1,6 @@
 /* ============================================================
    app-classes.js —— 班级模块（课表/座位/值日/班级管理/导入导出）
+   本地化后：ensureXLSX / ensureHtml2Canvas 放进 try 里兜底
    ============================================================ */
 
 /* ---------- 座位标题 / 班级筛选 ---------- */
@@ -838,7 +839,10 @@ window.resizeSeat = async function (dr, dc) {
 /* ---------- 导入导出 ---------- */
 window.importScheduleExcel = async function (file, targetClass) {
   if (!targetClass) { alert('未选择目标班级'); return; }
-  const wb = await readExcelFile(file);
+  let wb;
+  try { wb = await readExcelFile(file); }
+  catch (e) { showSaveStatus('Excel 解析库加载失败，请检查网络', true); return; }
+
   const updates = [];
   const periodCount = (targetClass.period_count && targetClass.period_count > 0) ? targetClass.period_count : defaultPeriods.length;
   const sheetName = wb.SheetNames[0];
@@ -890,7 +894,9 @@ window.importScheduleExcel = async function (file, targetClass) {
 };
 
 window.exportSeatExcel = async function () {
-  await ensureXLSX();
+  try { await ensureXLSX(); }
+  catch (e) { alert('Excel 导出库加载失败，请检查网络'); return; }
+
   const rows = [['行', '列', '姓名', '性别', '身份证号', '家长1电话', '家长2电话', '家庭地址']];
   for (let r = 0; r < seat.rows; r++) {
     for (let c = 0; c < seat.cols; c++) {
@@ -909,7 +915,10 @@ window.exportSeatExcel = async function () {
 };
 
 window.importSeatExcel = async function (file) {
-  const wb = await readExcelFile(file);
+  let wb;
+  try { wb = await readExcelFile(file); }
+  catch (e) { showSaveStatus('Excel 解析库加载失败，请检查网络', true); return; }
+
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
   const toImport = [];
@@ -1035,7 +1044,9 @@ window.openExportSchedulePop = function () {
 };
 
 window.doExportScheduleExcel = async function (list) {
-  await ensureXLSX();
+  try { await ensureXLSX(); }
+  catch (e) { alert('Excel 导出库加载失败，请检查网络'); return; }
+
   const wb = XLSX.utils.book_new();
   list.forEach(cls => {
     const rows = [['节次', '时间段', '星期一', '星期二', '星期三', '星期四', '星期五']];
@@ -1576,7 +1587,10 @@ window.doExportScheduleExcel = async function (list) {
   };
   const exportBtn = $('exportBtn');
   if (exportBtn) exportBtn.onclick = async () => {
-    await ensureHtml2Canvas();
+    // 本地化后：把 ensureHtml2Canvas 放进 try，避免任何加载失败导致整个流程中断
+    try { await ensureHtml2Canvas(); }
+    catch (e) { alert('图片导出库加载失败，请检查网络：' + (e.message || e)); return; }
+
     const isSeat = (activeSubTab === 'seat');
     let wrap;
     if (isSeat) {
@@ -1602,7 +1616,7 @@ window.doExportScheduleExcel = async function (list) {
       link.download = (isSeat ? '座位表' : '课程表') + '_' + new Date().toLocaleDateString() + '.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
-    } catch (e) { alert('导出失败：' + e.message); }
+    } catch (e) { alert('导出失败：' + (e.message || e)); }
     finally { wrap.remove(); }
   };
 
