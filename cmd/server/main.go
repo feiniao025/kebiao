@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 
 	"kebiao/internal/config"
@@ -47,10 +49,23 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// ============ 新增：CSP 安全策略中间件 ============
-	// 允许 unsafe-eval（供 ECharts 等库使用），允许 data: 和 blob:（供 html2canvas 图片导出使用）
+	// ============ 1) Gzip 压缩：JS/CSS/JSON 体积可减少 70%+ ============
+	// 排除 /api/sync/ 路径（避免流式接口出问题）
+	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/api/sync/"})))
+
+	// ============ CSP 安全策略中间件（保持原样） ============
 	r.Use(func(c *gin.Context) {
 		c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; img-src 'self' data: blob:;")
+		c.Next()
+	})
+
+	// ============ 2) 静态资源长缓存：JS/CSS 一年 ============
+	// HTML 不加长缓存，这样发版后用户刷新即可看到新版本
+	r.Use(func(c *gin.Context) {
+		p := c.Request.URL.Path
+		if strings.HasPrefix(p, "/js/") || strings.HasPrefix(p, "/static/") {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		}
 		c.Next()
 	})
 
@@ -67,18 +82,15 @@ func main() {
 
 	api := r.Group("/api")
 	{
-		// 公开接口
 		api.GET("/schedule/default", scheduleHandler.GetDefault)
 		api.GET("/config", authHandler.GetPublicSystemConfig)
 
-		// Auth (public)
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 		}
 
-		// Auth (authenticated)
 		authProtected := api.Group("/auth")
 		authProtected.Use(middleware.AuthRequired(authSvc))
 		{
@@ -88,7 +100,6 @@ func main() {
 			authProtected.PUT("/preferences", authHandler.UpdatePreferences)
 		}
 
-		// Schedule (authenticated)
 		sched := api.Group("/schedule")
 		sched.Use(middleware.AuthRequired(authSvc))
 		{
@@ -97,7 +108,6 @@ func main() {
 			sched.POST("/batch", scheduleHandler.BatchUpsert)
 		}
 
-		// Classes (authenticated)
 		cls := api.Group("/classes")
 		cls.Use(middleware.AuthRequired(authSvc))
 		{
@@ -108,7 +118,6 @@ func main() {
 			cls.DELETE("/:class_id", scheduleHandler.DeleteClass)
 		}
 
-		// Seat (authenticated)
 		seat := api.Group("/seat")
 		seat.Use(middleware.AuthRequired(authSvc))
 		{
@@ -121,7 +130,6 @@ func main() {
 			seat.POST("/aisle", seatHandler.SetAisle)
 		}
 
-		// Sync (authenticated)
 		sync := api.Group("/sync")
 		sync.Use(middleware.AuthRequired(authSvc))
 		{
@@ -131,26 +139,22 @@ func main() {
 			sync.POST("/test", syncHandler.Test)
 		}
 
-		// Students (authenticated)
 		stu := api.Group("/students")
 		stu.Use(middleware.AuthRequired(authSvc))
 		{
-			// 花名册
 			stu.GET("/roster", studentHandler.ListRoster)
 			stu.POST("/roster", studentHandler.UpsertRoster)
 			stu.DELETE("/roster", studentHandler.DeleteRoster)
 			stu.POST("/roster/move", studentHandler.MoveRosterClass)
 
-			// 成绩
 			stu.GET("/exams", studentHandler.ListExams)
 			stu.POST("/exams", studentHandler.CreateExam)
-			stu.GET("/exams/history", studentHandler.GetStudentHistory) // 新增
+			stu.GET("/exams/history", studentHandler.GetStudentHistory)
 			stu.GET("/exams/:id", studentHandler.GetExamDetail)
 			stu.PUT("/exams/:id", studentHandler.UpdateExam)
 			stu.DELETE("/exams/:id", studentHandler.DeleteExam)
 			stu.PUT("/exams/:id/scores", studentHandler.SaveScores)
 
-			// 考勤
 			stu.GET("/attendance", studentHandler.ListAttendance)
 			stu.GET("/attendance/dates", studentHandler.ListAttendanceDates)
 			stu.GET("/attendance/summary", studentHandler.AttendanceSummary)
@@ -158,7 +162,6 @@ func main() {
 			stu.DELETE("/attendance", studentHandler.DeleteAttendance)
 		}
 
-		// Admin (authenticated + admin)
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthRequired(authSvc), middleware.AdminRequired())
 		{
