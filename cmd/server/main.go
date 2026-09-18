@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 
 	"kebiao/internal/config"
@@ -49,18 +48,16 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// ============ 1) Gzip 压缩：JS/CSS/JSON 体积可减少 70%+ ============
-	// 排除 /api/sync/ 路径（避免流式接口出问题）
-	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/api/sync/"})))
+	// ============ 1) Gzip 压缩（自研中间件，无第三方依赖） ============
+	r.Use(middleware.GzipMiddleware())
 
-	// ============ CSP 安全策略中间件（保持原样） ============
+	// ============ CSP 安全策略中间件 ============
 	r.Use(func(c *gin.Context) {
 		c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; img-src 'self' data: blob:;")
 		c.Next()
 	})
 
 	// ============ 2) 静态资源长缓存：JS/CSS 一年 ============
-	// HTML 不加长缓存，这样发版后用户刷新即可看到新版本
 	r.Use(func(c *gin.Context) {
 		p := c.Request.URL.Path
 		if strings.HasPrefix(p, "/js/") || strings.HasPrefix(p, "/static/") {
