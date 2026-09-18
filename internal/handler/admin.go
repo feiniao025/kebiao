@@ -88,10 +88,23 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 		sc = &model.SeatConfig{UserID: user.ID, Rows: 7, Cols: 8, Order: "asc", Aisle: ""}
 	}
 	classes, _ := h.db.GetClasses(user.ID)
+	roster, _ := h.db.GetRosterStudents(user.ID, "")
+
+	// 考试（含分数）
+	exams, _ := h.db.GetExams(user.ID, "")
+	for i := range exams {
+		scores, _ := h.db.GetExamScores(exams[i].ID)
+		exams[i].Scores = scores
+	}
+	// 考勤（全部）
+	attendance, _ := h.db.GetAllAttendance(user.ID)
 
 	if classes == nil { classes = []model.Class{} }
 	if students == nil { students = []model.Student{} }
 	if cells == nil { cells = []model.ScheduleCell{} }
+	if roster == nil { roster = []model.RosterStudent{} }
+	if exams == nil { exams = []model.Exam{} }
+	if attendance == nil { attendance = []model.AttendanceRecord{} }
 
 	seatCount, maleCount, femaleCount := 0, 0, 0
 	for _, s := range students {
@@ -112,6 +125,9 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 		"preferences":  prefs,
 		"seat_config":  sc,
 		"classes":      classes,
+		"roster":       roster,
+		"exams":        exams,
+		"attendance":   attendance,
 	})
 }
 

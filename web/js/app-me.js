@@ -323,6 +323,9 @@ window.renderUserDetailHtml = function (detail) {
   const students = detail.students || [];
   const cells = detail.cells || [];
   const classes = detail.classes || [];
+  const roster = detail.roster || [];
+  const exams = detail.exams || [];
+  const attendance = detail.attendance || [];
   const seatConfig = detail.seat_config || { rows: 7, cols: 8 };
   let rows = seatConfig.rows || 7;
   let cols = seatConfig.cols || 8;
@@ -352,16 +355,131 @@ window.renderUserDetailHtml = function (detail) {
     cellsByClass[c.class_id][c.cell_index] = c;
   });
 
+  const rosterByClass = {};
+  roster.forEach(r => {
+    if (!rosterByClass[r.class_id]) rosterByClass[r.class_id] = [];
+    rosterByClass[r.class_id].push(r);
+  });
+
+  const dutyByClass = {};
+  cells.forEach(c => {
+    const m = String(c.class_id || '').match(/^_duty_(.+)$/);
+    if (!m) return;
+    const realId = m[1];
+    if (!dutyByClass[realId]) dutyByClass[realId] = { rows: 4, note: '', periods: {}, cells: {} };
+    const d = dutyByClass[realId];
+    if (c.cell_index === -1 && c.cell_type === 'duty_config') {
+      try {
+        const j = JSON.parse(c.period_name);
+        if (j && j.rows >= 1 && j.rows <= 12) d.rows = j.rows;
+      } catch (e) {
+        const n = parseInt(c.period_name, 10);
+        if (n >= 1 && n <= 12) d.rows = n;
+      }
+    } else if (c.cell_index === -2 && c.cell_type === 'duty_note') {
+      d.note = c.subject || '';
+    } else if (c.cell_type === 'duty_period') {
+      d.periods[c.cell_index] = c.period_name || '';
+    } else if (c.cell_type === 'duty') {
+      d.cells[c.cell_index] = c.subject || '';
+    }
+  });
+
+  const examsByClass = {};
+  exams.forEach(e => {
+    if (!examsByClass[e.class_id]) examsByClass[e.class_id] = [];
+    examsByClass[e.class_id].push(e);
+  });
+
+  const attByClassDate = {};
+  attendance.forEach(r => {
+    const key = (r.class_id || '') + '|' + (r.date || '');
+    if (!attByClassDate[key]) attByClassDate[key] = { class_id: r.class_id, date: r.date, records: [] };
+    attByClassDate[key].records.push(r);
+  });
+
   let html = '';
-  html += '<div class="user-data-section"><div class="user-data-title">📋 基本信息</div>';
+
+  /* ========== 1) 基本信息 ========== */
+  html += '<details class="admin-fold">';
+  html += '<summary>📋 基本信息</summary>';
+  html += '<div class="admin-fold-body">';
   html += '<div class="user-data-row">用户名：' + escapeHtml(user.username || '') + '</div>';
   html += '<div class="user-data-row">注册时间：' + (user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '—') + '</div>';
   html += '<div class="user-data-row">上次登录：' + (user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN') : '—') + '</div>';
   html += '<div class="user-data-row">角色：' + (user.is_admin ? '管理员' : '普通用户') + '</div>';
+  html += '<div class="user-data-row">班级数量：' + classes.length + ' · 花名册学生：' + roster.length + ' 人</div>';
   html += '<div class="user-data-row">座位人数：' + (detail.seat_count || 0) + '（男 ' + (detail.male_count || 0) + ' / 女 ' + (detail.female_count || 0) + '）</div>';
-  html += '<div class="user-data-row">班级数量：' + classes.length + '</div></div>';
+  html += '<div class="user-data-row">课表单元格：' + (detail.cell_count || 0) + ' 个</div>';
+  html += '</div></details>';
 
-  html += '<div class="user-data-section"><div class="user-data-title">🪑 座位表（' + rows + '行×' + cols + '列 · ' + (order === 'asc' ? '正序' : '倒序') + (aisle ? ' · 过道 ' + escapeHtml(aisle) : '') + '）</div>';
+  /* ========== 2) 班级列表 ========== */
+  html += '<details class="admin-fold">';
+  html += '<summary>🏫 班级列表（' + classes.length + '）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (classes.length === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无班级</div>';
+  } else {
+    html += '<div style="overflow-x:auto;"><table class="admin-schedule-table" style="font-size:12px;">';
+    html += '<thead><tr><th>班级名称</th><th>年级</th><th>班号</th><th>班主任</th><th>课节数</th><th>花名册</th><th>课表格</th></tr></thead><tbody>';
+    classes.forEach(cls => {
+      const clsCells = cellsByClass[cls.class_id] || {};
+      const lessonCount = Object.keys(clsCells).reduce((n, k) => {
+        const c = clsCells[k];
+        return n + (c.cell_type === 'lesson' && (c.subject || c.teacher) ? 1 : 0);
+      }, 0);
+      const rc = (rosterByClass[cls.class_id] || []).length;
+      html += '<tr>' +
+        '<td style="text-align:left;font-weight:600;">' + escapeHtml(cls.name) + '</td>' +
+        '<td>' + (cls.grade || '—') + '</td>' +
+        '<td>' + (cls.class_num || '—') + '</td>' +
+        '<td style="text-align:left;">' + escapeHtml(stripBadgePrefix(cls.badge || '')) + '</td>' +
+        '<td>' + (cls.period_count || 8) + '</td>' +
+        '<td>' + rc + ' 人</td>' +
+        '<td>' + lessonCount + ' 格</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div></details>';
+
+  /* ========== 3) 学生花名册 ========== */
+  html += '<details class="admin-fold">';
+  html += '<summary>👥 学生花名册（' + roster.length + '）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (roster.length === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无花名册学生</div>';
+  } else {
+    const sorted = roster.slice().sort((a, b) => {
+      if (a.class_id !== b.class_id) return (a.class_id || '').localeCompare(b.class_id || '', 'zh-CN');
+      return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+    });
+    html += '<div style="max-height:420px;overflow:auto;border-radius:8px;">';
+    html += '<table class="admin-schedule-table" style="font-size:12px;">';
+    html += '<thead><tr><th style="width:40px;">#</th><th>姓名</th><th style="width:50px;">性别</th><th>身份证</th><th>班级</th><th>家长电话1</th><th>家长电话2</th><th>家庭地址</th></tr></thead><tbody>';
+    sorted.forEach((r, i) => {
+      const cls = classes.find(c => c.class_id === r.class_id);
+      const clsName = cls ? cls.name : (r.class_id + '（待关联）');
+      const gStyle = r.gender === '女' ? 'color:#be185d;font-weight:600;' : (r.gender === '男' ? 'color:#1e40af;font-weight:600;' : '');
+      html += '<tr>' +
+        '<td style="color:var(--text-sub);">' + (i + 1) + '</td>' +
+        '<td style="text-align:left;font-weight:600;">' + escapeHtml(r.name) + '</td>' +
+        '<td style="' + gStyle + '">' + escapeHtml(r.gender || '') + '</td>' +
+        '<td style="font-size:11px;">' + escapeHtml(r.id_card || '') + '</td>' +
+        '<td style="text-align:left;">' + escapeHtml(clsName) + '</td>' +
+        '<td>' + escapeHtml(r.tel1 || '') + '</td>' +
+        '<td>' + escapeHtml(r.tel2 || '') + '</td>' +
+        '<td style="text-align:left;max-width:220px;word-break:break-all;white-space:normal;">' + escapeHtml(r.address || '') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div></details>';
+
+  /* ========== 4) 座位表 ========== */
+  html += '<details class="admin-fold">';
+  html += '<summary>🪑 座位表（' + rows + '行×' + cols + '列' + (aisle ? ' · 过道 ' + escapeHtml(aisle) : '') + '）</summary>';
+  html += '<div class="admin-fold-body">';
   const segs = getAisleSegments(aisle, cols);
   const aisleCols = segs.length > 1 ? getAisleGridCols(segs) : [];
   const stageHtml = '<div class="admin-seat-stage">讲 台</div>';
@@ -379,11 +497,15 @@ window.renderUserDetailHtml = function (detail) {
   }
   gridHtml += '</div>';
   if (order === 'asc') { html += stageHtml; html += gridHtml; } else { html += gridHtml; html += stageHtml; }
-  html += '</div>';
+  html += '</div></details>';
 
-  html += '<div class="user-data-section"><div class="user-data-title">📚 课程表</div>';
-  if (classes.length === 0) html += '<div class="user-data-row" style="color:var(--empty-text);">暂无班级</div>';
-  else {
+  /* ========== 5) 课程表 ========== */
+  html += '<details class="admin-fold">';
+  html += '<summary>📚 课程表（' + classes.length + ' 个班级）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (classes.length === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无班级</div>';
+  } else {
     classes.forEach(cls => {
       const clsCells = cellsByClass[cls.class_id] || {};
       html += '<div style="margin-bottom:16px;">';
@@ -405,7 +527,9 @@ window.renderUserDetailHtml = function (detail) {
             const bg = cell.bg_color || '0';
             const attr = (bg && bg !== '0') ? (' data-bg-color="' + bg + '"') : '';
             html += '<td' + attr + '>' + content + '</td>';
-          } else html += '<td style="color:var(--empty-text);">—</td>';
+          } else {
+            html += '<td style="color:var(--empty-text);">—</td>';
+          }
         }
         html += '</tr>';
         if (pIdx === BREAK_AFTER_PERIOD - 1 && pIdx < periodCount - 1) {
@@ -418,7 +542,148 @@ window.renderUserDetailHtml = function (detail) {
       html += '</tbody></table></div>';
     });
   }
-  html += '</div>';
+  html += '</div></details>';
+
+  /* ========== 6) 值日表 ========== */
+  const dutyClassIds = Object.keys(dutyByClass);
+  html += '<details class="admin-fold">';
+  html += '<summary>🧹 值日表（' + dutyClassIds.length + ' 个班级）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (dutyClassIds.length === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无值日数据</div>';
+  } else {
+    dutyClassIds.forEach(cid => {
+      const d = dutyByClass[cid];
+      const cls = classes.find(c => c.class_id === cid);
+      const clsName = cls ? cls.name : cid;
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="font-weight:600;font-size:13px;color:var(--text-main);margin:8px 0 4px;">' + escapeHtml(clsName) + ' · 值日表</div>';
+      html += '<table class="admin-schedule-table"><thead><tr><th>值日项目</th><th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th></tr></thead><tbody>';
+      for (let row = 0; row < d.rows; row++) {
+        const pName = d.periods[row * 6] || '';
+        html += '<tr><td>' + (pName ? escapeHtml(pName) : '<span style="color:var(--empty-text);">—</span>') + '</td>';
+        for (let dd = 0; dd < 5; dd++) {
+          const idx = row * 6 + dd + 1;
+          const s = d.cells[idx] || '';
+          if (s) {
+            const lines = s.split('\n').map(x => x.trim()).filter(Boolean);
+            html += '<td>' + lines.map(l => escapeHtml(l)).join('<br>') + '</td>';
+          } else {
+            html += '<td style="color:var(--empty-text);">—</td>';
+          }
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      if (d.note && d.note.trim()) {
+        html += '<div class="duty-note" style="margin-top:10px;font-size:12px;">' + escapeHtml(d.note) + '</div>';
+      }
+      html += '</div>';
+    });
+  }
+  html += '</div></details>';
+
+  /* ========== 7) 考试 ========== */
+  const examClassIds = Object.keys(examsByClass);
+  let totalExamCount = exams.length;
+  html += '<details class="admin-fold">';
+  html += '<summary>📝 考试（' + totalExamCount + ' 场 / ' + examClassIds.length + ' 个班级）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (totalExamCount === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无考试记录</div>';
+  } else {
+    examClassIds.forEach(cid => {
+      const cls = classes.find(c => c.class_id === cid);
+      const clsName = cls ? cls.name : cid;
+      const list = examsByClass[cid].slice().sort((a, b) =>
+        String(b.created_at || '').localeCompare(String(a.created_at || '')));
+      html += '<div style="margin-bottom:18px;">';
+      html += '<div style="font-weight:600;font-size:13px;color:var(--text-main);margin:8px 0 4px;">' + escapeHtml(clsName) + '</div>';
+      list.forEach(e => {
+        const scores = e.scores || [];
+        html += '<div style="margin-bottom:12px;padding:8px 10px;background:var(--table-row-alt);border-radius:8px;">';
+        html += '<div style="font-weight:600;font-size:13px;color:var(--text-main);">' + escapeHtml(e.name) + ' · ' + escapeHtml(e.subject) + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-sub);margin:2px 0 6px;">满分 ' + e.full_score +
+                ' · 及格 ' + e.pass_score + ' · 中等 ' + (e.medium_score || 0) +
+                ' · 良好 ' + (e.good_score || 0) + ' · 优秀 ' + e.excellent_score +
+                ' · 已录 ' + scores.length + ' 人</div>';
+        if (scores.length === 0) {
+          html += '<div style="color:var(--empty-text);font-size:12px;">暂无成绩</div>';
+        } else {
+          const sortedScores = scores.slice().sort((a, b) => b.score - a.score);
+          html += '<div style="max-height:260px;overflow:auto;">';
+          html += '<table class="admin-schedule-table" style="font-size:12px;">';
+          html += '<thead><tr><th style="width:40px;">名次</th><th>姓名</th><th style="width:70px;">分数</th></tr></thead><tbody>';
+          sortedScores.forEach((sc, i) => {
+            let color = '#333';
+            if (sc.score >= e.excellent_score) color = '#27ae60';
+            else if (sc.score >= (e.good_score || 0)) color = '#3498db';
+            else if (sc.score >= (e.medium_score || 0)) color = '#f39c12';
+            else if (sc.score >= e.pass_score) color = '#e67e22';
+            else color = '#e74c3c';
+            html += '<tr><td style="color:var(--text-sub);">' + (i + 1) + '</td>' +
+                    '<td style="text-align:left;">' + escapeHtml(sc.student_name) + '</td>' +
+                    '<td style="color:' + color + ';font-weight:700;">' + sc.score + '</td></tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+  }
+  html += '</div></details>';
+
+  /* ========== 8) 考勤 ========== */
+  const attKeys = Object.keys(attByClassDate);
+  const totalAttRecords = attendance.length;
+  html += '<details class="admin-fold">';
+  html += '<summary>✅ 考勤（' + totalAttRecords + ' 条 / ' + attKeys.length + ' 个班次）</summary>';
+  html += '<div class="admin-fold-body">';
+  if (attKeys.length === 0) {
+    html += '<div class="user-data-row" style="color:var(--empty-text);">暂无考勤记录</div>';
+  } else {
+    attKeys.sort((a, b) => {
+      const da = attByClassDate[a].date, db = attByClassDate[b].date;
+      if (da !== db) return (db || '').localeCompare(da || '');
+      return (attByClassDate[a].class_id || '').localeCompare(attByClassDate[b].class_id || '', 'zh-CN');
+    });
+    attKeys.forEach(k => {
+      const g = attByClassDate[k];
+      const cls = classes.find(c => c.class_id === g.class_id);
+      const clsName = cls ? cls.name : g.class_id;
+      const counts = { 出勤: 0, 迟到: 0, 请假: 0, 缺勤: 0 };
+      g.records.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+      html += '<div style="margin-bottom:14px;padding:10px 12px;background:var(--table-row-alt);border-radius:8px;">';
+      html += '<div style="font-weight:600;font-size:13px;color:var(--text-main);">' + escapeHtml(clsName) + ' · ' + escapeHtml(g.date) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-sub);margin:4px 0 6px;">' +
+              '应到 ' + g.records.length +
+              ' · <span style="color:#137333;">出勤 ' + counts['出勤'] + '</span>' +
+              ' · <span style="color:#b06000;">迟到 ' + counts['迟到'] + '</span>' +
+              ' · <span style="color:#1967d2;">请假 ' + counts['请假'] + '</span>' +
+              ' · <span style="color:#c5221f;">缺勤 ' + counts['缺勤'] + '</span>' +
+              '</div>';
+      html += '<div style="max-height:280px;overflow:auto;">';
+      html += '<table class="admin-schedule-table" style="font-size:12px;">';
+      html += '<thead><tr><th style="width:40px;">#</th><th>姓名</th><th style="width:70px;">状态</th><th>备注</th></tr></thead><tbody>';
+      const sorted = g.records.slice().sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '', 'zh-CN'));
+      sorted.forEach((r, i) => {
+        let color = '#333';
+        if (r.status === '出勤') color = '#137333';
+        else if (r.status === '迟到') color = '#b06000';
+        else if (r.status === '请假') color = '#1967d2';
+        else if (r.status === '缺勤') color = '#c5221f';
+        html += '<tr><td style="color:var(--text-sub);">' + (i + 1) + '</td>' +
+                '<td style="text-align:left;">' + escapeHtml(r.student_name) + '</td>' +
+                '<td style="color:' + color + ';font-weight:600;">' + escapeHtml(r.status) + '</td>' +
+                '<td style="text-align:left;color:var(--text-sub);">' + escapeHtml(r.remark || '') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '</div>';
+    });
+  }
+  html += '</div></details>';
+
   return html;
 };
 

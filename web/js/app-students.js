@@ -1,7 +1,8 @@
 /* ============================================================
    app-students.js —— 学生模块（花名册 / 成绩 / 考勤）
-   本地化后：ensureXLSX / ensureECharts / ensureHtml2Canvas 全部
-   放进 try 里兜底，避免移动端网络问题导致卡在"加载中..."
+   改动：
+     - 花名册表头去掉内联宽度，由 CSS 统一控制列宽，列对齐
+     - 考勤行「备注」放到按钮组下方，左边缘与「出勤」对齐
    ============================================================ */
 
 /* ---------- 花名册 ---------- */
@@ -63,8 +64,9 @@ window.renderRosterList = function () {
     return (a.name || '').localeCompare(b.name || '', 'zh-CN');
   });
 
+  // ★ 去掉内联宽度，由 CSS 的 nth-child 规则统一控制
   let html = '<table class="roster-table"><thead><tr>' +
-    '<th style="width:52px;">序号</th><th>姓名</th><th style="width:52px;">性别</th>' +
+    '<th>序号</th><th>姓名</th><th>性别</th>' +
     '<th>身份证</th><th>班级</th><th>家长电话1</th><th>家长电话2</th><th>家庭地址</th>' +
     '</tr></thead><tbody>';
 
@@ -707,7 +709,6 @@ window.renderTrendPanel = async function (panel) {
     panel.innerHTML = html;
     bindSubjectTabs(panel);
 
-    // 本地化后：图表库加载失败不阻塞主流程，只记录警告
     try { await ensureECharts(); }
     catch (e) { console.warn('[renderTrendPanel] echarts 加载失败:', e); }
 
@@ -759,7 +760,6 @@ window.openScoresPop = async function (examId) {
   $('scoresPopBody').innerHTML = '<div style="text-align:center;padding:20px;">加载中...</div>';
   $('scoresPop').dataset.id = examId;
 
-  // ★ 关键修复：把 ensureECharts 放进 try 里，移动端 CDN/本地加载失败也不会卡死
   try { await ensureECharts(); }
   catch (e) { console.warn('[openScoresPop] echarts 加载失败:', e); }
 
@@ -1033,13 +1033,22 @@ window.loadAttendance = async function () {
       const safeName = String(stu.name || '');
       const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
       const genderClass = stu.gender === '女' ? 'female' : 'male';
-      return '<div class="att-row"><div class="att-student-info">' +
-        '<div class="att-avatar ' + genderClass + '">' + initial + '</div>' +
-        '<span class="att-name">' + escapeHtml(safeName) + '</span></div>' +
+      return '<div class="att-row">' +
+        '<div class="att-student-info">' +
+          '<div class="att-avatar ' + genderClass + '">' + initial + '</div>' +
+          '<span class="att-name">' + escapeHtml(safeName) + '</span>' +
+        '</div>' +
         '<div class="att-status-group">' +
-        STATUSES.map(s => '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') + '" data-name="' + escapeHtml(safeName) + '" data-status="' + s + '">' + s + '</button>').join('') +
-        '<input type="text" class="att-remark" data-name="' + escapeHtml(safeName) + '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
-        '</div></div>';
+          '<div class="att-status-btns">' +
+            STATUSES.map(s =>
+              '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') +
+              '" data-name="' + escapeHtml(safeName) + '" data-status="' + s + '">' + s + '</button>'
+            ).join('') +
+          '</div>' +
+          '<input type="text" class="att-remark" data-name="' + escapeHtml(safeName) +
+          '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
+        '</div>' +
+      '</div>';
     }).join('');
     el.querySelectorAll('.att-status-btn').forEach(b => {
       b.onclick = () => {

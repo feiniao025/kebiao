@@ -1134,6 +1134,29 @@ func (s *SQLite) DeleteAttendanceDate(userID int64, classID, date string) error 
 	return err
 }
 
+// ============ 管理员：获取用户全部考勤记录 ============
+
+func (s *SQLite) GetAllAttendance(userID int64) ([]model.AttendanceRecord, error) {
+	rows, err := s.db.Query(
+		`SELECT id, user_id, class_id, date, student_name, status, remark, updated_at
+		 FROM attendance_records WHERE user_id = ?
+		 ORDER BY date DESC, class_id ASC, student_name ASC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.AttendanceRecord
+	for rows.Next() {
+		var r model.AttendanceRecord
+		if err := rows.Scan(&r.ID, &r.UserID, &r.ClassID, &r.Date, &r.StudentName, &r.Status, &r.Remark, &r.UpdatedAt); err != nil {
+			continue
+		}
+		list = append(list, r)
+	}
+	return list, nil
+}
+
 func boolToInt(b bool) int {
 	if b {
 		return 1
