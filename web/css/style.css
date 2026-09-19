@@ -107,6 +107,15 @@ body{font-family:'Segoe UI','PingFang SC',Roboto,'Helvetica Neue',sans-serif;bac
 [data-theme="dark"] .schedule-table tbody tr.break-row td,
 [data-theme="dark"] .schedule-table tbody tr.break-row td:first-child{background:#2b3140;color:var(--text-main);border-bottom-color:#3b4252}
 
+/* ============ 课服周次标签 ============ */
+.cs-week-tag{
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-sub);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 .seat-stage{width:66.67%;margin:18px auto 18px;text-align:center;padding:14px;background:var(--table-head-bg);color:#fff;border-radius:12px;font-weight:bold;letter-spacing:6px;font-size:16px}
 .seat-grid{display:grid;gap:10px}
 .seat-item{background:var(--seat-bg);border:1px solid var(--seat-border);border-radius:10px;padding:12px 6px;text-align:center;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:background .2s,transform .15s;min-height:52px;display:flex;flex-direction:column;justify-content:center;align-items:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;color:var(--text-main);font-weight:700;font-size:15px}
@@ -682,6 +691,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border-top: 1px dashed var(--legend-item-border);
 }
 
+/* ============ 课服 4 周编辑 ============ */
+.cs-table{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+.cs-table th,.cs-table td{border:1px solid var(--table-border);padding:6px 4px;text-align:center;color:var(--text-main);vertical-align:middle}
+.cs-table th{background:var(--table-head-bg);color:#fff;font-weight:600;font-size:12px}
+.cs-table td:first-child{background:var(--table-row-alt);font-weight:600;font-size:12px;width:50px}
+.cs-input{width:100%;padding:5px 6px;border:1px solid var(--seat-border);border-radius:6px;background:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;text-align:center}
+.cs-input:focus{border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
+
 @media (max-width: 992px){.legend-grid{grid-template-columns:repeat(3,1fr);gap:8px 16px}}
 
 @media (max-width: 768px) {
@@ -796,6 +813,16 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   /* 折叠面板：移动端字号略小、padding 略紧 */
   .admin-fold > summary{padding:10px 12px;font-size:13px}
   .admin-fold-body{padding:10px 12px 12px}
+
+  /* 课服编辑表格：移动端字号略小 */
+  .cs-table{font-size:11px;min-width:420px}
+  .cs-table th,.cs-table td{padding:4px 3px}
+  .cs-table th{font-size:11px}
+  .cs-table td:first-child{font-size:11px;width:40px}
+  .cs-input{font-size:11px;padding:4px 4px}
+
+  /* 课服周次标签：移动端字号更小 */
+  .cs-week-tag{font-size:10px;margin-left:3px}
 }
 
 @media print{

@@ -612,8 +612,9 @@ window.renderUserDetailHtml = function (detail) {
         } else {
           const sortedScores = scores.slice().sort((a, b) => b.score - a.score);
           html += '<div style="max-height:260px;overflow:auto;">';
-          html += '<table class="admin-schedule-table" style="font-size:12px;">';
-          html += '<thead><tr><th style="width:40px;">名次</th><th>姓名</th><th style="width:70px;">分数</th></tr></thead><tbody>';
+          html += '<table class="admin-schedule-table" style="font-size:12px;table-layout:fixed;width:auto;min-width:240px;">';
+          html += '<colgroup><col style="width:50px;"><col style="width:140px;"><col style="width:70px;"></colgroup>';
+          html += '<thead><tr><th>名次</th><th>姓名</th><th>分数</th></tr></thead><tbody>';
           sortedScores.forEach((sc, i) => {
             let color = '#333';
             if (sc.score >= e.excellent_score) color = '#27ae60';
@@ -664,8 +665,9 @@ window.renderUserDetailHtml = function (detail) {
               ' · <span style="color:#c5221f;">缺勤 ' + counts['缺勤'] + '</span>' +
               '</div>';
       html += '<div style="max-height:280px;overflow:auto;">';
-      html += '<table class="admin-schedule-table" style="font-size:12px;">';
-      html += '<thead><tr><th style="width:40px;">#</th><th>姓名</th><th style="width:70px;">状态</th><th>备注</th></tr></thead><tbody>';
+      html += '<table class="admin-schedule-table" style="font-size:12px;table-layout:fixed;width:auto;min-width:380px;">';
+      html += '<colgroup><col style="width:40px;"><col style="width:110px;"><col style="width:70px;"><col style="width:160px;"></colgroup>';
+      html += '<thead><tr><th>#</th><th>姓名</th><th>状态</th><th>备注</th></tr></thead><tbody>';
       const sorted = g.records.slice().sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '', 'zh-CN'));
       sorted.forEach((r, i) => {
         let color = '#333';

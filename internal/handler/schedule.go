@@ -133,7 +133,7 @@ func (h *ScheduleHandler) UpdateClass(c *gin.Context) {
 		name = service.FormatClassName(req.Grade, req.ClassNum)
 	}
 
-	if err := h.svc.UpdateClass(userID, classID, name, req.Badge, req.PeriodCount); err != nil {
+	if err := h.svc.UpdateClass(userID, classID, name, req.Badge, req.Grade, req.ClassNum, req.PeriodCount); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新失败"})
 		return
 	}

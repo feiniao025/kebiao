@@ -140,7 +140,7 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
   const el = document.getElementById('todayAttendanceSummary');
   if (!el) return;
   if (!classId) { el.textContent = '请选择班级'; return; }
-  el.textContent = '加载中...';
+  el.textContent = '<div class="today-empty">加载中...</div>';
   try {
     // 同时拉汇总和明细：明细用于点击查看
     const [sum, detail] = await Promise.all([
@@ -157,7 +157,7 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
     };
 
     if (!sum || sum.total === 0) {
-      el.innerHTML = '<span class="today-empty">今日暂无考勤记录</span>';
+      el.innerHTML = '<div class="today-empty">今日暂无考勤记录</div>';
       return;
     }
 
@@ -175,7 +175,7 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
       node.onclick = () => window.showTodayAttendanceDetail(node.dataset.attStatus);
     });
   } catch (e) {
-    el.textContent = '加载失败';
+    el.textContent = '<div class="today-empty">加载失败</div>';
   }
 };
 
@@ -221,11 +221,13 @@ window.showTodayAttendanceDetail = function (status) {
     pop.querySelector('#todayAttDetailClose').onclick = () => { pop.style.display = 'none'; };
   }
 
-  const headTitle =
-    (detail.className || '') +
+  const mainName = detail.className || '';
+  const subInfo =
     (detail.date ? ' · ' + detail.date : '') +
     ' · ' + title + '（' + list.length + '人）';
-  pop.querySelector('#todayAttDetailTitle').textContent = headTitle;
+  pop.querySelector('#todayAttDetailTitle').innerHTML =
+    escapeHtml(mainName) +
+    '<span class="today-att-sub">' + escapeHtml(subInfo) + '</span>';
 
   const body = pop.querySelector('#todayAttDetailBody');
   if (list.length === 0) {

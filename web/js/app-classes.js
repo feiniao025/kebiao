@@ -1,7 +1,12 @@
 /* ============================================================
    app-classes.js —— 班级模块（课表/座位/值日/班级管理/导入导出）
-   本地化后：ensureXLSX / ensureHtml2Canvas 放进 try 里兜底
+   新增：课服 1 / 课服 2 按「每月 4 周循环」设置
    ============================================================ */
+
+/* ---------- 课服 4 周循环状态 ---------- */
+window.currentCSClassId = '';
+window.currentCSPeriods = [];
+window.currentCSTabIdx = 0;
 
 /* ---------- 座位标题 / 班级筛选 ---------- */
 window.updateSeatCardTitle = function () {
@@ -31,6 +36,35 @@ window.applyFilter = function (fv) {
   document.querySelectorAll('.class-card').forEach(card => {
     card.style.display = (fv === 'all' || card.dataset.class === fv) ? 'block' : 'none';
   });
+};
+
+/* ---------- 课服 4 周辅助 ---------- */
+
+// 获取当前是月内第几周（1-4，29/30/31 日回到第 1 周循环）
+window.getWeekOfMonth = function () {
+  const d = new Date();
+  return (Math.floor((d.getDate() - 1) / 7) % 4) + 1;
+};
+
+// 判断某班级的某一节（pIdx）是否是"课服"节次（以"课服"开头）
+window.isClassServicePeriod = function (cls, pIdx) {
+  const pKey = cls.class_id + '_cell_' + (pIdx * 6);
+  const pCell = cellData[pKey];
+  let name = '';
+  if (pCell && pCell.cell_type === 'period' && pCell.period_name) name = pCell.period_name;
+  else if (defaultPeriods[pIdx] && defaultPeriods[pIdx].name) name = defaultPeriods[pIdx].name;
+  return /^课服/.test(String(name));
+};
+
+// 找到班级里所有的"课服"节次索引
+window.findClassServicePeriods = function (cls) {
+  const list = [];
+  const periodCount = (cls.period_count && cls.period_count > 0)
+    ? cls.period_count : defaultPeriods.length;
+  for (let pIdx = 0; pIdx < periodCount; pIdx++) {
+    if (isClassServicePeriod(cls, pIdx)) list.push(pIdx);
+  }
+  return list;
 };
 
 /* ---------- 课表渲染 ---------- */
@@ -115,6 +149,10 @@ window.renderClassCard = function (container, cls) {
   for (let pIdx = 0; pIdx < periodCount; pIdx++) {
     const tr = document.createElement('tr');
 
+    // 判断这一节是不是"课服"，若是则按当前周读取
+    const isCS = isClassServicePeriod(cls, pIdx);
+    const curWeek = isCS ? getWeekOfMonth() : 1;
+
     const tdP = document.createElement('td');
     const pIdxGlobal = pIdx * 6;
     tdP.dataset.type = 'period';
@@ -128,15 +166,27 @@ window.renderClassCard = function (container, cls) {
       if (cellData[pKey].period_name) pName = cellData[pKey].period_name;
       if (cellData[pKey].period_time !== undefined) pTime = cellData[pKey].period_time;
     }
-    tdP.innerHTML = '<span class="cell-period-name">' + escapeHtml(pName) + '</span><span class="cell-time">' + escapeHtml(pTime) + '</span>';
+
+    let pNameHTML;
+    if (isCS) {
+      pNameHTML = escapeHtml(pName) + '<span class="cs-week-tag">· 第' + curWeek + '周</span>';
+    } else {
+      pNameHTML = escapeHtml(pName);
+    }
+    tdP.innerHTML = '<span class="cell-period-name">' + pNameHTML + '</span><span class="cell-time">' + escapeHtml(pTime) + '</span>';
     tr.appendChild(tdP);
 
     for (let d = 0; d < 5; d++) {
       const td = document.createElement('td');
-      const idx = pIdx * 6 + d + 1;
+      const baseIdx = pIdx * 6 + d + 1;
+      const idx = isCS ? (baseIdx + (curWeek - 1) * 100) : baseIdx;
       td.dataset.type = 'lesson';
       td.dataset.idx = idx.toString();
       td.dataset.classId = cls.class_id;
+      if (isCS) {
+        td.dataset.isCs = '1';
+        td.dataset.csWeek = String(curWeek);
+      }
 
       let subj = '', teacher = '';
       const cKey = cls.class_id + '_cell_' + idx;
@@ -259,7 +309,10 @@ window.openCellPop = function (td) {
     $('cellPopPeriodName').value = nameEl ? nameEl.textContent : '';
     $('cellPopPeriodTime').value = timeEl ? timeEl.textContent : '';
   } else {
-    $('cellPopTitle').textContent = '编辑课程';
+    // 若是课服单元格，标题加"第 N 周"
+    let titleText = '编辑课程';
+    if (td.dataset.isCs === '1') titleText = '编辑课服 · 第' + (td.dataset.csWeek || '?') + '周';
+    $('cellPopTitle').textContent = titleText;
     $('cellPopSubject').value = td.querySelector('.cell-subject').textContent;
     $('cellPopTeacher').value = td.querySelector('.cell-teacher').textContent || '';
     const key = currentCellClassId + '_cell_' + currentCellIdx;
@@ -547,7 +600,167 @@ window.openClassManagePop = function (cls) {
     } else customRow.style.display = 'none';
   };
   $('classManageError').textContent = '';
+
+  // 若该班级存在"课服"节次，显示编辑按钮
+  const csPeriods = findClassServicePeriods(cls);
+  const csBtn = $('classManageEditCsBtn');
+  if (csBtn) {
+    if (csPeriods.length > 0) {
+      csBtn.style.display = '';
+      csBtn.onclick = () => {
+        $('classManagePop').style.display = 'none';
+        openClassServicePop(cls);
+      };
+    } else {
+      csBtn.style.display = 'none';
+    }
+  }
+
   $('classManagePop').style.display = 'flex';
+};
+
+/* ---------- 课服 4 周编辑弹窗 ---------- */
+
+window.openClassServicePop = function (cls) {
+  const csPeriods = findClassServicePeriods(cls);
+  if (csPeriods.length === 0) { alert('该班级没有「课服」节次'); return; }
+
+  currentCSClassId = cls.class_id;
+  currentCSPeriods = csPeriods;
+  currentCSTabIdx = 0;
+
+  $('classServiceTitle').textContent = '编辑课服 · ' + cls.name;
+  $('classServiceError').textContent = '';
+
+  const tabHeader = document.querySelector('#classServicePop .tab-header');
+  tabHeader.innerHTML = csPeriods.map((pIdx, i) => {
+    const pKey = cls.class_id + '_cell_' + (pIdx * 6);
+    const pCell = cellData[pKey];
+    const name = (pCell && pCell.period_name)
+      || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name)
+      || ('第' + (pIdx + 1) + '节');
+    return '<button class="tab-btn' + (i === 0 ? ' active' : '') + '" data-cs-tab="' + i + '">' + escapeHtml(name) + '</button>';
+  }).join('');
+
+  tabHeader.querySelectorAll('[data-cs-tab]').forEach(b => {
+    b.onclick = () => {
+      currentCSTabIdx = parseInt(b.dataset.csTab, 10) || 0;
+      tabHeader.querySelectorAll('[data-cs-tab]').forEach(x => x.classList.toggle('active', x === b));
+      renderClassServiceTable();
+    };
+  });
+
+  renderClassServiceTable();
+  $('classServicePop').style.display = 'flex';
+};
+
+window.renderClassServiceTable = function () {
+  const cls = classes.find(c => c.class_id === currentCSClassId);
+  if (!cls) return;
+  const pIdx = currentCSPeriods[currentCSTabIdx];
+  const body = $('classServiceBody');
+  const DAYS = ['周一', '周二', '周三', '周四', '周五'];
+
+  let html = '<div style="overflow-x:auto;"><table class="cs-table">';
+  html += '<thead><tr><th>星期</th><th>第1周</th><th>第2周</th><th>第3周</th><th>第4周</th></tr></thead><tbody>';
+
+  for (let d = 0; d < 5; d++) {
+    html += '<tr><td>' + DAYS[d] + '</td>';
+    for (let w = 0; w < 4; w++) {
+      const baseIdx = pIdx * 6 + d + 1;
+      const idx = baseIdx + w * 100;
+      const cKey = cls.class_id + '_cell_' + idx;
+      const cell = cellData[cKey];
+      const subj = (cell && cell.cell_type === 'lesson') ? (cell.subject || '') : '';
+      const teacher = (cell && cell.cell_type === 'lesson') ? (cell.teacher || '') : '';
+      const val = (subj || teacher) ? (subj + (teacher ? '/' + teacher : '')) : '';
+      html += '<td><input type="text" class="cs-input" data-base-idx="' + baseIdx + '" data-week="' + (w + 1) +
+              '" value="' + escapeHtml(val) + '" placeholder="科目/老师"></td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+
+  body.querySelectorAll('.cs-input').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const list = Array.from(body.querySelectorAll('.cs-input'));
+        const i = list.indexOf(inp);
+        if (i >= 0 && i < list.length - 1) list[i + 1].focus();
+      }
+    });
+  });
+};
+
+window.saveClassService = async function () {
+  const cls = classes.find(c => c.class_id === currentCSClassId);
+  if (!cls) return;
+  const errEl = $('classServiceError');
+  errEl.textContent = '';
+  const inputs = $('classServiceBody').querySelectorAll('.cs-input');
+  const updates = [];
+  inputs.forEach(inp => {
+    const baseIdx = parseInt(inp.dataset.baseIdx, 10);
+    const week = parseInt(inp.dataset.week, 10);
+    const idx = baseIdx + (week - 1) * 100;
+    const raw = inp.value.trim();
+    let subj = raw, teacher = '';
+    const slash = raw.indexOf('/');
+    if (slash >= 0) { subj = raw.slice(0, slash).trim(); teacher = raw.slice(slash + 1).trim(); }
+    updates.push({
+      class_id: cls.class_id,
+      cell_index: idx,
+      cell_type: 'lesson',
+      subject: subj,
+      teacher: teacher,
+      period_name: '',
+      period_time: '',
+      bg_color: '0',
+    });
+  });
+  if (!updates.length) return;
+  try {
+    await apiCall(API.batchUpsert, updates);
+    updates.forEach(u => {
+      cellData[u.class_id + '_cell_' + u.cell_index] = u;
+    });
+    renderSchedule();
+    showSaveStatus('已保存课服', false);
+    scheduleAutoSync();
+    $('classServicePop').style.display = 'none';
+  } catch (err) {
+    errEl.textContent = err.message || '保存失败';
+  }
+};
+
+window.clearClassService = async function () {
+  const cls = classes.find(c => c.class_id === currentCSClassId);
+  if (!cls) return;
+  if (!confirm('确认清空当前课服的全部 4 周内容？')) return;
+  const pIdx = currentCSPeriods[currentCSTabIdx];
+  const updates = [];
+  for (let d = 0; d < 5; d++) {
+    for (let w = 0; w < 4; w++) {
+      const idx = (pIdx * 6 + d + 1) + w * 100;
+      updates.push({
+        class_id: cls.class_id, cell_index: idx, cell_type: 'lesson',
+        subject: '', teacher: '', period_name: '', period_time: '', bg_color: '0',
+      });
+    }
+  }
+  try {
+    await apiCall(API.batchUpsert, updates);
+    updates.forEach(u => {
+      cellData[u.class_id + '_cell_' + u.cell_index] = u;
+    });
+    renderClassServiceTable();
+    renderSchedule();
+    showSaveStatus('已清空', false);
+    scheduleAutoSync();
+  } catch (err) {
+    $('classServiceError').textContent = err.message || '清空失败';
+  }
 };
 
 /* ---------- 拖拽 ---------- */
@@ -1587,7 +1800,6 @@ window.doExportScheduleExcel = async function (list) {
   };
   const exportBtn = $('exportBtn');
   if (exportBtn) exportBtn.onclick = async () => {
-    // 本地化后：把 ensureHtml2Canvas 放进 try，避免任何加载失败导致整个流程中断
     try { await ensureHtml2Canvas(); }
     catch (e) { alert('图片导出库加载失败，请检查网络：' + (e.message || e)); return; }
 
@@ -1619,6 +1831,16 @@ window.doExportScheduleExcel = async function (list) {
     } catch (e) { alert('导出失败：' + (e.message || e)); }
     finally { wrap.remove(); }
   };
+
+  /* 课服编辑弹窗 */
+  const csClose = $('classServiceClose');
+  if (csClose) csClose.onclick = () => { $('classServicePop').style.display = 'none'; };
+  const csPopEl = $('classServicePop');
+  if (csPopEl) csPopEl.addEventListener('click', e => { if (e.target === csPopEl) csPopEl.style.display = 'none'; });
+  const csSaveBtn = $('classServiceSave');
+  if (csSaveBtn) csSaveBtn.onclick = () => saveClassService();
+  const csClearBtn = $('classServiceClear');
+  if (csClearBtn) csClearBtn.onclick = () => clearClassService();
 
   /* 班级拖拽 document 级事件 */
   document.addEventListener('mousemove', (e) => {

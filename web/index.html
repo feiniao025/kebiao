@@ -188,11 +188,27 @@
   <div class="cell-pop-row"><label>课节数：</label><select id="classManagePeriods" class="cell-pop-input"></select></div>
   <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classManageBadge" class="cell-pop-input"></div>
   <div class="me-error" id="classManageError" style="min-height:18px;margin-top:6px;"></div>
+  <button id="classManageEditCsBtn" style="display:none;width:100%;margin-top:10px;padding:9px;border-radius:8px;border:none;background:#7d5ba6;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">📅 编辑课服（4周循环）</button>
   <div style="display:flex;gap:10px;margin-top:16px;">
     <button id="classManageDelete" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 删除</button>
     <button id="classManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
   </div>
 </div>
+</div>
+
+<!-- ============ 课服 4 周编辑 ============ -->
+<div class="seat-pop" id="classServicePop">
+  <div class="seat-pop-inner user-detail-pop-inner">
+    <button id="classServiceClose" class="pop-close-x">×</button>
+    <h3 id="classServiceTitle">编辑课服</h3>
+    <div class="tab-header" style="margin-bottom:12px;"></div>
+    <div id="classServiceBody"></div>
+    <div class="me-error" id="classServiceError" style="min-height:18px;margin-top:6px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="classServiceClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 清空</button>
+      <button id="classServiceSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- ============ 值日表设置弹窗 ============ -->
