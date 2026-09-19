@@ -1,6 +1,6 @@
 /* ============================================================
    app-classes.js —— 班级模块（课表/座位/值日/班级管理/导入导出）
-   新增：课服 1 / 课服 2 按「每月 4 周循环」设置
+   含：课服 1 / 课服 2 按「每月 4 周循环」设置
    ============================================================ */
 
 /* ---------- 课服 4 周循环状态 ---------- */
@@ -662,11 +662,13 @@ window.renderClassServiceTable = function () {
   const DAYS = ['周一', '周二', '周三', '周四', '周五'];
 
   let html = '<div style="overflow-x:auto;"><table class="cs-table">';
-  html += '<thead><tr><th>星期</th><th>第1周</th><th>第2周</th><th>第3周</th><th>第4周</th></tr></thead><tbody>';
+  html += '<thead><tr><th>周次</th>';
+  for (let d = 0; d < 5; d++) html += '<th>' + DAYS[d] + '</th>';
+  html += '</tr></thead><tbody>';
 
-  for (let d = 0; d < 5; d++) {
-    html += '<tr><td>' + DAYS[d] + '</td>';
-    for (let w = 0; w < 4; w++) {
+  for (let w = 0; w < 4; w++) {
+    html += '<tr><td>第' + (w + 1) + '周</td>';
+    for (let d = 0; d < 5; d++) {
       const baseIdx = pIdx * 6 + d + 1;
       const idx = baseIdx + w * 100;
       const cKey = cls.class_id + '_cell_' + idx;
