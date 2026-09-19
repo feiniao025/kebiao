@@ -990,9 +990,10 @@ window.renderAttendance = async function () {
     '<div class="me-page">' +
       '<div class="me-card">' +
         '<div class="roster-toolbar">' +
-          '<select id="attClass" class="cell-pop-input" style="flex:1;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
-          '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;">' +
-          '<button id="attSaveBtn" class="btn-primary">💾 保存</button>' +
+          '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:110px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
+          '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:120px;">' +
+          '<button id="attDelBtn" class="btn-primary" style="background:#e74c3c;">🗑️</button>' +
+          '<button id="attSaveBtn" class="btn-primary">💾</button>' +
         '</div>' +
         '<div id="attSummary" class="att-summary"></div>' +
         '<div id="attList" class="att-list">加载中...</div>' +
@@ -1007,6 +1008,20 @@ window.renderAttendance = async function () {
   dateInput.value = currentAttendanceDate;
   dateInput.onchange = () => { currentAttendanceDate = dateInput.value; loadAttendance(); };
   $('attSaveBtn').onclick = saveAttendance;
+
+  // ★ 删除当天该班级的全部考勤记录
+  $('attDelBtn').onclick = async () => {
+    if (!currentAttendanceClassId) { showSaveStatus('请先选择班级', true); return; }
+    const cls = classes.find(c => c.class_id === currentAttendanceClassId);
+    const clsName = cls ? cls.name : currentAttendanceClassId;
+    if (!confirm('确认删除「' + clsName + '」在 ' + currentAttendanceDate + ' 的全部考勤记录？\n\n此操作不可恢复。')) return;
+    try {
+      await apiCall(API.deleteAttendance, currentAttendanceClassId, currentAttendanceDate);
+      showSaveStatus('已删除当日考勤记录', false);
+      await loadAttendance();
+    } catch (e) { /* apiCall 已经提示 */ }
+  };
+
   await loadAttendance();
 };
 

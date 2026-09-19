@@ -1,6 +1,9 @@
 /* ============================================================
    app-classes.js —— 班级模块（课表/座位/值日/班级管理/导入导出）
-   含：课服 1 / 课服 2 按「每月 4 周循环」设置
+   含：
+   - 课服 1 / 课服 2 按「每月 4 周循环」设置
+   - 课服编辑合并视图（课服1、课服2 一起编辑）
+   - 值日项目：单行编辑（点哪行改哪行）
    ============================================================ */
 
 /* ---------- 课服 4 周循环状态 ---------- */
@@ -619,7 +622,7 @@ window.openClassManagePop = function (cls) {
   $('classManagePop').style.display = 'flex';
 };
 
-/* ---------- 课服 4 周编辑弹窗 ---------- */
+/* ---------- 课服 4 周编辑弹窗（合并视图） ---------- */
 
 window.openClassServicePop = function (cls) {
   const csPeriods = findClassServicePeriods(cls);
@@ -632,23 +635,9 @@ window.openClassServicePop = function (cls) {
   $('classServiceTitle').textContent = '编辑课服 · ' + cls.name;
   $('classServiceError').textContent = '';
 
+  // 合并视图，不再需要 tab 切换
   const tabHeader = document.querySelector('#classServicePop .tab-header');
-  tabHeader.innerHTML = csPeriods.map((pIdx, i) => {
-    const pKey = cls.class_id + '_cell_' + (pIdx * 6);
-    const pCell = cellData[pKey];
-    const name = (pCell && pCell.period_name)
-      || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name)
-      || ('第' + (pIdx + 1) + '节');
-    return '<button class="tab-btn' + (i === 0 ? ' active' : '') + '" data-cs-tab="' + i + '">' + escapeHtml(name) + '</button>';
-  }).join('');
-
-  tabHeader.querySelectorAll('[data-cs-tab]').forEach(b => {
-    b.onclick = () => {
-      currentCSTabIdx = parseInt(b.dataset.csTab, 10) || 0;
-      tabHeader.querySelectorAll('[data-cs-tab]').forEach(x => x.classList.toggle('active', x === b));
-      renderClassServiceTable();
-    };
-  });
+  if (tabHeader) tabHeader.style.display = 'none';
 
   renderClassServiceTable();
   $('classServicePop').style.display = 'flex';
@@ -657,9 +646,9 @@ window.openClassServicePop = function (cls) {
 window.renderClassServiceTable = function () {
   const cls = classes.find(c => c.class_id === currentCSClassId);
   if (!cls) return;
-  const pIdx = currentCSPeriods[currentCSTabIdx];
   const body = $('classServiceBody');
   const DAYS = ['周一', '周二', '周三', '周四', '周五'];
+  const csPeriods = currentCSPeriods; // [pIdx1, pIdx2, ...]
 
   let html = '<div style="overflow-x:auto;"><table class="cs-table">';
   html += '<thead><tr><th>周次</th>';
@@ -669,15 +658,32 @@ window.renderClassServiceTable = function () {
   for (let w = 0; w < 4; w++) {
     html += '<tr><td>第' + (w + 1) + '周</td>';
     for (let d = 0; d < 5; d++) {
-      const baseIdx = pIdx * 6 + d + 1;
-      const idx = baseIdx + w * 100;
-      const cKey = cls.class_id + '_cell_' + idx;
-      const cell = cellData[cKey];
-      const subj = (cell && cell.cell_type === 'lesson') ? (cell.subject || '') : '';
-      const teacher = (cell && cell.cell_type === 'lesson') ? (cell.teacher || '') : '';
-      const val = (subj || teacher) ? (subj + (teacher ? '/' + teacher : '')) : '';
-      html += '<td><input type="text" class="cs-input" data-base-idx="' + baseIdx + '" data-week="' + (w + 1) +
-              '" value="' + escapeHtml(val) + '" placeholder="科目/老师"></td>';
+      html += '<td>';
+      csPeriods.forEach(pIdx => {
+        const baseIdx = pIdx * 6 + d + 1;
+        const idx = baseIdx + w * 100;
+        const cKey = cls.class_id + '_cell_' + idx;
+        const cell = cellData[cKey];
+        const subj = (cell && cell.cell_type === 'lesson') ? (cell.subject || '') : '';
+        const teacher = (cell && cell.cell_type === 'lesson') ? (cell.teacher || '') : '';
+        const val = (subj || teacher) ? (subj + (teacher ? '/' + teacher : '')) : '';
+
+        // 取节次名（课服1 / 课服2），显示时去掉"课服"前缀，只留 1、2
+        const pKey = cls.class_id + '_cell_' + (pIdx * 6);
+        const pCell = cellData[pKey];
+        let pName = (pCell && pCell.period_name)
+          || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name)
+          || ('课服');
+        pName = String(pName).replace(/^课服\s*/, '') || pName;
+
+        html += '<div class="cs-cell-row">' +
+          '<span class="cs-cell-label">' + escapeHtml(pName) + '</span>' +
+          '<input type="text" class="cs-input" data-period-idx="' + pIdx +
+          '" data-base-idx="' + baseIdx + '" data-week="' + (w + 1) +
+          '" value="' + escapeHtml(val) + '" placeholder="科目/老师">' +
+        '</div>';
+      });
+      html += '</td>';
     }
     html += '</tr>';
   }
@@ -739,18 +745,19 @@ window.saveClassService = async function () {
 window.clearClassService = async function () {
   const cls = classes.find(c => c.class_id === currentCSClassId);
   if (!cls) return;
-  if (!confirm('确认清空当前课服的全部 4 周内容？')) return;
-  const pIdx = currentCSPeriods[currentCSTabIdx];
+  if (!confirm('确认清空该班级全部课服（4 周）内容？')) return;
   const updates = [];
-  for (let d = 0; d < 5; d++) {
-    for (let w = 0; w < 4; w++) {
-      const idx = (pIdx * 6 + d + 1) + w * 100;
-      updates.push({
-        class_id: cls.class_id, cell_index: idx, cell_type: 'lesson',
-        subject: '', teacher: '', period_name: '', period_time: '', bg_color: '0',
-      });
+  currentCSPeriods.forEach(pIdx => {
+    for (let d = 0; d < 5; d++) {
+      for (let w = 0; w < 4; w++) {
+        const idx = (pIdx * 6 + d + 1) + w * 100;
+        updates.push({
+          class_id: cls.class_id, cell_index: idx, cell_type: 'lesson',
+          subject: '', teacher: '', period_name: '', period_time: '', bg_color: '0',
+        });
+      }
     }
-  }
+  });
   try {
     await apiCall(API.batchUpsert, updates);
     updates.forEach(u => {
@@ -1524,6 +1531,8 @@ window.doExportScheduleExcel = async function (list) {
     if (!td) return;
     const cls = currentCellClassId;
     const key = cls + '_cell_' + currentCellIdx;
+    const isCsCell = td.dataset.isCs === '1';
+
     if (currentCellType === 'period' || currentCellType === 'break') {
       const name = $('cellPopPeriodName').value.trim();
       const time = $('cellPopPeriodTime').value.trim();
@@ -1533,22 +1542,35 @@ window.doExportScheduleExcel = async function (list) {
       if (nameEl) nameEl.textContent = name || (type === 'break' ? '午休' : '');
       if (timeEl) timeEl.textContent = time;
       cellData[key] = { class_id: cls, cell_index: currentCellIdx, cell_type: type, period_name: name, period_time: time, bg_color: '0' };
-      try { await apiCall(API.upsertCell, { class_id: cls, cell_index: currentCellIdx, cell_type: type, period_name: name, period_time: time, subject: '', teacher: '', bg_color: '0' }); } catch { return; }
+      try {
+        await apiCall(API.upsertCell, { class_id: cls, cell_index: currentCellIdx, cell_type: type, period_name: name, period_time: time, subject: '', teacher: '', bg_color: '0' });
+      } catch (err) {
+        showSaveStatus('保存失败：' + (err.message || ''), true);
+        return;
+      }
     } else {
       const subject = $('cellPopSubject').value.trim();
       const teacher = $('cellPopTeacher').value.trim();
       td.querySelector('.cell-subject').textContent = subject;
       td.querySelector('.cell-teacher').textContent = teacher;
       cellData[key] = { class_id: cls, cell_index: currentCellIdx, cell_type: 'lesson', subject, teacher, bg_color: currentBgColor };
-      try { await apiCall(API.upsertCell, { class_id: cls, cell_index: currentCellIdx, cell_type: 'lesson', subject, teacher, bg_color: currentBgColor, period_name: '', period_time: '' }); } catch { return; }
+      try {
+        await apiCall(API.upsertCell, { class_id: cls, cell_index: currentCellIdx, cell_type: 'lesson', subject, teacher, bg_color: currentBgColor, period_name: '', period_time: '' });
+      } catch (err) {
+        showSaveStatus('保存失败：' + (err.message || ''), true);
+        return;
+      }
       refreshCellStyle(td);
       updateAllLegends();
+      // ★ 课服格子保存后重渲染整个课表，确保"第N周"标签与当前周数据同步
+      if (isCsCell) renderSchedule();
     }
     renderWeekHighlight();
     showSaveStatus('已保存', false);
     scheduleAutoSync();
     $('cellPop').style.display = 'none';
   };
+
   const cellPopSubject = $('cellPopSubject');
   if (cellPopSubject) cellPopSubject.addEventListener('keydown', e => { if (e.key === 'Enter') $('cellPopSave').click(); });
   const cellPopTeacher = $('cellPopTeacher');
