@@ -131,7 +131,7 @@ func (s *ScheduleService) CreateClass(userID int64, grade, classNum int, badge, 
 	return cls, nil
 }
 
-func (s *ScheduleService) UpdateClass(userID int64, classID, name, badge string, periodCount int) error {
+func (s *ScheduleService) UpdateClass(userID int64, classID, name, badge string, grade, classNum, periodCount int) error {
 	cls, err := s.db.GetClassByClassID(userID, classID)
 	if err != nil {
 		return fmt.Errorf("class not found")
@@ -140,6 +140,11 @@ func (s *ScheduleService) UpdateClass(userID int64, classID, name, badge string,
 		cls.Name = name
 	}
 	cls.Badge = badge
+	if grade > 0 {
+		cls.Grade = grade
+	}
+	// class_num 允许为 0（自定义班级）
+	cls.ClassNum = classNum
 	if periodCount > 0 {
 		cls.PeriodCount = periodCount
 	}
