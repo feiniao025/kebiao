@@ -392,7 +392,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .tc-time{color:var(--text-sub);font-size:12px;min-width:110px}
 .tc-subj{font-weight:600;min-width:40px}
 .tc-tchr{color:var(--text-sub);font-size:12px;margin-left:auto}
-.today-summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.today-summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;margin-bottom:14px}
 .today-summary-grid>div{background:var(--table-row-alt);border-radius:8px;padding:8px 4px;text-align:center}
 .today-summary-grid .num{display:block;font-size:20px;font-weight:700;color:var(--text-main)}
 .today-summary-grid .lbl{display:block;font-size:11px;color:var(--text-sub);margin-top:2px}
@@ -412,7 +412,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border-bottom: 1px dashed var(--legend-item-border);
   flex-wrap: nowrap;
 }
-.today-section-header h4 {
+.today-section-header > h4 {
   flex: 0 0 auto;
   font-size: 15px;
   font-weight: 700;
@@ -422,14 +422,21 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border: none;
   white-space: nowrap;
 }
-.today-section-header .select-wrap,
+.today-section-header > .today-header-controls {
+  margin-left: auto;
+}
+
+.today-section-header > .select-wrap{
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0;
+  margin-left: auto;
+}
 .today-section-header .today-grade-filter {
   flex: 0 1 auto !important;
   width: auto !important;
   min-width: 100px;
   max-width: 180px;
-}
-.today-section-header .today-grade-filter {
   padding: 5px 30px 5px 12px;
   font-size: 13px;
   border-radius: 10px;
@@ -437,6 +444,54 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border-color: transparent;
 }
 .today-section-header .today-grade-filter:focus {
+  border-color: #3498db;
+}
+
+/* ============ 今日课程：周末手动选星期（下拉框，在班级筛选左侧） ============ */
+.today-header-controls{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.today-weekday-picker{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 让自动包上的 .select-wrap 不再撑满整行 */
+.today-weekday-picker .select-wrap{
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0;
+}
+
+/* 隐藏 decorateSelects 自动画的小三角 */
+.today-weekday-picker .select-wrap::after{
+  display: none;
+}
+
+/* 下拉框：文字居中、无右侧多余留白 */
+.today-weekday-picker .select-wrap > select.cell-pop-input,
+.today-weekday-select{
+  flex: 0 1 auto !important;
+  min-width: 100px;
+  max-width: 130px;
+  padding: 5px 12px !important;
+  font-size: 13px;
+  border-radius: 10px;
+  background-color: var(--table-row-alt);
+  border-color: transparent;
+  cursor: pointer;
+  text-align: center;
+  text-align-last: center;
+  -moz-text-align-last: center;
+}
+.today-weekday-select:focus{
   border-color: #3498db;
 }
 
@@ -836,12 +891,9 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .duty-note{padding:12px 14px;font-size:12px;line-height:1.8}
 
   .today-section-header h4{font-size:14px}
-  .today-section-header .select-wrap,
   .today-section-header .today-grade-filter{
     min-width:90px;
     max-width:140px;
-  }
-  .today-section-header .today-grade-filter{
     font-size:12px;
     padding:4px 26px 4px 10px;
   }
@@ -869,6 +921,16 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
   /* 值日项目列：移动端列宽略小 */
   .duty-table tbody td:first-child{max-width:120px}
+
+  /* 今日课程：周末下拉框移动端更紧凑 */
+  .today-header-controls{gap:6px}
+  .today-weekday-picker .select-wrap > select.cell-pop-input,
+  .today-weekday-select{
+    min-width: 82px;
+    max-width: 110px;
+    font-size: 12px;
+    padding: 4px 10px !important;
+  }
 }
 
 @media print{

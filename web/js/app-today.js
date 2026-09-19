@@ -1,9 +1,10 @@
 /* ============================================================
    app-today.js —— 今天模块
-   改动：
-     1) 「今日考勤」的「班级：」标签删除，下拉框移到标题右侧
-     2) 「今日课程」和「今日考勤」拆成两张独立卡片
-     3) 考勤统计格子可点击，弹出对应状态的学生名单
+   功能：
+   - 「今日课程」和「今日考勤」两张独立卡片
+   - 考勤统计格子可点击，弹出该状态的学生名单
+   - 周末自动显示「跟随今天/查看周一~周五」下拉选择器
+   - 手动选择仅当天有效，第二天自动恢复「跟随今天」
    ============================================================ */
 
 /* 今日考勤明细缓存（供点击查看用） */
@@ -12,6 +13,49 @@ window._todayAttDetail = {
   date: '',
   className: '',
   records: []
+};
+
+/* 周末手动选择查看的天（0=周日 ... 6=周六；-1 表示跟随今天）
+   ★ 持久化到 localStorage，但仅当天有效 */
+window.currentTodayManualDay = -1;
+
+(function loadTodayManualDay() {
+  try {
+    const raw = localStorage.getItem('kebiao_today_manual_day');
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const today = new Date().toISOString().slice(0, 10);
+    if (obj && obj.date === today && typeof obj.day === 'number') {
+      window.currentTodayManualDay = obj.day;
+    } else {
+      localStorage.removeItem('kebiao_today_manual_day');
+    }
+  } catch (e) { /* 忽略 */ }
+})();
+
+window.saveTodayManualDay = function (v) {
+  window.currentTodayManualDay = v;
+  try {
+    if (v === -1) {
+      localStorage.removeItem('kebiao_today_manual_day');
+    } else {
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('kebiao_today_manual_day', JSON.stringify({ date: today, day: v }));
+    }
+  } catch (e) { /* 忽略 */ }
+};
+
+/* 返回今天实际用于渲染课程的天：
+   - 非周末：返回 today 的星期
+   - 周末：若用户手动选过，返回选中的天；否则返回今天（周末）——此时列表显示「周末无课程安排」 */
+window.getTodayEffectiveDay = function () {
+  const wd = new Date().getDay();
+  if (wd === 0 || wd === 6) {
+    return (window.currentTodayManualDay >= 1 && window.currentTodayManualDay <= 5)
+      ? window.currentTodayManualDay
+      : wd;
+  }
+  return wd;
 };
 
 window.renderToday = function () {
@@ -49,14 +93,17 @@ window.renderToday = function () {
         '<div class="today-section" style="margin-bottom:0;">' +
           '<div class="today-section-header">' +
             '<h4>📚 今日课程</h4>' +
-            '<select id="todayClassFilter" class="cell-pop-input today-grade-filter">' + classFilterOptions + '</select>' +
+            '<div class="today-header-controls">' +
+              '<div id="todayWeekdayPicker" class="today-weekday-picker" style="display:none;"></div>' +
+              '<select id="todayClassFilter" class="cell-pop-input today-grade-filter">' + classFilterOptions + '</select>' +
+            '</div>' +
           '</div>' +
-          '<div id="todayClasses" class="today-course-list">' + renderTodayCourses(now.getDay()) + '</div>' +
+          '<div id="todayClasses" class="today-course-list">' + renderTodayCourses(getTodayEffectiveDay()) + '</div>' +
         '</div>' +
       '</div>' +
 
       // ===== 卡片 2：今日考勤 =====
-      '<div class="me-card" style="margin-top:12px;">' +
+      '<div class="me-card" style="margin-top:20px;">' +
         '<div class="today-section" style="margin-bottom:0;">' +
           '<div class="today-section-header">' +
             '<h4>✅ 今日考勤</h4>' +
@@ -78,7 +125,7 @@ window.renderToday = function () {
       currentTodayClass = classSel.value;
       localStorage.setItem('kebiao_today_class', currentTodayClass);
       const listEl = $('todayClasses');
-      if (listEl) listEl.innerHTML = renderTodayCourses(now.getDay());
+      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay());
     };
   }
 
@@ -86,6 +133,11 @@ window.renderToday = function () {
   if (sel && classes.length > 0) {
     sel.onchange = () => loadTodayAttendanceSummary(sel.value, dateStr);
     loadTodayAttendanceSummary(classes[0].class_id, dateStr);
+  }
+
+  // ★ 周末显示「手动选择查看某天」下拉框
+  if (now.getDay() === 0 || now.getDay() === 6) {
+    renderTodayWeekdayPicker();
   }
 };
 
@@ -100,18 +152,34 @@ window.renderTodayCourses = function (wd) {
   }
   if (list.length === 0) return '<div class="today-empty">该班级不存在</div>';
 
+  // ★ 当前是月内第几周（供课服使用）
+  const curWeek = (typeof getWeekOfMonth === 'function') ? getWeekOfMonth() : 1;
+
   let html = '';
   list.forEach(cls => {
     const lessons = [];
     const periodCount = (cls.period_count && cls.period_count > 0) ? cls.period_count : defaultPeriods.length;
     for (let pIdx = 0; pIdx < periodCount; pIdx++) {
-      const idx = pIdx * 6 + (wd - 1) + 1;
+      // ★ 判断这一节是不是"课服"
+      const isCS = (typeof isClassServicePeriod === 'function')
+        ? isClassServicePeriod(cls, pIdx)
+        : false;
+
+      const baseIdx = pIdx * 6 + (wd - 1) + 1;
+      // ★ 课服按当前周读取对应 slot
+      const idx = isCS ? (baseIdx + (curWeek - 1) * 100) : baseIdx;
+
       const key = cls.class_id + '_cell_' + idx;
       const cell = cellData[key];
+
       const pKey = cls.class_id + '_cell_' + (pIdx * 6);
       const pCell = cellData[pKey];
-      const pName = (pCell && pCell.period_name) || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name) || ('第' + (pIdx + 1) + '节');
+      let pName = (pCell && pCell.period_name) || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name) || ('第' + (pIdx + 1) + '节');
       const pTime = (pCell && pCell.period_time) || (defaultPeriods[pIdx] && defaultPeriods[pIdx].time) || '';
+
+      // ★ 课服节次名后追加「 · 第N周」
+      if (isCS) pName = pName + ' · 第' + curWeek + '周';
+
       if (cell && cell.cell_type === 'lesson' && cell.subject) {
         lessons.push({ pName: pName, pTime: pTime, subject: cell.subject, teacher: cell.teacher || '' });
       }
@@ -135,14 +203,49 @@ window.renderTodayCourses = function (wd) {
   return html;
 };
 
+/* ---------- 周末手动选星期（下拉框） ---------- */
+window.renderTodayWeekdayPicker = function () {
+  const box = document.getElementById('todayWeekdayPicker');
+  if (!box) return;
+  box.style.display = 'flex';
+
+  const OPTIONS = [
+    { v: -1, l: '跟随今天' },
+    { v: 1,  l: '查看周一' },
+    { v: 2,  l: '查看周二' },
+    { v: 3,  l: '查看周三' },
+    { v: 4,  l: '查看周四' },
+    { v: 5,  l: '查看周五' },
+  ];
+
+  const cur = window.currentTodayManualDay;
+
+  let html = '<select id="todayWeekdaySelect" class="cell-pop-input today-weekday-select">';
+  OPTIONS.forEach(o => {
+    html += '<option value="' + o.v + '"' + (o.v === cur ? ' selected' : '') + '>' + o.l + '</option>';
+  });
+  html += '</select>';
+
+  box.innerHTML = html;
+
+  const sel = document.getElementById('todayWeekdaySelect');
+  if (sel) {
+    sel.onchange = () => {
+      // ★ 持久化（带日期，仅当天有效）
+      saveTodayManualDay(parseInt(sel.value, 10));
+      const listEl = document.getElementById('todayClasses');
+      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay());
+    };
+  }
+};
+
 /* ---------- 今日考勤汇总 ---------- */
 window.loadTodayAttendanceSummary = async function (classId, date) {
   const el = document.getElementById('todayAttendanceSummary');
   if (!el) return;
   if (!classId) { el.textContent = '请选择班级'; return; }
-  el.textContent = '<div class="today-empty">加载中...</div>';
+  el.innerHTML = '<div class="today-empty">加载中...</div>';
   try {
-    // 同时拉汇总和明细：明细用于点击查看
     const [sum, detail] = await Promise.all([
       API.attendanceSummary(classId, date),
       API.listAttendance(classId, date).catch(() => ({ records: [] }))
@@ -161,7 +264,6 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
       return;
     }
 
-    // 每个格子 data-att-status：点击后按此状态过滤明细
     el.innerHTML =
       '<div class="today-summary-grid">' +
         _attSummaryCell('应到', sum.total, '',      '__all__') +
@@ -175,11 +277,10 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
       node.onclick = () => window.showTodayAttendanceDetail(node.dataset.attStatus);
     });
   } catch (e) {
-    el.textContent = '<div class="today-empty">加载失败</div>';
+    el.innerHTML = '<div class="today-empty">加载失败</div>';
   }
 };
 
-/* 生成一个可点击的统计格子 */
 function _attSummaryCell(label, num, cls, status) {
   return '<div class="' + (cls || '') + '" data-att-status="' + status + '" ' +
          'style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;" ' +
@@ -204,7 +305,6 @@ window.showTodayAttendanceDetail = function (status) {
   }
   list.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '', 'zh-CN'));
 
-  // 首次调用时创建弹窗，之后复用
   let pop = document.getElementById('todayAttDetailPop');
   if (!pop) {
     pop = document.createElement('div');

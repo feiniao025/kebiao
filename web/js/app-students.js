@@ -992,7 +992,7 @@ window.renderAttendance = async function () {
         '<div class="roster-toolbar">' +
           '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:110px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
           '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:120px;">' +
-          '<button id="attDelBtn" class="btn-primary" style="background:#e74c3c;">🗑️</button>' +
+          '<button id="attDelBtn" class="btn-primary" style="background:#cccccc;">🗑️</button>' +
           '<button id="attSaveBtn" class="btn-primary">💾</button>' +
         '</div>' +
         '<div id="attSummary" class="att-summary"></div>' +
