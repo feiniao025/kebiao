@@ -72,8 +72,7 @@ func main() {
 		r.Static("/js", filepath.Join(webDir, "js"))
 		r.StaticFile("/", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/index.html", filepath.Join(webDir, "index.html"))
-		r.StaticFile("/favicon.ico", filepath.Join(webDir, "static", "favicon.ico"))
-		r.StaticFile("/favicon.png", filepath.Join(webDir, "static", "favicon.png"))
+		r.StaticFile("/favicon.svg", filepath.Join(webDir, "static", "favicon.svg"))
 	} else {
 		log.Printf("warning: web directory not found at %s, frontend will not be served", webDir)
 	}
