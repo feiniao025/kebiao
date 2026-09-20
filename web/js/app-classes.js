@@ -16,7 +16,8 @@ window.updateSeatCardTitle = function () {
   const el = $('seatCardTitle');
   if (!el) return;
   if (classes.length > 0) {
-    el.textContent = classes[0].name || formatClassName(classes[0].grade || 7, classes[0].class_num || 1);
+    const name = classes[0].name || formatClassName(classes[0].grade || 7, classes[0].class_num || 1);
+    el.textContent = name + ' · 座位表';
   } else el.textContent = '';
 };
 
@@ -131,7 +132,7 @@ window.renderClassCard = function (container, cls) {
   const header = document.createElement('div');
   header.className = 'card-header';
   header.innerHTML =
-    '<h2>' + escapeHtml(cls.name) +
+    '<h2>' + escapeHtml(cls.name) + ' · 课程表' +
     (cls.badge ? '<span class="badge">' + escapeHtml(cls.badge) + '</span>' : '') +
     '</h2>' +
     '<div class="legend">' +
@@ -1328,7 +1329,7 @@ window.doExportScheduleExcel = async function (list) {
     e.stopPropagation();
     editAllOn = !editAllOn;
     editToggleBtn.classList.toggle('active', editAllOn);
-    showSaveStatus(editAllOn ? '已开启编辑' : '已锁定', false);
+    showSaveStatus(editAllOn ? '已开启编辑' : '已锁定', !editAllOn ? true : false);
   };
 
   const seatEditToggle = $('seatEditToggle');
@@ -1338,7 +1339,7 @@ window.doExportScheduleExcel = async function (list) {
     seatEditToggle.classList.toggle('active', seatEditOn);
     document.body.classList.toggle('person-mode', seatEditOn);
     renderSeats();
-    showSaveStatus(seatEditOn ? '已开启编辑座位' : '已锁定', false);
+    showSaveStatus(seatEditOn ? '已开启编辑座位' : '已锁定', !seatEditOn ? true : false);
   };
 
   const dutyEditToggle = $('dutyEditToggle');
@@ -1346,7 +1347,7 @@ window.doExportScheduleExcel = async function (list) {
     e.stopPropagation();
     dutyEditOn = !dutyEditOn;
     dutyEditToggle.classList.toggle('active', dutyEditOn);
-    showSaveStatus(dutyEditOn ? '已开启编辑值日' : '已锁定', false);
+    showSaveStatus(dutyEditOn ? '已开启编辑值日' : '已锁定', !dutyEditOn ? true : false);
   };
 
   const classCtrlBar = $('classControlBar');

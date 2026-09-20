@@ -50,8 +50,7 @@
       window.defaultLegend = defaultsResp.legend || [];
 
       window.preferences = Object.assign(window.preferences, prefsResp || {});
-      if (window.preferences.theme === 'dark') window.html.setAttribute('data-theme', 'dark');
-      window.setThemeBtn();
+      window.applyTheme();
 
       window.classes = classesResp.classes || [];
 

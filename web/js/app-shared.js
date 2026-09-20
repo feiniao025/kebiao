@@ -171,14 +171,15 @@ window.attendanceContainer = $('attendanceContainer');
 window.rosterContainer = $('rosterContainer');
 
 /* ========== 7. 通用工具函数 ========== */
-window.showSaveStatus = function (msg, isError) {
+window.showSaveStatus = function (msg, isError, isInfo) {
   const el = $('saveStatus');
   if (!el) return;
   el.textContent = msg;
   el.classList.toggle('err', !!isError);
+  el.classList.toggle('info', !!isInfo); // ★ 新增：控制蓝色样式
   el.classList.add('show');
   if (window.saveStatusTimer) clearTimeout(window.saveStatusTimer);
-  window.saveStatusTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  window.saveStatusTimer = setTimeout(() => el.classList.remove('show'), 2500); // 稍微延长到2.5秒方便阅读
 };
 
 window.escapeHtml = function (s) {
@@ -330,14 +331,6 @@ window.cssEscape = function (s) {
   return String(s).replace(/[^a-zA-Z0-9_-]/g, function (ch) { return '\\' + ch; });
 };
 
-window.setThemeBtn = function () {
-  const isDark = window.html.hasAttribute('data-theme');
-  const btn = $('themeToggle');
-  if (!btn) return;
-  btn.textContent = isDark ? '🌙' : '☀️';
-  btn.title = isDark ? '切换到浅色' : '切换到深色';
-  btn.classList.toggle('active', isDark);
-};
 
 /* ========== 8. Excel 通用读取（依赖懒加载的 XLSX） ========== */
 window.readExcelFile = async function (file) {
@@ -513,23 +506,39 @@ window.switchTab = function (tab) {
   else if (tab === 'me') window.switchTopTab('me');
 };
 
-/* ========== 10. 主题切换绑定 ========== */
-window.setThemeBtn();
-(function bindThemeToggle() {
-  const themeToggle = $('themeToggle');
-  if (!themeToggle) return;
-  themeToggle.onclick = function () {
-    if (window.html.hasAttribute('data-theme')) {
-      window.html.removeAttribute('data-theme');
-      window.preferences.theme = 'light';
-    } else {
-      window.html.setAttribute('data-theme', 'dark');
-      window.preferences.theme = 'dark';
-    }
-    window.setThemeBtn();
-    API.updatePreferences({ theme: window.preferences.theme }).catch(function () {});
-  };
-})();
+/* ========== 10. 主题应用 ========== */
+
+// 判断当前是否夜间（简化：18:00 ~ 次日 06:00 视为夜间）
+window.isNightTime = function () {
+  const h = new Date().getHours();
+  return (h >= 18 || h < 6);
+};
+
+// 根据 preferences.theme 应用主题：
+//   'light' → 浅色
+//   'dark'  → 深色
+//   'auto'  → 根据时间自动（夜间深色，白天浅色）
+window.applyTheme = function () {
+  const t = (window.preferences && window.preferences.theme) || 'light';
+  let isDark = false;
+  if (t === 'auto') isDark = window.isNightTime();
+  else if (t === 'dark') isDark = true;
+  if (isDark) window.html.setAttribute('data-theme', 'dark');
+  else window.html.removeAttribute('data-theme');
+};
+
+// 启动时应用一次
+window.applyTheme();
+
+// 每分钟检查一次（自动模式可能在 18:00 / 06:00 跨过临界点）
+setInterval(function () {
+  if (window.preferences && window.preferences.theme === 'auto') {
+    window.applyTheme();
+  }
+}, 60 * 1000);
+
+// 兼容：其他代码可能还调用 setThemeBtn
+window.setThemeBtn = function () { /* 已废弃，使用 applyTheme */ };
 
 /* ========== 11. 周高亮 ========== */
 window.renderWeekHighlight = function () {

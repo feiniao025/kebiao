@@ -1,5 +1,9 @@
 /* ============================================================
    app-me.js —— 我的模块（登录/注册/个人/管理员/Supabase）
+   功能：
+   - 登录/注册
+   - 个人资料 + 深色/自动 主题开关
+   - 修改密码、管理员用户管理、Supabase 配置、登录提示
    ============================================================ */
 
 window.renderMePage = function () {
@@ -16,6 +20,11 @@ window.renderProfile = function () {
   const adminBadge = currentUser.is_admin ? '<span class="me-badge-admin">管理员</span>' : '';
   const created = currentUser.created_at ? new Date(currentUser.created_at).toLocaleString('zh-CN') : '—';
   const lastLogin = currentUser.last_login_at ? new Date(currentUser.last_login_at).toLocaleString('zh-CN') : '—';
+
+  // 主题当前状态
+  const curTheme = window.preferences.theme || 'light';
+  const isAuto = (curTheme === 'auto');
+  const isDark = isAuto ? (typeof isNightTime === 'function' ? isNightTime() : false) : (curTheme === 'dark');
 
   const syncBlock = currentUser.is_admin
     ? ('<div class="sync-section"><h4>☁️ 云同步</h4>' +
@@ -36,6 +45,22 @@ window.renderProfile = function () {
       '<div class="me-info-row"><span class="label">用户名</span><span class="value">' + escapeHtml(currentUser.username) + '</span></div>' +
       '<div class="me-info-row"><span class="label">注册时间</span><span class="value">' + created + '</span></div>' +
       '<div class="me-info-row"><span class="label">上次登录</span><span class="value">' + lastLogin + '</span></div>' +
+
+      // ★ 深色模式开关行
+      '<div class="me-info-row theme-toggle-row">' +
+        '<span class="label">深色模式</span>' +
+        '<div class="theme-toggle-group">' +
+          '<label class="tgl" title="手动切换深色 / 浅色">' +
+            '<input type="checkbox" id="themeSwitchToggle"' + (isDark ? ' checked' : '') + (isAuto ? ' disabled' : '') + '>' +
+            '<span class="tgl-slider"></span>' +
+          '</label>' +
+          '<label class="tgl" title="根据日出日落自动切换（18:00~次日 06:00 为夜间）">' +
+            '<input type="checkbox" id="themeAutoToggle"' + (isAuto ? ' checked' : '') + '>' +
+            '<span class="tgl-slider"></span>' +
+          '</label>' +
+        '</div>' +
+      '</div>' +
+
     '</div>' +
     '<button class="me-btn-gray" id="meChangePwdBtn">🔑 修改密码</button>' +
     (currentUser.is_admin ? '<button class="me-admin-btn" id="meAdminBtn">👥 用户管理</button>' : '') +
@@ -44,12 +69,53 @@ window.renderProfile = function () {
     syncBlock +
     '<button class="me-logout" id="meLogoutBtn">退出登录</button>';
 
+  // ---- 按钮绑定 ----
   $('meChangePwdBtn').onclick = () => { meView = 'changePwd'; renderMePage(); };
   const adminBtn = $('meAdminBtn'); if (adminBtn) adminBtn.onclick = () => { meView = 'adminList'; renderMePage(); };
   const sbBtn = $('meSupabaseBtn'); if (sbBtn) sbBtn.onclick = () => { meView = 'supabase'; renderMePage(); };
   const lnBtn = $('meLoginNoticeBtn'); if (lnBtn) lnBtn.onclick = () => { meView = 'loginNotice'; renderMePage(); };
   $('meLogoutBtn').onclick = () => { if (!confirm('确认退出登录？')) return; API.clearToken(); location.reload(); };
 
+  // ---- 主题开关 ----
+  const switchT = $('themeSwitchToggle');
+  if (switchT) {
+    switchT.onchange = function () {
+      const newTheme = switchT.checked ? 'dark' : 'light';
+      window.preferences.theme = newTheme;
+      window.applyTheme();
+      API.updatePreferences({ theme: newTheme }).catch(function () {});
+      
+      // ★ 修改：第二个参数传 true 触发红色（.err）
+      if (switchT.checked) {
+        showSaveStatus('已开启深色模式', false); // 开启保持绿色
+      } else {
+        showSaveStatus('已关闭深色模式', true);   // 关闭改为红色（复用错误样式）
+      }
+    };
+  }
+  
+  const autoT = $('themeAutoToggle');
+  if (autoT) {
+    autoT.onchange = function () {
+      const newTheme = autoT.checked
+        ? 'auto'
+        : (window.html.hasAttribute('data-theme') ? 'dark' : 'light');
+      window.preferences.theme = newTheme;
+      window.applyTheme();
+      API.updatePreferences({ theme: newTheme }).catch(function () {});
+      
+      // ★ 开启 / 关闭 自动模式 都给出提示
+      if (autoT.checked) {
+        showSaveStatus('根据日出日落自动切换（18:00~次日06:00 为夜间）', false, true); // 蓝色
+      } else {
+        showSaveStatus('已关闭根据日出日落自动切换', true); // 红色
+      }
+      
+      renderMePage(); // 重新渲染页面
+    };
+  }
+
+  // ---- 云同步状态 ----
   const sp = $('syncPushBtn2'); if (sp) sp.onclick = doSyncPush;
   const sl = $('syncPullBtn2'); if (sl) sl.onclick = doSyncPull;
 
@@ -400,7 +466,7 @@ window.renderUserDetailHtml = function (detail) {
 
   let html = '';
 
-  /* ========== 1) 基本信息 ========== */
+  /* 1) 基本信息 */
   html += '<details class="admin-fold">';
   html += '<summary>📋 基本信息</summary>';
   html += '<div class="admin-fold-body">';
@@ -413,7 +479,7 @@ window.renderUserDetailHtml = function (detail) {
   html += '<div class="user-data-row">课表单元格：' + (detail.cell_count || 0) + ' 个</div>';
   html += '</div></details>';
 
-  /* ========== 2) 班级列表 ========== */
+  /* 2) 班级列表 */
   html += '<details class="admin-fold">';
   html += '<summary>🏫 班级列表（' + classes.length + '）</summary>';
   html += '<div class="admin-fold-body">';
@@ -443,7 +509,7 @@ window.renderUserDetailHtml = function (detail) {
   }
   html += '</div></details>';
 
-  /* ========== 3) 学生花名册 ========== */
+  /* 3) 学生花名册 */
   html += '<details class="admin-fold">';
   html += '<summary>👥 学生花名册（' + roster.length + '）</summary>';
   html += '<div class="admin-fold-body">';
@@ -476,7 +542,7 @@ window.renderUserDetailHtml = function (detail) {
   }
   html += '</div></details>';
 
-  /* ========== 4) 座位表 ========== */
+  /* 4) 座位表 */
   html += '<details class="admin-fold">';
   html += '<summary>🪑 座位表（' + rows + '行×' + cols + '列' + (aisle ? ' · 过道 ' + escapeHtml(aisle) : '') + '）</summary>';
   html += '<div class="admin-fold-body">';
@@ -499,7 +565,7 @@ window.renderUserDetailHtml = function (detail) {
   if (order === 'asc') { html += stageHtml; html += gridHtml; } else { html += gridHtml; html += stageHtml; }
   html += '</div></details>';
 
-  /* ========== 5) 课程表 ========== */
+  /* 5) 课程表 */
   html += '<details class="admin-fold">';
   html += '<summary>📚 课程表（' + classes.length + ' 个班级）</summary>';
   html += '<div class="admin-fold-body">';
@@ -544,7 +610,7 @@ window.renderUserDetailHtml = function (detail) {
   }
   html += '</div></details>';
 
-  /* ========== 6) 值日表 ========== */
+  /* 6) 值日表 */
   const dutyClassIds = Object.keys(dutyByClass);
   html += '<details class="admin-fold">';
   html += '<summary>🧹 值日表（' + dutyClassIds.length + ' 个班级）</summary>';
@@ -583,7 +649,7 @@ window.renderUserDetailHtml = function (detail) {
   }
   html += '</div></details>';
 
-  /* ========== 7) 考试 ========== */
+  /* 7) 考试 */
   const examClassIds = Object.keys(examsByClass);
   let totalExamCount = exams.length;
   html += '<details class="admin-fold">';
@@ -612,9 +678,8 @@ window.renderUserDetailHtml = function (detail) {
         } else {
           const sortedScores = scores.slice().sort((a, b) => b.score - a.score);
           html += '<div style="max-height:260px;overflow:auto;">';
-          html += '<table class="admin-schedule-table" style="font-size:12px;table-layout:fixed;width:auto;min-width:240px;">';
-          html += '<colgroup><col style="width:50px;"><col style="width:140px;"><col style="width:70px;"></colgroup>';
-          html += '<thead><tr><th>名次</th><th>姓名</th><th>分数</th></tr></thead><tbody>';
+          html += '<table class="admin-schedule-table" style="font-size:12px;">';
+          html += '<thead><tr><th style="width:40px;">名次</th><th>姓名</th><th style="width:70px;">分数</th></tr></thead><tbody>';
           sortedScores.forEach((sc, i) => {
             let color = '#333';
             if (sc.score >= e.excellent_score) color = '#27ae60';
@@ -635,7 +700,7 @@ window.renderUserDetailHtml = function (detail) {
   }
   html += '</div></details>';
 
-  /* ========== 8) 考勤 ========== */
+  /* 8) 考勤 */
   const attKeys = Object.keys(attByClassDate);
   const totalAttRecords = attendance.length;
   html += '<details class="admin-fold">';
@@ -665,9 +730,8 @@ window.renderUserDetailHtml = function (detail) {
               ' · <span style="color:#c5221f;">缺勤 ' + counts['缺勤'] + '</span>' +
               '</div>';
       html += '<div style="max-height:280px;overflow:auto;">';
-      html += '<table class="admin-schedule-table" style="font-size:12px;table-layout:fixed;width:auto;min-width:380px;">';
-      html += '<colgroup><col style="width:40px;"><col style="width:110px;"><col style="width:70px;"><col style="width:160px;"></colgroup>';
-      html += '<thead><tr><th>#</th><th>姓名</th><th>状态</th><th>备注</th></tr></thead><tbody>';
+      html += '<table class="admin-schedule-table" style="font-size:12px;">';
+      html += '<thead><tr><th style="width:40px;">#</th><th>姓名</th><th style="width:70px;">状态</th><th>备注</th></tr></thead><tbody>';
       const sorted = g.records.slice().sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '', 'zh-CN'));
       sorted.forEach((r, i) => {
         let color = '#333';

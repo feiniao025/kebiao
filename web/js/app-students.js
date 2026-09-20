@@ -1,8 +1,5 @@
 /* ============================================================
    app-students.js —— 学生模块（花名册 / 成绩 / 考勤）
-   改动：
-     - 花名册表头去掉内联宽度，由 CSS 统一控制列宽，列对齐
-     - 考勤行「备注」放到按钮组下方，左边缘与「出勤」对齐
    ============================================================ */
 
 /* ---------- 花名册 ---------- */
@@ -64,7 +61,6 @@ window.renderRosterList = function () {
     return (a.name || '').localeCompare(b.name || '', 'zh-CN');
   });
 
-  // ★ 去掉内联宽度，由 CSS 的 nth-child 规则统一控制
   let html = '<table class="roster-table"><thead><tr>' +
     '<th>序号</th><th>姓名</th><th>性别</th>' +
     '<th>身份证</th><th>班级</th><th>家长电话1</th><th>家长电话2</th><th>家庭地址</th>' +
@@ -992,8 +988,8 @@ window.renderAttendance = async function () {
         '<div class="roster-toolbar">' +
           '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:110px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
           '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:120px;">' +
-          '<button id="attDelBtn" class="btn-primary" style="background:#cccccc;">🗑️</button>' +
-          '<button id="attSaveBtn" class="btn-primary">💾</button>' +
+          '<button id="attDelBtn" class="btn-primary" style="background:#eeeeee;color:#555;" title="删除当日考勤">🗑️</button>' +
+          '<button id="attSaveBtn" class="btn-primary" title="保存考勤">💾</button>' +
         '</div>' +
         '<div id="attSummary" class="att-summary"></div>' +
         '<div id="attList" class="att-list">加载中...</div>' +
@@ -1084,13 +1080,23 @@ window.updateAttSummary = function () {
   const counts = { 出勤: 0, 迟到: 0, 请假: 0, 缺勤: 0 };
   el.querySelectorAll('.att-status-btn.active').forEach(b => { if (counts[b.dataset.status] !== undefined) counts[b.dataset.status]++; });
   const total = attendanceList.length;
+
+  // ★ 第 6 格固定显示"今天"的日期，不跟随上面的选择器
+  const today = new Date();
+  const mmdd = String(today.getMonth() + 1).padStart(2, '0') + '/' +
+               String(today.getDate()).padStart(2, '0');
+
   sumEl.innerHTML =
     '<div class="today-summary-grid">' +
-    '<div><span class="num">' + total + '</span><span class="lbl">应到</span></div>' +
-    '<div class="ok"><span class="num">' + counts['出勤'] + '</span><span class="lbl">出勤</span></div>' +
-    '<div class="warn"><span class="num">' + counts['迟到'] + '</span><span class="lbl">迟到</span></div>' +
-    '<div class="info"><span class="num">' + counts['请假'] + '</span><span class="lbl">请假</span></div>' +
-    '<div class="bad"><span class="num">' + counts['缺勤'] + '</span><span class="lbl">缺勤</span></div>' +
+      '<div><span class="num">' + total + '</span><span class="lbl">应到</span></div>' +
+      '<div class="ok"><span class="num">' + counts['出勤'] + '</span><span class="lbl">出勤</span></div>' +
+      '<div class="warn"><span class="num">' + counts['迟到'] + '</span><span class="lbl">迟到</span></div>' +
+      '<div class="info"><span class="num">' + counts['请假'] + '</span><span class="lbl">请假</span></div>' +
+      '<div class="bad"><span class="num">' + counts['缺勤'] + '</span><span class="lbl">缺勤</span></div>' +
+      '<div class="date-cell">' +
+        '<span class="num">' + mmdd + '</span>' +
+        '<span class="lbl">今日</span>' +
+      '</div>' +
     '</div>';
 };
 
@@ -1106,10 +1112,43 @@ window.saveAttendance = async function () {
     items.push({ student_name: name, status: activeBtn ? activeBtn.dataset.status : '出勤', remark: remarkEl ? remarkEl.value.trim() : '' });
   });
   if (items.length === 0) { alert('没有可保存的记录'); return; }
+
+  // 按钮进入"保存中"状态
+  const saveBtn = $('attSaveBtn');
+  const oldText = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = '0.6';
+    saveBtn.textContent = '⏳';
+  }
+
   try {
     await apiCall(API.saveAttendance, currentAttendanceClassId, currentAttendanceDate, items);
+
+    // 从服务端重新加载，保证显示与实际一致
+    await loadAttendance();
+
+    // 顶部绿条
     showSaveStatus('已保存 ' + items.length + ' 条', false);
-  } catch {}
+
+    // 按钮短暂显示"✓ 已保存"
+    if (saveBtn) {
+      saveBtn.textContent = '✓';
+      saveBtn.style.background = '#27ae60';
+      setTimeout(() => {
+        saveBtn.textContent = oldText;
+        saveBtn.style.background = '';
+      }, 1200);
+    }
+  } catch (err) {
+    // apiCall 已经弹过错误提示
+    if (saveBtn) saveBtn.textContent = oldText;
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.style.opacity = '';
+    }
+  }
 };
 
 /* ---------- 事件绑定 ---------- */
@@ -1198,7 +1237,7 @@ window.saveAttendance = async function () {
     rosterEditOn = !rosterEditOn;
     rosterEditBtn.classList.toggle('active', rosterEditOn);
     renderRosterList();
-    showSaveStatus(rosterEditOn ? '已开启编辑：点击行可修改学生信息' : '已锁定', false);
+    showSaveStatus(rosterEditOn ? '已开启编辑：点击行可修改学生信息' : '已锁定', !rosterEditOn ? true : false);
   };
   const rosterMoreToggle = $('rosterMoreToggle');
   const rosterMorePanel = $('rosterMorePanel');

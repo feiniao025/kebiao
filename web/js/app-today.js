@@ -3,7 +3,7 @@
    功能：
    - 「今日课程」和「今日考勤」两张独立卡片
    - 考勤统计格子可点击，弹出该状态的学生名单
-   - 周末自动显示「跟随今天/查看周一~周五」下拉选择器
+   - 「第几周 · 周几」下拉选择器（周末显示）
    - 手动选择仅当天有效，第二天自动恢复「跟随今天」
    ============================================================ */
 
@@ -15,11 +15,14 @@ window._todayAttDetail = {
   records: []
 };
 
-/* 周末手动选择查看的天（0=周日 ... 6=周六；-1 表示跟随今天）
+/* 手动选择查看：周次 + 周几
+   - currentTodayManualWeek: 0=跟随当月周；1~4=指定周
+   - currentTodayManualDay:  -1=跟随今天；1~5=指定周几
    ★ 持久化到 localStorage，但仅当天有效 */
+window.currentTodayManualWeek = 0;
 window.currentTodayManualDay = -1;
 
-(function loadTodayManualDay() {
+(function loadTodayManual() {
   try {
     const raw = localStorage.getItem('kebiao_today_manual_day');
     if (!raw) return;
@@ -27,35 +30,46 @@ window.currentTodayManualDay = -1;
     const today = new Date().toISOString().slice(0, 10);
     if (obj && obj.date === today && typeof obj.day === 'number') {
       window.currentTodayManualDay = obj.day;
+      window.currentTodayManualWeek = obj.week || 0;
     } else {
       localStorage.removeItem('kebiao_today_manual_day');
     }
   } catch (e) { /* 忽略 */ }
 })();
 
-window.saveTodayManualDay = function (v) {
-  window.currentTodayManualDay = v;
+window.saveTodayManual = function (day, week) {
+  window.currentTodayManualDay = day;
+  window.currentTodayManualWeek = (typeof week === 'number') ? week : 0;
   try {
-    if (v === -1) {
+    if (day === -1 && !window.currentTodayManualWeek) {
       localStorage.removeItem('kebiao_today_manual_day');
     } else {
       const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem('kebiao_today_manual_day', JSON.stringify({ date: today, day: v }));
+      localStorage.setItem('kebiao_today_manual_day', JSON.stringify({
+        date: today,
+        day: day,
+        week: window.currentTodayManualWeek
+      }));
     }
   } catch (e) { /* 忽略 */ }
 };
 
-/* 返回今天实际用于渲染课程的天：
-   - 非周末：返回 today 的星期
-   - 周末：若用户手动选过，返回选中的天；否则返回今天（周末）——此时列表显示「周末无课程安排」 */
+/* 返回当前实际用于渲染课程的天：
+   - 用户手动选过：返回选中的天（1~5）
+   - 否则：跟随今天 */
 window.getTodayEffectiveDay = function () {
-  const wd = new Date().getDay();
-  if (wd === 0 || wd === 6) {
-    return (window.currentTodayManualDay >= 1 && window.currentTodayManualDay <= 5)
-      ? window.currentTodayManualDay
-      : wd;
+  if (window.currentTodayManualDay >= 1 && window.currentTodayManualDay <= 5) {
+    return window.currentTodayManualDay;
   }
-  return wd;
+  return new Date().getDay();
+};
+
+/* 返回当前实际用于渲染课服的周次（1~4） */
+window.getTodayEffectiveWeek = function () {
+  if (window.currentTodayManualWeek >= 1 && window.currentTodayManualWeek <= 4) {
+    return window.currentTodayManualWeek;
+  }
+  return (typeof getWeekOfMonth === 'function') ? getWeekOfMonth() : 1;
 };
 
 window.renderToday = function () {
@@ -98,7 +112,7 @@ window.renderToday = function () {
               '<select id="todayClassFilter" class="cell-pop-input today-grade-filter">' + classFilterOptions + '</select>' +
             '</div>' +
           '</div>' +
-          '<div id="todayClasses" class="today-course-list">' + renderTodayCourses(getTodayEffectiveDay()) + '</div>' +
+          '<div id="todayClasses" class="today-course-list">' + renderTodayCourses(getTodayEffectiveDay(), getTodayEffectiveWeek()) + '</div>' +
         '</div>' +
       '</div>' +
 
@@ -111,7 +125,7 @@ window.renderToday = function () {
               (classOptions || '<option value="">（暂无班级）</option>') +
             '</select>' +
           '</div>' +
-          '<div id="todayAttendanceSummary" class="today-summary">选择班级后查看今日考勤</div>' +
+          '<div id="todayAttendanceSummary" class="today-summary"><div class="today-empty">选择班级后查看今日考勤</div></div>' +
         '</div>' +
       '</div>' +
 
@@ -125,7 +139,7 @@ window.renderToday = function () {
       currentTodayClass = classSel.value;
       localStorage.setItem('kebiao_today_class', currentTodayClass);
       const listEl = $('todayClasses');
-      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay());
+      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay(), getTodayEffectiveWeek());
     };
   }
 
@@ -141,7 +155,7 @@ window.renderToday = function () {
   }
 };
 
-window.renderTodayCourses = function (wd) {
+window.renderTodayCourses = function (wd, week) {
   if (wd === 0 || wd === 6) return '<div class="today-empty">周末无课程安排 🎉</div>';
   if (classes.length === 0) return '<div class="today-empty">暂无班级</div>';
 
@@ -153,7 +167,9 @@ window.renderTodayCourses = function (wd) {
   if (list.length === 0) return '<div class="today-empty">该班级不存在</div>';
 
   // ★ 当前是月内第几周（供课服使用）
-  const curWeek = (typeof getWeekOfMonth === 'function') ? getWeekOfMonth() : 1;
+  const curWeek = (week && week >= 1 && week <= 4)
+    ? week
+    : ((typeof getWeekOfMonth === 'function') ? getWeekOfMonth() : 1);
 
   let html = '';
   list.forEach(cls => {
@@ -203,27 +219,26 @@ window.renderTodayCourses = function (wd) {
   return html;
 };
 
-/* ---------- 周末手动选星期（下拉框） ---------- */
+/* ---------- 周末手动选「第几周 · 周几」（下拉框） ---------- */
 window.renderTodayWeekdayPicker = function () {
   const box = document.getElementById('todayWeekdayPicker');
   if (!box) return;
   box.style.display = 'flex';
 
-  const OPTIONS = [
-    { v: -1, l: '跟随今天' },
-    { v: 1,  l: '查看周一' },
-    { v: 2,  l: '查看周二' },
-    { v: 3,  l: '查看周三' },
-    { v: 4,  l: '查看周四' },
-    { v: 5,  l: '查看周五' },
-  ];
-
-  const cur = window.currentTodayManualDay;
+  const DAYS = ['周一', '周二', '周三', '周四', '周五'];
+  const isFollow = (window.currentTodayManualDay === -1) && (!window.currentTodayManualWeek);
 
   let html = '<select id="todayWeekdaySelect" class="cell-pop-input today-weekday-select">';
-  OPTIONS.forEach(o => {
-    html += '<option value="' + o.v + '"' + (o.v === cur ? ' selected' : '') + '>' + o.l + '</option>';
-  });
+  html += '<option value="0-0"' + (isFollow ? ' selected' : '') + '>跟随今天</option>';
+
+  for (let w = 1; w <= 4; w++) {
+    for (let d = 1; d <= 5; d++) {
+      const val = w + '-' + d;
+      const label = '第' + w + '周 · ' + DAYS[d - 1];
+      const sel = (window.currentTodayManualWeek === w && window.currentTodayManualDay === d);
+      html += '<option value="' + val + '"' + (sel ? ' selected' : '') + '>' + label + '</option>';
+    }
+  }
   html += '</select>';
 
   box.innerHTML = html;
@@ -231,10 +246,17 @@ window.renderTodayWeekdayPicker = function () {
   const sel = document.getElementById('todayWeekdaySelect');
   if (sel) {
     sel.onchange = () => {
-      // ★ 持久化（带日期，仅当天有效）
-      saveTodayManualDay(parseInt(sel.value, 10));
+      const v = sel.value;
+      if (v === '0-0') {
+        saveTodayManual(-1, 0);
+      } else {
+        const parts = v.split('-');
+        const w = parseInt(parts[0], 10);
+        const d = parseInt(parts[1], 10);
+        saveTodayManual(d, w);
+      }
       const listEl = document.getElementById('todayClasses');
-      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay());
+      if (listEl) listEl.innerHTML = renderTodayCourses(getTodayEffectiveDay(), getTodayEffectiveWeek());
     };
   }
 };
@@ -281,6 +303,7 @@ window.loadTodayAttendanceSummary = async function (classId, date) {
   }
 };
 
+/* 生成一个可点击的统计格子 */
 function _attSummaryCell(label, num, cls, status) {
   return '<div class="' + (cls || '') + '" data-att-status="' + status + '" ' +
          'style="cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;" ' +
@@ -305,6 +328,7 @@ window.showTodayAttendanceDetail = function (status) {
   }
   list.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '', 'zh-CN'));
 
+  // 首次调用时创建弹窗，之后复用
   let pop = document.getElementById('todayAttDetailPop');
   if (!pop) {
     pop = document.createElement('div');
