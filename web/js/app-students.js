@@ -986,8 +986,8 @@ window.renderAttendance = async function () {
     '<div class="me-page">' +
       '<div class="me-card">' +
         '<div class="roster-toolbar">' +
-          '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:110px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
-          '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:120px;">' +
+          '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:100px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
+          '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:110px;">' +
           '<button id="attDelBtn" class="btn-primary" style="background:#eeeeee;color:#555;" title="删除当日考勤">🗑️</button>' +
           '<button id="attSaveBtn" class="btn-primary" title="保存考勤">💾</button>' +
         '</div>' +

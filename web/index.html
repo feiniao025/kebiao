@@ -10,7 +10,6 @@
 <body>
 
 <div id="saveStatus"></div>
-<div id="diagPanel"></div>
 
 
 <header class="top-bar">
@@ -34,7 +33,6 @@
     <button id="exportBtn">📷 导出图片</button>
     <button id="importExcelBtn" class="data-ctrl">📗 导入</button>
     <button id="exportExcelBtn" class="data-ctrl">📗 导出</button>
-    <button id="diagBtn" class="diag-ctrl">🩺 存储诊断</button>
   </div>
 </div>
 
@@ -57,18 +55,14 @@
   <div id="scheduleContainer" style="display:none;"></div>
 
   <div class="card" id="seatCard" style="display:none;">
-    <div class="card-header">
-      <h2><span id="seatCardTitle"></span><span class="badge" id="seatSizeInfo">7行×8列</span></h2>
-      <div class="legend seat-tools">
-        <button id="seatOrderBtn" class="seat-ctrl">讲台上</button>
-        <button id="seatAisleBtn" class="seat-ctrl">过道 关</button>
-        <button id="seatResizeToggle" class="seat-ctrl">行列 展开</button>
-        <div id="seatResizePanel" class="seat-resize-panel">
-          <button id="seatAddRow" class="seat-ctrl">＋行</button>
-          <button id="seatDelRow" class="seat-ctrl">－行</button>
-          <button id="seatAddCol" class="seat-ctrl">＋列</button>
-          <button id="seatDelCol" class="seat-ctrl">－列</button>
-        </div>
+    <div class="card-header card-header-2row">
+      <div class="card-hdr-row1">
+		<h2><span id="seatCardTitle"></span></h2>
+        <button id="seatCardMenuBtn" class="mini-toggle">菜单</button>
+      </div>
+      <div class="card-hdr-row2">
+        <span class="seat-size-info" id="seatSizeInfo">7行×8列</span>
+        <button id="seatImportRosterBtn" class="seat-ctrl" style="display:none;">导入花名册</button>
       </div>
     </div>
     <div class="seat-stage" id="seatStage">讲 台</div>
@@ -207,6 +201,41 @@
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button id="classServiceClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 清空</button>
       <button id="classServiceSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 座位表设置弹窗 ============ -->
+<div class="seat-pop" id="seatManagePop">
+  <div class="seat-pop-inner">
+    <button id="seatManageClose" class="pop-close-x">×</button>
+    <h3>座位表设置</h3>
+    <div class="cell-pop-row"><label>年级：</label><select id="seatManageGrade" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>班级：</label><select id="seatManageNum" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>行数：</label><select id="seatManageRows" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row"><label>列数：</label><select id="seatManageCols" class="cell-pop-input"></select></div>
+    <div class="cell-pop-row" style="align-items:center;">
+      <label>过道：</label>
+      <label class="tgl">
+        <input type="checkbox" id="seatManageAisleToggle">
+        <span class="tgl-slider"></span>
+      </label>
+    </div>
+    <div class="cell-pop-row" id="seatManageAisleRow" style="display:none;">
+      <label></label>
+      <input type="text" id="seatManageAisleInput" class="cell-pop-input" placeholder="如 2+4+1">
+    </div>
+    <div class="cell-pop-row" style="align-items:center;">
+      <label>讲台位置：</label>
+      <label class="tgl">
+        <input type="checkbox" id="seatManageOrderToggle">
+        <span class="tgl-slider"></span>
+      </label>
+    </div>
+    <div class="me-error" id="seatManageError" style="min-height:18px;margin-top:6px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button id="seatManageCancel" style="flex:1;background:transparent;color:var(--text-main);padding:10px;border:1px solid var(--seat-border);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">取消</button>
+      <button id="seatManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
     </div>
   </div>
 </div>

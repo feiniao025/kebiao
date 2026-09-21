@@ -4,6 +4,7 @@
    - 登录/注册
    - 个人资料 + 深色/自动 主题开关
    - 修改密码、管理员用户管理、Supabase 配置、登录提示
+   - 个人资料中显示「上次同步」时间
    ============================================================ */
 
 window.renderMePage = function () {
@@ -45,6 +46,7 @@ window.renderProfile = function () {
       '<div class="me-info-row"><span class="label">用户名</span><span class="value">' + escapeHtml(currentUser.username) + '</span></div>' +
       '<div class="me-info-row"><span class="label">注册时间</span><span class="value">' + created + '</span></div>' +
       '<div class="me-info-row"><span class="label">上次登录</span><span class="value">' + lastLogin + '</span></div>' +
+      '<div class="me-info-row"><span class="label">云端同步</span><span class="value" id="meLastSyncValue">—</span></div>' +
 
       // ★ 深色模式开关行
       '<div class="me-info-row theme-toggle-row">' +
@@ -69,6 +71,18 @@ window.renderProfile = function () {
     syncBlock +
     '<button class="me-logout" id="meLogoutBtn">退出登录</button>';
 
+  // ---- 填充「上次同步」信息 ----
+  API.getSyncStatus().then(st => {
+    const el = $('meLastSyncValue');
+    if (!el) return;
+    el.textContent = st.last_sync_at
+      ? new Date(st.last_sync_at).toLocaleString('zh-CN')
+      : '从未';
+  }).catch(() => {
+    const el = $('meLastSyncValue');
+    if (el) el.textContent = '—';
+  });
+
   // ---- 按钮绑定 ----
   $('meChangePwdBtn').onclick = () => { meView = 'changePwd'; renderMePage(); };
   const adminBtn = $('meAdminBtn'); if (adminBtn) adminBtn.onclick = () => { meView = 'adminList'; renderMePage(); };
@@ -84,7 +98,7 @@ window.renderProfile = function () {
       window.preferences.theme = newTheme;
       window.applyTheme();
       API.updatePreferences({ theme: newTheme }).catch(function () {});
-      
+
       // ★ 修改：第二个参数传 true 触发红色（.err）
       if (switchT.checked) {
         showSaveStatus('已开启深色模式', false); // 开启保持绿色
@@ -93,7 +107,7 @@ window.renderProfile = function () {
       }
     };
   }
-  
+
   const autoT = $('themeAutoToggle');
   if (autoT) {
     autoT.onchange = function () {
@@ -103,14 +117,14 @@ window.renderProfile = function () {
       window.preferences.theme = newTheme;
       window.applyTheme();
       API.updatePreferences({ theme: newTheme }).catch(function () {});
-      
+
       // ★ 开启 / 关闭 自动模式 都给出提示
       if (autoT.checked) {
         showSaveStatus('根据日出日落自动切换（18:00~次日06:00 为夜间）', false, true); // 蓝色
       } else {
         showSaveStatus('已关闭根据日出日落自动切换', true); // 红色
       }
-      
+
       renderMePage(); // 重新渲染页面
     };
   }
@@ -767,25 +781,4 @@ window.doSyncPull = async function () {
   if (udClose) udClose.onclick = () => { $('userDetailPop').style.display = 'none'; };
   const udPop = $('userDetailPop');
   if (udPop) udPop.addEventListener('click', e => { if (e.target === udPop) udPop.style.display = 'none'; });
-
-  const diagBtn = $('diagBtn');
-  if (diagBtn) diagBtn.onclick = async () => {
-    const lines = ['=== 存储诊断 ==='];
-    lines.push('URL: ' + location.href);
-    lines.push('当前用户: ' + (currentUser ? currentUser.username : '未登录'));
-    lines.push('班级数量: ' + classes.length);
-    lines.push('存储方式: SQLite (服务端) + Supabase (云端同步)');
-    try {
-      const st = await API.getSyncStatus();
-      lines.push('上次同步: ' + (st.last_sync_at ? new Date(st.last_sync_at).toLocaleString('zh-CN') : '从未'));
-      lines.push('同步状态: ' + (st.last_sync_ok ? '成功' : (st.last_error || '未知')));
-    } catch (e) { lines.push('同步状态: 获取失败'); }
-    const panel = $('diagPanel');
-    panel.textContent = lines.join('\n');
-    const btn = document.createElement('button');
-    btn.className = 'close'; btn.textContent = '关闭';
-    btn.onclick = () => { panel.style.display = 'none'; };
-    panel.appendChild(btn);
-    panel.style.display = 'block';
-  };
 })();

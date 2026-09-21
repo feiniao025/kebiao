@@ -64,27 +64,124 @@ body{
 .card-header h2 .badge{font-size:14px;font-weight:400;background:#ecf0f1;color:#2c3e50;padding:2px 14px;border-radius:20px;letter-spacing:1px}
 [data-theme="dark"] .card-header h2 .badge{background:#3b4252;color:#e6e9f0}
 .card-header .legend{font-size:14px;color:var(--text-sub);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-header .legend .dot{display:inline-block;width:16px;height:16px;border-radius:6px;background:#f9d0d0;border:1px solid #f0b8b8;transition:all .2s;flex-shrink:0}
-.card-header .legend .mini-toggle{padding:3px 14px;border-radius:10px;border:1px solid transparent;background:rgba(0,0,0,0.06);color:var(--text-sub);font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit;margin-left:4px;line-height:1.6;white-space:nowrap}
-.card-header .legend .mini-toggle:hover{background:rgba(0,0,0,0.12)}
-.card-header .legend .mini-toggle.active{background:#3498db !important;color:#fff !important;border-color:#2980b9}
-[data-theme="dark"] .card-header .legend .mini-toggle{background:rgba(255,255,255,0.08);color:var(--text-sub)}
-[data-theme="dark"] .card-header .legend .mini-toggle:hover{background:rgba(255,255,255,0.16)}
-[data-theme="dark"] .card-header .legend .mini-toggle.active{background:#3498db !important;color:#fff !important}
-
+.legend-items .dot,
+.card-header .legend .dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  background: #f9d0d0;
+  border: 1px solid #f0b8b8;
+  transition: all .2s;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 6px; /* 跟后面文字拉开一点距离 */
+}
 .card-header .legend button{padding:6px 12px;border-radius:10px;border:none;background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap}
 .card-header .legend button:hover{background:var(--btn-hover)}
 .card-header .legend button.seat-ctrl{background:#7d5ba6}
 .card-header .legend button.seat-ctrl:hover{background:#9573c0}
 .card-header .legend button.seat-ctrl.active{background:#8e44ad}
 
-.legend-items{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.legend-items {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px 12px;        /* 行间距 8px，列间距 12px */
+  flex-wrap: wrap;
+}
+
+.legend-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;               /* 组内色块和文字仍保持无间隙 */
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.legend-items .sep {
+  color: var(--text-sub);
+  margin: 0 -4px;       /* 因为 gap 已经是 12px，这里稍微收一点使视觉更均匀 */
+}
 .legend-items .legend-text{color:var(--text-sub);font-size:14px}
 .legend-items .sep{color:var(--text-sub);margin:0 2px}
 
 .seat-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .seat-resize-panel{display:none;gap:8px;align-items:center;flex-wrap:wrap}
 .seat-resize-panel.open{display:flex}
+
+/* ============ 6.1 卡片头部两行布局（课程表 / 值日表 / 座位表 通用） ============ */
+
+/* 容器：覆盖 .card-header 默认的单行布局 */
+.card-header.card-header-2row{
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  flex-wrap:nowrap;
+  gap:6px;
+}
+
+/* 第一行：标题（左）+ 菜单（右） */
+.card-hdr-row1{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+/* 第二行：图例 / 统计信息 / 导入按钮等 */
+.card-hdr-row2{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  min-height:18px;
+}
+
+/* 座位表专用：统计信息胶囊 */
+.seat-size-info{
+  font-size:13px;
+  color:var(--text-sub);
+  background:var(--table-row-alt);
+  padding:2px 12px;
+  border-radius:12px;
+  letter-spacing:.5px;
+}
+
+/* 第二行里的「导入花名册」按钮 */
+.card-hdr-row2 .seat-ctrl{
+  padding:6px 14px;
+  border-radius:10px;
+  border:none;
+  background:#7d5ba6;
+  color:#fff;
+  font-size:13px;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:inherit;
+  white-space:nowrap;
+}
+.card-hdr-row2 .seat-ctrl:hover{background:#9573c0}
+
+/* ============ 6.2 「菜单」按钮：三卡统一 ============ */
+.mini-toggle{
+  padding:3px 14px;
+  border-radius:10px;
+  border:1px solid transparent;
+  background:rgba(0,0,0,0.06);
+  color:var(--text-sub);
+  font-size:12px;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:inherit;
+  line-height:1.6;
+  white-space:nowrap;
+  margin-left:4px;
+}
+.mini-toggle:hover{background:rgba(0,0,0,0.12)}
+.mini-toggle.active{background:#3498db !important;color:#fff !important;border-color:#2980b9}
+[data-theme="dark"] .mini-toggle{background:rgba(255,255,255,0.08);color:var(--text-sub)}
+[data-theme="dark"] .mini-toggle:hover{background:rgba(255,255,255,0.16)}
+[data-theme="dark"] .mini-toggle.active{background:#3498db !important;color:#fff !important}
 
 /* ============ 7. 图例卡 ============ */
 .legend-card .card-header h2{font-size:22px}
@@ -203,7 +300,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
 /* 颜色选择器 */
 .color-picker{display:flex;gap:8px;flex-wrap:wrap;flex:1}
-.color-picker button{width:32px;height:32px;border-radius:50%;border:2px solid var(--seat-border);cursor:pointer;transition:transform .15s,border-color .15s;padding:0;font-family:inherit}
+.color-picker button{width:30px;height:30px;border-radius:50%;border:2px solid var(--seat-border);cursor:pointer;transition:transform .15s,border-color .15s;padding:0;font-family:inherit}
 .color-picker button:hover{transform:scale(1.15)}
 .color-picker button.selected{border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.25)}
 .color-picker button[data-color="0"]{background:#fff;position:relative;overflow:hidden}
@@ -285,11 +382,8 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 /* ============ 12. 保存提示 / 诊断面板 ============ */
 #saveStatus{position:fixed;top:10px;right:16px;padding:6px 14px;border-radius:20px;background:#27ae60;color:#fff;font-size:12px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:opacity .3s;opacity:0;pointer-events:none}
 #saveStatus.show{opacity:1}
-#saveStatus.err{background:#e74c3c}   /* 红色（用于“已关闭深色模式”） */
-#saveStatus.info{background:#3498db}  /* ★ 新增：蓝色（用于“自动切换”提示） */
-#diagPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;color:#2c3e50;padding:20px 24px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.3);z-index:10001;max-width:90vw;max-height:80vh;overflow:auto;display:none;font-family:monospace;font-size:13px;line-height:1.7;white-space:pre-wrap}
-#diagPanel .close{margin-top:14px;padding:8px 16px;background:#2c3e50;color:#fff;border:none;border-radius:8px;cursor:pointer}
-[data-theme="dark"] #diagPanel{background:#272c3a;color:#e6e9f0}
+#saveStatus.err{background:#e74c3c}
+#saveStatus.info{background:#3498db}
 
 /* ============ 13. 云同步 / Supabase ============ */
 .sync-section{margin-top:14px;padding:16px 16px 12px;background:var(--table-row-alt);border-radius:12px}
@@ -407,8 +501,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .control-bar .seat-ctrl.active{background:#8e44ad}
 .control-bar .data-ctrl{background:#16a085}
 .control-bar .data-ctrl:hover{background:#1abc9c}
-.control-bar .diag-ctrl{background:#c0392b}
-.control-bar .diag-ctrl:hover{background:#e74c3c}
 .control-bar .more-ctrl{background:#7f8c8d}
 .control-bar .more-ctrl:hover{background:#95a5a6}
 .control-bar .more-ctrl.open{background:#34495e}
@@ -647,11 +739,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .duty-table tbody td.empty{background:var(--table-row-alt)}
 .duty-table tbody td[data-type="duty_period"]{background:var(--table-row-alt);border-right:1px solid var(--table-border)}
 
-.duty-card .card-header .legend button.mini-toggle{padding:6px 14px;border-radius:10px;border:1px solid transparent;background:rgba(0,0,0,0.06);color:var(--text-sub);font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s}
-.duty-card .card-header .legend button.mini-toggle:hover{background:rgba(0,0,0,0.12);color:var(--text-main)}
-[data-theme="dark"] .duty-card .card-header .legend button.mini-toggle{background:rgba(255,255,255,0.08)}
-[data-theme="dark"] .duty-card .card-header .legend button.mini-toggle:hover{background:rgba(255,255,255,0.16)}
-
 .duty-note{margin-top:16px;padding:16px 18px;background:var(--table-row-alt);border-radius:12px;border-left:4px solid #16a085;font-size:13px;line-height:1.9;color:var(--text-main);white-space:pre-wrap;word-break:break-word}
 [data-theme="dark"] .duty-note{background:#232836}
 
@@ -707,6 +794,12 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .card-header h2{font-size:19px;flex-wrap:wrap}
   .card-header .legend{font-size:12px}
   .legend-items .legend-text{font-size:12px}
+
+  /* 两行头部 */
+  .card-hdr-row1{gap:8px}
+  .card-hdr-row2{gap:8px}
+  .seat-size-info{font-size:12px;padding:2px 10px}
+  .card-hdr-row2 .seat-ctrl{padding:5px 12px;font-size:12px}
 
   /* 课表 */
   .schedule-table{font-size:13px}
@@ -832,9 +925,9 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
   /* 深色模式开关移动端略小 */
   .tgl-slider{ width: 36px; height: 20px; border-radius: 10px; }
-  .tgl-slider::before{ width: 16px; height: 16px; font-size: 9px; } /* ★ 新增字体大小适配 */
+  .tgl-slider::before{ width: 16px; height: 16px; font-size: 9px; }
   .tgl input:checked + .tgl-slider::before{ transform: translateX(16px); }
-  .tgl-text{ font-size: 12px; } /* 虽然已无文字，保留样式结构以兼容旧代码 */
+  .tgl-text{ font-size: 12px; }
   .theme-toggle-group{ gap: 8px; }
 
   .select-wrap::after{right:12px;width:8px;height:8px}
@@ -847,12 +940,12 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .theme-toggle-group{
   display: inline-flex;
   align-items: center;
-  gap: 8px; /* 原来是 14px，缩小一点更紧凑 */
+  gap: 8px;
 }
 .tgl{
   display: inline-flex;
   align-items: center;
-  gap: 0; /* 原来是 6px，没有文字了，设为0 */
+  gap: 0;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -877,15 +970,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   height: 18px;
   background: #fff;
   border-radius: 50%;
-  transition: transform .25s, color .25s; /* ★ 新增 color 过渡 */
+  transition: transform .25s, color .25s;
   box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  /* ★ 新增：让文字在圆纽内居中 */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
   font-weight: 700;
-  color: #7f8c8d; /* 默认灰色文字 */
+  color: #7f8c8d;
 }
 .tgl input:checked + .tgl-slider{
   background: #27ae60;
@@ -905,9 +997,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .tgl-slider{ background: #4a5568; }
 [data-theme="dark"] .tgl-text{ color: var(--text-sub); }
 
-/* ============================================================
-   ★ 新增：开关圆纽内的文字逻辑（开/关/自）
-   ============================================================ */
 /* 深色模式开关：未开启显示“关”，开启显示“开” */
 .tgl input:not(#themeAutoToggle):not(:checked) + .tgl-slider::before {
   content: "关";
@@ -920,16 +1009,35 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 /* 自动开关：圆纽显示“自” */
 #themeAutoToggle + .tgl-slider::before {
   content: "自";
-  font-size: 9px; /* 中文字体稍微调小一点，适应圆纽 */
+  font-size: 9px;
 }
 #themeAutoToggle:checked + .tgl-slider::before {
   color: #27ae60;
 }
+/* 座位表设置：过道开关（开/关） */
+#seatManageAisleToggle:not(:checked) + .tgl-slider::before{content:"关";}
+#seatManageAisleToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}
 
+/* 座位表设置：讲台位置开关（上/下） */
+#seatManageOrderToggle:not(:checked) + .tgl-slider::before {
+  content: "下";
+}
+#seatManageOrderToggle:checked + .tgl-slider::before {
+  content: "上";
+  color: #27ae60;
+}
 @media print{
-  .control-bar,.seat-tools,#saveStatus,#diagPanel,.bottom-nav,.sub-nav{display:none!important}
+  .control-bar,.seat-tools,#saveStatus,.bottom-nav,.sub-nav{display:none!important}
   body{background:#fff!important;padding:20px}
   .card{background:#fff!important;box-shadow:none!important;border:1px solid #ddd!important}
   .admin-fold{break-inside:avoid}
   .admin-fold[open] > summary{background:#f5f5f5!important}
+}
+/* 强制覆盖：座位表设置-讲台位置开关（上/下） */
+#seatManageOrderToggle:not(:checked) + .tgl-slider::before {
+  content: "下" !important;
+}
+#seatManageOrderToggle:checked + .tgl-slider::before {
+  content: "上" !important;
+  color: #27ae60 !important;
 }

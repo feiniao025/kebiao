@@ -176,7 +176,7 @@ window.showSaveStatus = function (msg, isError, isInfo) {
   if (!el) return;
   el.textContent = msg;
   el.classList.toggle('err', !!isError);
-  el.classList.toggle('info', !!isInfo); // ★ 新增：控制蓝色样式
+  el.classList.toggle('info', !!isInfo); // ★ 控制蓝色样式
   el.classList.add('show');
   if (window.saveStatusTimer) clearTimeout(window.saveStatusTimer);
   window.saveStatusTimer = setTimeout(() => el.classList.remove('show'), 2500); // 稍微延长到2.5秒方便阅读
@@ -428,6 +428,9 @@ window.hideAllContainers = function () {
 
 /* 说明：renderContent 内引用各模块的 renderXxx，通过全局函数名访问 */
 window.renderContent = function () {
+  // ★ 切页 / 切子标签时先关闭所有弹窗，避免残留
+  document.querySelectorAll('.seat-pop').forEach(function (el) { el.style.display = 'none'; });
+
   window.hideAllContainers();
   if (window.pageSub) window.pageSub.style.display = 'none';
 

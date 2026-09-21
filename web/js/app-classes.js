@@ -4,12 +4,19 @@
    - 课服 1 / 课服 2 按「每月 4 周循环」设置
    - 课服编辑合并视图（课服1、课服2 一起编辑）
    - 值日项目：单行编辑（点哪行改哪行）
+   - 座位表支持导入花名册（按讲台上/下自动排座，人数不足时提示）
+   - 座位表卡片「菜单」：使用 #seatManagePop 标准弹窗
+   - 课表 / 值日表 / 座位表 头部统一两行布局
+   - 值日表头部显示「今日值日组长」（当前星期列的最后一人）
    ============================================================ */
 
 /* ---------- 课服 4 周循环状态 ---------- */
 window.currentCSClassId = '';
 window.currentCSPeriods = [];
 window.currentCSTabIdx = 0;
+
+/* ---------- 座位表花名册相关全局变量 ---------- */
+window.maxRosterCount = 0; // 座位表当前班级花名册人数
 
 /* ---------- 座位标题 / 班级筛选 ---------- */
 window.updateSeatCardTitle = function () {
@@ -19,6 +26,8 @@ window.updateSeatCardTitle = function () {
     const name = classes[0].name || formatClassName(classes[0].grade || 7, classes[0].class_num || 1);
     el.textContent = name + ' · 座位表';
   } else el.textContent = '';
+
+  if (typeof ensureSeatCardMenuBtn === 'function') ensureSeatCardMenuBtn();
 };
 
 window.renderFilterButtons = function () {
@@ -43,14 +52,17 @@ window.applyFilter = function (fv) {
 };
 
 /* ---------- 课服 4 周辅助 ---------- */
-
-// 获取当前是月内第几周（1-4，29/30/31 日回到第 1 周循环）
 window.getWeekOfMonth = function () {
   const d = new Date();
-  return (Math.floor((d.getDate() - 1) / 7) % 4) + 1;
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const date = d.getDate();
+  const firstDay = new Date(year, month, 1);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const week = Math.floor((date + firstWeekday - 1) / 7) + 1;
+  return ((week - 1) % 4) + 1;
 };
 
-// 判断某班级的某一节（pIdx）是否是"课服"节次（以"课服"开头）
 window.isClassServicePeriod = function (cls, pIdx) {
   const pKey = cls.class_id + '_cell_' + (pIdx * 6);
   const pCell = cellData[pKey];
@@ -60,7 +72,6 @@ window.isClassServicePeriod = function (cls, pIdx) {
   return /^课服/.test(String(name));
 };
 
-// 找到班级里所有的"课服"节次索引
 window.findClassServicePeriods = function (cls) {
   const list = [];
   const periodCount = (cls.period_count && cls.period_count > 0)
@@ -69,6 +80,35 @@ window.findClassServicePeriods = function (cls) {
     if (isClassServicePeriod(cls, pIdx)) list.push(pIdx);
   }
   return list;
+};
+
+/* ---------- 座位表导入花名册相关逻辑 ---------- */
+
+// 更新“导入花名册”按钮的显示状态
+window.updateSeatImportRosterBtnVisibility = function () {
+  const btn = $('seatImportRosterBtn');
+  if (!btn) return;
+  const seatCount = seat.students.filter(s => s && s.name && String(s.name).trim()).length;
+  const shouldShow = (seatCount === 0) || (seatCount < window.maxRosterCount);
+  btn.style.display = shouldShow ? '' : 'none';
+};
+
+// 刷新「座位表当前班级」的花名册人数
+// 座位表标题用的是 classes[0]，这里就取 classes[0] 的花名册
+window.refreshMaxRosterCount = async function () {
+  if (!classes || classes.length === 0) {
+    window.maxRosterCount = 0;
+    updateSeatImportRosterBtnVisibility();
+    return;
+  }
+  const cls = classes[0];
+  let count = 0;
+  try {
+    const resp = await API.listRoster(cls.class_id);
+    count = (resp.students || []).length;
+  } catch (e) { /* 忽略单个班级失败 */ }
+  window.maxRosterCount = count;
+  updateSeatImportRosterBtnVisibility();
 };
 
 /* ---------- 课表渲染 ---------- */
@@ -129,15 +169,18 @@ window.renderClassCard = function (container, cls) {
   card.className = 'card class-card';
   card.dataset.class = cls.class_id;
 
+  // ★ 统一两行头部
   const header = document.createElement('div');
-  header.className = 'card-header';
+  header.className = 'card-header card-header-2row';
   header.innerHTML =
-    '<h2>' + escapeHtml(cls.name) + ' · 课程表' +
-    (cls.badge ? '<span class="badge">' + escapeHtml(cls.badge) + '</span>' : '') +
-    '</h2>' +
-    '<div class="legend">' +
-    '<span class="legend-items" data-legend-items="' + escapeHtml(cls.class_id) + '"></span>' +
-    '<button class="mini-toggle" data-class-menu="' + escapeHtml(cls.class_id) + '">菜单</button>' +
+    '<div class="card-hdr-row1">' +
+      '<h2>' + escapeHtml(cls.name) + ' · 课程表' +
+        (cls.badge ? '<span class="badge">' + escapeHtml(cls.badge) + '</span>' : '') +
+      '</h2>' +
+      '<button class="mini-toggle" data-class-menu="' + escapeHtml(cls.class_id) + '">菜单</button>' +
+    '</div>' +
+    '<div class="card-hdr-row2">' +
+      '<span class="legend-items" data-legend-items="' + escapeHtml(cls.class_id) + '"></span>' +
     '</div>';
   card.appendChild(header);
 
@@ -152,8 +195,6 @@ window.renderClassCard = function (container, cls) {
 
   for (let pIdx = 0; pIdx < periodCount; pIdx++) {
     const tr = document.createElement('tr');
-
-    // 判断这一节是不是"课服"，若是则按当前周读取
     const isCS = isClassServicePeriod(cls, pIdx);
     const curWeek = isCS ? getWeekOfMonth() : 1;
 
@@ -253,11 +294,22 @@ window.refreshCellStyle = function (td) {
   const subjEl = td.querySelector('.cell-subject');
   if (!subjEl) return;
   const t = subjEl.textContent.trim();
-  if (!t || t === '—') { td.classList.add('empty'); return; }
+  
   const cls = td.dataset.classId;
   const key = cls + '_cell_' + td.dataset.idx;
   const data = cellData[key] || {};
-  if (data.bg_color && data.bg_color !== '0') td.setAttribute('data-bg-color', data.bg_color);
+  const bg = data.bg_color && data.bg_color !== '0' ? data.bg_color : null;
+
+  // 只有当「科目为空」且「没有设置背景颜色」时，才标记为空
+  if ((!t || t === '—') && !bg) {
+    td.classList.add('empty');
+    return;
+  }
+  
+  // 有背景颜色则强制应用
+  if (bg) {
+    td.setAttribute('data-bg-color', bg);
+  }
 };
 
 window.updateClassLegend = function (classId) {
@@ -269,8 +321,8 @@ window.updateClassLegend = function (classId) {
   card.querySelectorAll('.schedule-table tbody td[data-type="lesson"]').forEach(td => {
     const subjEl = td.querySelector('.cell-subject');
     if (!subjEl) return;
-    const subj = subjEl.textContent.trim();
-    if (!subj || subj === '—') return;
+    let subj = subjEl.textContent.trim();
+    if (!subj || subj === '—') subj = '空白'; 
     const bg = td.getAttribute('data-bg-color');
     if (bg && bg !== '0' && !seen[subj]) {
       seen[subj] = true;
@@ -281,13 +333,16 @@ window.updateClassLegend = function (classId) {
   const colorOrder = ['1', '2', '3', '4', '5', '6'];
   const groups = [];
   colorOrder.forEach(c => { if (colorMap[c] && colorMap[c].length > 0) groups.push({ color: c, subjects: colorMap[c] }); });
-  if (groups.length === 0) { container.innerHTML = '<span class="legend-text">未设置高亮</span>'; return; }
+  if (groups.length === 0) { container.innerHTML = '<span class="seat-size-info" id="seatSizeInfo">未设置高亮</span>'; return; }
   container.innerHTML = groups.map(g => {
     const idx = parseInt(g.color, 10);
     const bg = (idx > 0 && idx < COLOR_BG.length) ? COLOR_BG[idx] : '#f9d0d0';
     const bd = (idx > 0 && idx < COLOR_BD.length) ? COLOR_BD[idx] : '#f0b8b8';
-    return '<span class="dot" style="background:' + bg + ';border-color:' + bd + '"></span><span class="legend-text">含「' + g.subjects.join('、') + '」的科目</span>';
-  }).join('<span class="sep">·</span>');
+    return '<span class="legend-group">' +
+    '<span class="dot" style="background:' + bg + ';border-color:' + bd + '"></span>' +
+    '<span class="seat-size-info">含「' + g.subjects.join('、') + '」的科目</span>' +
+  '</span>';
+}).join('');
 };
 
 window.updateAllLegends = function () { classes.forEach(c => updateClassLegend(c.class_id)); };
@@ -313,7 +368,6 @@ window.openCellPop = function (td) {
     $('cellPopPeriodName').value = nameEl ? nameEl.textContent : '';
     $('cellPopPeriodTime').value = timeEl ? timeEl.textContent : '';
   } else {
-    // 若是课服单元格，标题加"第 N 周"
     let titleText = '编辑课程';
     if (td.dataset.isCs === '1') titleText = '编辑课服 · 第' + (td.dataset.csWeek || '?') + '周';
     $('cellPopTitle').textContent = titleText;
@@ -367,7 +421,7 @@ window.setDutyConfig = async function (classId, rows, note) {
   });
   cellData[storageId + '_cell_-1'] = {
     class_id: storageId, cell_index: -1, cell_type: 'duty_config',
-    period_name: JSON.stringify({ rows: rows }), subject: '', teacher: '', bg_color: '0'
+    period_name: JSON.stringify({ rows: rows }), subject: '', bg_color: '0'
   };
   await apiCall(API.upsertCell, {
     class_id: storageId, cell_index: -2, cell_type: 'duty_note',
@@ -376,7 +430,7 @@ window.setDutyConfig = async function (classId, rows, note) {
   });
   cellData[storageId + '_cell_-2'] = {
     class_id: storageId, cell_index: -2, cell_type: 'duty_note',
-    period_name: '', subject: note, teacher: '', bg_color: '0'
+    period_name: '', subject: note, bg_color: '0'
   };
 };
 
@@ -404,11 +458,46 @@ window.renderDuty = function () {
   const card = document.createElement('div');
   card.className = 'card class-card duty-card';
 
+  // ===== 新增：计算今日值日组长 =====
+  let leaderText = '今日值日组长：无';
+  const today = new Date().getDay(); // 0是周日，1-5是周一到周五，6是周六
+  if (today >= 1 && today <= 5) {
+    let lastStudent = '';
+    const rows = getDutyRows(classId);
+    // 从最后一行（最后一项值日）开始往上找
+    for (let row = rows - 1; row >= 0; row--) {
+      // 值日表：row * 6 是项目名，row * 6 + today 是当前星期对应的格子
+      const idx = row * 6 + today; 
+      const cKey = storageId + '_cell_' + idx;
+      const cCell = cellData[cKey];
+      if (cCell && cCell.subject) {
+        const students = cCell.subject.split('\n').map(s => s.trim()).filter(Boolean);
+        if (students.length > 0) {
+          // 取当前单元格（当前星期列）的最后一人
+          lastStudent = students[students.length - 1];
+          break; // 找到了就跳出循环
+        }
+      }
+    }
+    if (lastStudent) {
+      leaderText = '今日值日组长：' + escapeHtml(lastStudent);
+    }
+  } else {
+    leaderText = '今日周末，无值日安排';
+  }
+
+  // ★ 统一两行头部
   const header = document.createElement('div');
-  header.className = 'card-header';
+  header.className = 'card-header card-header-2row';
   header.innerHTML =
-    '<h2>' + escapeHtml(title) + '</h2>' +
-    '<div class="legend"><button class="mini-toggle" id="dutyCardMenuBtn">菜单</button></div>';
+    '<div class="card-hdr-row1">' +
+      '<h2>' + escapeHtml(title) + '</h2>' +
+      '<button class="mini-toggle" id="dutyCardMenuBtn">菜单</button>' +
+    '</div>' +
+    '<div class="card-hdr-row2">' +
+      // 按照要求修改了这里：将 legend-text 改为 seat-size-info 并加上 id
+      '<span class="seat-size-info" id="seatSizeInfo">' + leaderText + '</span>' +
+    '</div>';
   card.appendChild(header);
 
   const menuBtn = header.querySelector('#dutyCardMenuBtn');
@@ -605,7 +694,6 @@ window.openClassManagePop = function (cls) {
   };
   $('classManageError').textContent = '';
 
-  // 若该班级存在"课服"节次，显示编辑按钮
   const csPeriods = findClassServicePeriods(cls);
   const csBtn = $('classManageEditCsBtn');
   if (csBtn) {
@@ -624,7 +712,6 @@ window.openClassManagePop = function (cls) {
 };
 
 /* ---------- 课服 4 周编辑弹窗（合并视图） ---------- */
-
 window.openClassServicePop = function (cls) {
   const csPeriods = findClassServicePeriods(cls);
   if (csPeriods.length === 0) { alert('该班级没有「课服」节次'); return; }
@@ -636,7 +723,6 @@ window.openClassServicePop = function (cls) {
   $('classServiceTitle').textContent = '编辑课服 · ' + cls.name;
   $('classServiceError').textContent = '';
 
-  // 合并视图，不再需要 tab 切换
   const tabHeader = document.querySelector('#classServicePop .tab-header');
   if (tabHeader) tabHeader.style.display = 'none';
 
@@ -649,7 +735,7 @@ window.renderClassServiceTable = function () {
   if (!cls) return;
   const body = $('classServiceBody');
   const DAYS = ['周一', '周二', '周三', '周四', '周五'];
-  const csPeriods = currentCSPeriods; // [pIdx1, pIdx2, ...]
+  const csPeriods = currentCSPeriods;
 
   let html = '<div style="overflow-x:auto;"><table class="cs-table">';
   html += '<thead><tr><th>周次</th>';
@@ -669,7 +755,6 @@ window.renderClassServiceTable = function () {
         const teacher = (cell && cell.cell_type === 'lesson') ? (cell.teacher || '') : '';
         const val = (subj || teacher) ? (subj + (teacher ? '/' + teacher : '')) : '';
 
-        // 取节次名（课服1 / 课服2），显示时去掉"课服"前缀，只留 1、2
         const pKey = cls.class_id + '_cell_' + (pIdx * 6);
         const pCell = cellData[pKey];
         let pName = (pCell && pCell.period_name)
@@ -918,6 +1003,9 @@ window.renderSeats = function () {
       grid.appendChild(div);
     }
   }
+
+  updateSeatImportRosterBtnVisibility();
+  ensureSeatCardMenuBtn();
 };
 
 window.startSeatPress = function (el, idx, x, y) {
@@ -1044,6 +1132,7 @@ window.reloadSeatData = async function () {
     if (btn) { btn.textContent = seat.order === 'asc' ? '讲台上' : '讲台下'; btn.classList.toggle('active', seat.order === 'desc'); }
     updateAisleBtn();
     renderSeats();
+    refreshMaxRosterCount();
   } catch { /* ignore */ }
 };
 
@@ -1057,6 +1146,82 @@ window.resizeSeat = async function (dr, dc) {
     showSaveStatus('座位已调整', false);
     scheduleAutoSync();
   } catch (err) { showSaveStatus(err.message || '调整失败', true); }
+};
+
+/* ============================================================
+   座位表卡片「菜单」：使用 index.html 里的 #seatManagePop
+   ============================================================ */
+
+// 确保座位表卡片「菜单」按钮的点击事件
+window.ensureSeatCardMenuBtn = function () {
+  const btn = $('seatCardMenuBtn');
+  if (!btn) return;
+  btn.onclick = function (e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    try {
+      openSeatSettingsPop();
+    } catch (err) {
+      console.error('[座位表菜单] 打开失败：', err);
+      alert('打开座位表设置失败：' + (err.message || err));
+    }
+  };
+};
+
+// 打开座位表设置弹窗（使用 #seatManagePop）
+window.openSeatSettingsPop = function () {
+  if (!classes || classes.length === 0) { alert('请先在「班级 → 课表」中创建班级'); return; }
+  const baseCls = classes[0];
+
+  // 年级
+  const gradeSel = $('seatManageGrade');
+  if (typeof fillGradeSelect === 'function') fillGradeSelect(gradeSel, baseCls.grade || 7);
+
+  // 班级
+  const numSel = $('seatManageNum');
+  if (typeof fillClassNumSelect === 'function') fillClassNumSelect(numSel, baseCls.class_num || 1);
+
+  // 行数
+  const rowsSel = $('seatManageRows');
+  rowsSel.innerHTML = '';
+  for (let n = 2; n <= 12; n++) {
+    const o = document.createElement('option');
+    o.value = String(n);
+    o.textContent = n + ' 行';
+    if (n === seat.rows) o.selected = true;
+    rowsSel.appendChild(o);
+  }
+
+  // 列数
+  const colsSel = $('seatManageCols');
+  colsSel.innerHTML = '';
+  for (let n = 2; n <= 10; n++) {
+    const o = document.createElement('option');
+    o.value = String(n);
+    o.textContent = n + ' 列';
+    if (n === seat.cols) o.selected = true;
+    colsSel.appendChild(o);
+  }
+
+  // 过道
+  const hasAisle = !!(seat.aisle && String(seat.aisle).trim());
+  const aisleToggle = $('seatManageAisleToggle');
+  const aisleRow = $('seatManageAisleRow');
+  const aisleInput = $('seatManageAisleInput');
+  aisleToggle.checked = hasAisle;
+  aisleInput.value = hasAisle ? String(seat.aisle) : '';
+  aisleRow.style.display = hasAisle ? 'flex' : 'none';
+  aisleToggle.onchange = () => {
+    const on = aisleToggle.checked;
+    aisleRow.style.display = on ? 'flex' : 'none';
+    if (on && !aisleInput.value.trim()) aisleInput.value = '2+4+1';
+    if (on) setTimeout(() => aisleInput.focus(), 60);
+  };
+
+  // 讲台位置（开 = 讲台上，关 = 讲台下）
+  $('seatManageOrderToggle').checked = (seat.order === 'asc');
+
+  $('seatManageError').textContent = '';
+  $('seatManagePop').style.display = 'flex';
 };
 
 /* ---------- 导入导出 ---------- */
@@ -1218,18 +1383,28 @@ window.openImportTargetPop = function (mode) {
   fillClassNumSelect(numSel, first.class_num || 1);
 
   const h3 = document.querySelector('#importTargetPop h3');
-  if (h3) h3.textContent = (importTargetMode === 'roster') ? '选择花名册导入目标班级' : '选择课程表导入目标班级';
   const hint = $('importTargetHint');
-  if (hint) hint.textContent = (importTargetMode === 'roster')
-    ? '默认导入到所选班级；勾选下方「全部班级」则按 Excel 里的「班级」列自动分班'
-    : 'Excel 文件第一个工作表的课程将导入到所选班级';
-
   const allRow = $('importRosterAllRow');
   const allCb = $('importRosterAll');
   const gradeHint = $('importRosterGradeHint');
-  const isRoster = (importTargetMode === 'roster');
-  if (allRow) allRow.style.display = isRoster ? 'flex' : 'none';
-  if (gradeHint) gradeHint.style.display = 'none';
+
+  if (importTargetMode === 'seat_roster') {
+    if (h3) h3.textContent = '选择花名册导入座位表的班级';
+    if (hint) hint.textContent = '选择班级后，该班级花名册的学生将按顺序自动填入座位表';
+    if (allRow) allRow.style.display = 'none';
+    if (gradeHint) gradeHint.style.display = 'none';
+  } else if (importTargetMode === 'roster') {
+    if (h3) h3.textContent = '选择花名册导入目标班级';
+    if (hint) hint.textContent = '默认导入到所选班级；勾选下方「全部班级」则按 Excel 里的「班级」列自动分班';
+    if (allRow) allRow.style.display = 'flex';
+    if (gradeHint) gradeHint.style.display = 'none';
+  } else {
+    if (h3) h3.textContent = '选择课程表导入目标班级';
+    if (hint) hint.textContent = 'Excel 文件第一个工作表的课程将导入到所选班级';
+    if (allRow) allRow.style.display = 'none';
+    if (gradeHint) gradeHint.style.display = 'none';
+  }
+
   gradeSel.disabled = false;
   numSel.disabled = false;
 
@@ -1238,7 +1413,7 @@ window.openImportTargetPop = function (mode) {
     allCb.onchange = () => {
       const checked = allCb.checked;
       numSel.disabled = checked;
-      if (gradeHint) gradeHint.style.display = (checked && isRoster) ? '' : 'none';
+      if (gradeHint) gradeHint.style.display = (checked && importTargetMode === 'roster') ? '' : 'none';
       errEl.textContent = '';
     };
   }
@@ -1563,7 +1738,6 @@ window.doExportScheduleExcel = async function (list) {
       }
       refreshCellStyle(td);
       updateAllLegends();
-      // ★ 课服格子保存后重渲染整个课表，确保"第N周"标签与当前周数据同步
       if (isCsCell) renderSchedule();
     }
     renderWeekHighlight();
@@ -1660,7 +1834,7 @@ window.doExportScheduleExcel = async function (list) {
     errEl.textContent = '';
     if (raw) {
       const parts = raw.split('+').map(s => parseInt(s.trim(), 10));
-      if (parts.length < 2) { errEl.textContent = '至少需要 2 段，如 3+5'; return; }
+      if (parts.length < 2) { errEl.textContent = '至少需要 2 段，如 2+4+1'; return; }
       if (parts.some(n => isNaN(n) || n < 1)) { errEl.textContent = '格式错误，每段应为数字'; return; }
       const sum = parts.reduce((a, b) => a + b, 0);
       if (sum !== seat.cols) { errEl.textContent = '段数之和 ' + sum + ' 需等于列数 ' + seat.cols; return; }
@@ -1757,6 +1931,108 @@ window.doExportScheduleExcel = async function (list) {
     } catch (e) { $('dutyManageError').textContent = e.message || '清空失败'; }
   };
 
+  /* ============ 座位表设置弹窗（#seatManagePop） ============ */
+  const seatManageClose = $('seatManageClose');
+  if (seatManageClose) seatManageClose.onclick = () => { $('seatManagePop').style.display = 'none'; };
+  const seatManageCancel = $('seatManageCancel');
+  if (seatManageCancel) seatManageCancel.onclick = () => { $('seatManagePop').style.display = 'none'; };
+  const seatManagePopEl = $('seatManagePop');
+  if (seatManagePopEl) seatManagePopEl.addEventListener('click', e => {
+    if (e.target === seatManagePopEl) seatManagePopEl.style.display = 'none';
+  });
+
+  const seatManageSave = $('seatManageSave');
+  if (seatManageSave) seatManageSave.onclick = async () => {
+    const errEl = $('seatManageError');
+    errEl.textContent = '';
+    const grade = parseInt($('seatManageGrade').value, 10);
+    const classNum = parseInt($('seatManageNum').value, 10);
+    const newRows = parseInt($('seatManageRows').value, 10);
+    const newCols = parseInt($('seatManageCols').value, 10);
+    const aisleOn = $('seatManageAisleToggle').checked;
+    const stageUp = $('seatManageOrderToggle').checked;
+
+    if (!grade || !classNum) { errEl.textContent = '请选择年级和班级'; return; }
+
+    // 过道校验
+    let newAisle = '';
+    if (aisleOn) {
+      let raw = ($('seatManageAisleInput').value || '').trim().replace(/\s+/g, '');
+      if (!raw) raw = '2+4+1';
+      const parts = raw.split('+').map(s => parseInt(s, 10));
+      if (parts.length < 2 || parts.some(n => isNaN(n) || n < 1)) {
+        errEl.textContent = '过道格式错误，示例：2+4+1';
+        return;
+      }
+      const sum = parts.reduce((a, b) => a + b, 0);
+      if (sum !== newCols) {
+        errEl.textContent = '过道段数之和 ' + sum + ' 需等于列数 ' + newCols;
+        return;
+      }
+      newAisle = parts.join('+');
+    }
+
+    seatManageSave.disabled = true;
+    seatManageSave.style.opacity = '.7';
+    try {
+      const baseCls = classes[0];
+      const cls = classes.find(c => c.class_id === baseCls.class_id);
+
+      // 1) 年级 / 班级
+      if (cls && (grade !== cls.grade || classNum !== cls.class_num)) {
+        if (classes.some(c => c.class_id !== cls.class_id && c.grade === grade && c.class_num === classNum)) {
+          errEl.textContent = '该班级已存在';
+          seatManageSave.disabled = false; seatManageSave.style.opacity = '';
+          return;
+        }
+        const newName = formatClassName(grade, classNum);
+        await apiCall(API.updateClass, cls.class_id, {
+          name: newName,
+          badge: cls.badge || '',
+          grade: grade,
+          class_num: classNum,
+          period_count: cls.period_count || 8,
+          custom_name: '',
+        });
+        cls.name = newName;
+        cls.grade = grade;
+        cls.class_num = classNum;
+      }
+
+      // 2) 行列
+      if (newRows !== seat.rows || newCols !== seat.cols) {
+        await apiCall(API.resize, newRows, newCols);
+      }
+
+      // 3) 过道
+      const oldAisle = String(seat.aisle || '');
+      if (newAisle !== oldAisle) {
+        await apiCall(API.setAisle, newAisle);
+      }
+
+      // 4) 讲台方向
+      const newOrder = stageUp ? 'asc' : 'desc';
+      if (newOrder !== seat.order) {
+        await apiCall(API.setOrder, newOrder);
+      }
+
+      // 5) 刷新
+      await reloadSeatData();
+      if (typeof updateAisleBtn === 'function') updateAisleBtn();
+      updateSeatCardTitle();
+      renderSchedule();
+      showSaveStatus('座位表设置已保存', false);
+      scheduleAutoSync();
+      $('seatManagePop').style.display = 'none';
+    } catch (err) {
+      errEl.textContent = err.message || '保存失败';
+    } finally {
+      seatManageSave.disabled = false;
+      seatManageSave.style.opacity = '';
+    }
+  };
+
+  /* ============ 导出课程表 ============ */
   const exportScheduleAll = $('exportScheduleAll');
   if (exportScheduleAll) exportScheduleAll.onchange = () => {
     const checked = exportScheduleAll.checked;
@@ -1787,30 +2063,117 @@ window.doExportScheduleExcel = async function (list) {
     $('exportSchedulePop').style.display = 'none';
   };
 
+  /* ============ 导入目标选择 ============ */
   const importTargetClose = $('importTargetClose');
   if (importTargetClose) importTargetClose.onclick = () => { $('importTargetPop').style.display = 'none'; };
   const importTargetPopEl = $('importTargetPop');
   if (importTargetPopEl) importTargetPopEl.addEventListener('click', e => { if (e.target === importTargetPopEl) importTargetPopEl.style.display = 'none'; });
+
   const importTargetConfirm = $('importTargetConfirm');
   if (importTargetConfirm) importTargetConfirm.onclick = () => {
     const errEl = $('importTargetError');
     errEl.textContent = '';
-    const allCb = $('importRosterAll');
-    if (importTargetMode === 'roster' && allCb && allCb.checked) {
-      const gradeForAll = parseInt($('importTargetGrade').value, 10) || 0;
-      $('importTargetPop').style.display = 'none';
-      pickExcelFile((file) => importRosterExcel(file, null, gradeForAll));
-      return;
-    }
     const grade = parseInt($('importTargetGrade').value, 10);
     const classNum = parseInt($('importTargetNum').value, 10);
     const cls = classes.find(c => c.grade === grade && c.class_num === classNum);
-    if (!cls) { errEl.textContent = '该班级不存在，请先创建'; return; }
+
+    if (importTargetMode !== 'roster' && !cls) { errEl.textContent = '该班级不存在，请先创建'; return; }
+
     $('importTargetPop').style.display = 'none';
-    if (importTargetMode === 'roster') pickExcelFile((file) => importRosterExcel(file, cls, 0));
-    else pickExcelFile((file) => importScheduleExcel(file, cls));
+
+    if (importTargetMode === 'roster') {
+      const allCb = $('importRosterAll');
+      if (allCb && allCb.checked) {
+        const gradeForAll = parseInt($('importTargetGrade').value, 10) || 0;
+        pickExcelFile((file) => importRosterExcel(file, null, gradeForAll));
+        return;
+      }
+      pickExcelFile((file) => importRosterExcel(file, cls, 0));
+    } else if (importTargetMode === 'seat_roster') {
+      importRosterToSeat(cls.class_id);
+    } else {
+      pickExcelFile((file) => importScheduleExcel(file, cls));
+    }
   };
 
+  /* ============ 座位表导入花名册 ============ */
+  const seatImportRosterBtn = $('seatImportRosterBtn');
+  if (seatImportRosterBtn) {
+    seatImportRosterBtn.onclick = () => {
+      if (classes.length === 0) { alert('请先在「班级 → 课表」中创建班级'); return; }
+      openImportTargetPop('seat_roster');
+    };
+  }
+
+  window.importRosterToSeat = async function (classId) {
+    const cls = classes.find(c => c.class_id === classId);
+    if (!cls) return;
+
+    try {
+      const resp = await API.listRoster(classId);
+      const roster = resp.students || [];
+      if (roster.length === 0) {
+        alert('该班级花名册暂无学生，请先在「学生 → 花名册」中添加学生');
+        return;
+      }
+
+      if (!confirm('即将从「' + cls.name + '」导入 ' + roster.length + ' 名学生到座位表。\n\n导入后，当前座位表上的学生将被覆盖。确认继续吗？')) {
+        return;
+      }
+
+      showSaveStatus('正在导入花名册...', false);
+
+      for (let r = 0; r < seat.rows; r++) {
+        for (let c = 0; c < seat.cols; c++) {
+          const idx = r * seat.cols + c;
+          const s = seat.students[idx];
+          if (s && s.name) {
+            try { await apiCall(API.deleteStudent, r, c); } catch (e) {}
+          }
+        }
+      }
+
+      for (let i = 0; i < seat.rows * seat.cols; i++) {
+        seat.students[i] = { name: '', gender: '', id_card: '', tel1: '', tel2: '', address: '' };
+      }
+
+      const targets = [];
+      for (let r = 0; r < seat.rows; r++) {
+        for (let c = 0; c < seat.cols; c++) {
+          targets.push({ r, c });
+        }
+      }
+      if (seat.order === 'desc') {
+        targets.reverse();
+      }
+
+      let idx = 0;
+      for (const t of targets) {
+        if (idx >= roster.length) break;
+        const stu = roster[idx++];
+        await apiCall(API.updateStudent, {
+          seat_row: t.r,
+          seat_col: t.c,
+          name: stu.name,
+          gender: stu.gender,
+          id_card: stu.id_card || '',
+          tel1: stu.tel1 || '',
+          tel2: stu.tel2 || '',
+          address: stu.address || ''
+        });
+      }
+
+      await reloadSeatData();
+      showSaveStatus('成功导入 ' + roster.length + ' 名学生', false);
+      scheduleAutoSync();
+      refreshMaxRosterCount();
+
+    } catch (err) {
+      showSaveStatus('导入失败: ' + (err.message || ''), true);
+    }
+  };
+
+  /* ============ 导入 / 导出 按钮 ============ */
   const exportExcelBtn = $('exportExcelBtn');
   if (exportExcelBtn) exportExcelBtn.onclick = () => {
     if (activeSubTab === 'seat') exportSeatExcel();
@@ -1857,7 +2220,7 @@ window.doExportScheduleExcel = async function (list) {
     finally { wrap.remove(); }
   };
 
-  /* 课服编辑弹窗 */
+  /* ============ 课服编辑弹窗 ============ */
   const csClose = $('classServiceClose');
   if (csClose) csClose.onclick = () => { $('classServicePop').style.display = 'none'; };
   const csPopEl = $('classServicePop');
@@ -1867,7 +2230,7 @@ window.doExportScheduleExcel = async function (list) {
   const csClearBtn = $('classServiceClear');
   if (csClearBtn) csClearBtn.onclick = () => clearClassService();
 
-  /* 班级拖拽 document 级事件 */
+  /* ============ 班级拖拽 document 级事件 ============ */
   document.addEventListener('mousemove', (e) => {
     if (classPressState) {
       const dx = e.clientX - classPressState.x;
@@ -1902,7 +2265,7 @@ window.doExportScheduleExcel = async function (list) {
     if (classDrag) finishClassDrag();
   });
 
-  /* 座位拖拽 document 级事件 */
+  /* ============ 座位拖拽 document 级事件 ============ */
   document.addEventListener('mousemove', e => onSeatMove(e.clientX, e.clientY));
   document.addEventListener('mouseup', onSeatEnd);
   window.addEventListener('blur', onSeatEnd);
