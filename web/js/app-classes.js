@@ -950,10 +950,15 @@ window.renderSeats = function () {
   const hasAisle = segments.length > 1;
   grid.style.gridTemplateColumns = getGridColumns(segments);
 
-  let maleCount = 0, femaleCount = 0;
-  seat.students.forEach(s => { if (!s || !s.name) return; if (s.gender === '男') maleCount++; else if (s.gender === '女') femaleCount++; });
+  let maleCount = 0, femaleCount = 0, totalCount = 0;
+  seat.students.forEach(s => {
+    if (!s || !s.name || !String(s.name).trim()) return;
+    totalCount++;
+    if (s.gender === '男') maleCount++;
+    else if (s.gender === '女') femaleCount++;
+  });
   const sizeEl = $('seatSizeInfo');
-  if (sizeEl) sizeEl.textContent = seat.rows + '行×' + seat.cols + '列 · 男' + maleCount + ' 女' + femaleCount;
+  if (sizeEl) sizeEl.textContent = seat.rows + '行×' + seat.cols + '列 · 男' + maleCount + ' 女' + femaleCount + ' (共' + totalCount + '人)';
   if (seat.order === 'asc') stage.parentNode.insertBefore(stage, grid);
   else stage.parentNode.insertBefore(stage, grid.nextSibling);
   grid.innerHTML = '';
