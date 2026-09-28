@@ -131,6 +131,23 @@ func (s *StudentService) SaveScores(userID, examID int64, scores []model.ExamSco
 	return s.db.BatchUpsertExamScores(userID, examID, scores)
 }
 
+// PruneExamScores 清理该考试中不在花名册里的成绩
+func (s *StudentService) PruneExamScores(userID, examID int64) error {
+	exam, err := s.db.GetExamByID(userID, examID)
+	if err != nil {
+		return err
+	}
+	roster, err := s.db.GetRosterStudents(userID, exam.ClassID)
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(roster))
+	for _, r := range roster {
+		names = append(names, r.Name)
+	}
+	return s.db.PruneExamScores(examID, names)
+}
+
 // SaveRankOrder 保存名次表手动排序
 func (s *StudentService) SaveRankOrder(userID, examID int64, names []string) error {
 	if _, err := s.db.GetExamByID(userID, examID); err != nil {

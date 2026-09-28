@@ -769,8 +769,27 @@ window.openScoresPop = async function (examId) {
     const clsName = (classes.find(c => c.class_id === exam.class_id) || {}).name || '';
     $('scoresPopTitle').textContent = exam.name + ' · ' + exam.subject + ' （' + clsName + '）';
 
+    // ★ 过滤掉不在当前花名册里的失效成绩（比如改名后残留的旧数据）
+    const rosterNames = new Set(roster.map(s => s.name));
+    const validScores = scores.filter(s => rosterNames.has(s.student_name));
+    // 用过滤后的数据重新计算统计，覆盖后端传来的 stats
+    let validCount = 0, validAbsent = 0, validSum = 0;
+    validScores.forEach(s => {
+        if (s.absent) { validAbsent++; }
+        else { validSum += s.score; validCount++; }
+    });
+    if (detail.stats) {
+        detail.stats.count = validCount;
+        detail.stats.absent_count = validAbsent;
+        detail.stats.average = validCount ? (validSum / validCount) : 0;
+    }
+
     const passLine = exam.pass_score, mediumLine = exam.medium_score;
     const goodLine = exam.good_score, excellentLine = exam.excellent_score, fullScore = exam.full_score;
+
+    // ★ 修复：scoreMap 提前到最外层，供全函数共用
+    const scoreMap = {};
+    validScores.forEach(s => { scoreMap[s.student_name] = s; });
 
     const bands = [
       { label: '<' + passLine, name: '不及格', color: '#f28b82', min: -Infinity, max: passLine },
@@ -804,10 +823,10 @@ window.openScoresPop = async function (examId) {
         <div id="chartDistribution" style="width:100%;height:300px;"></div>
       </div>
       <div id="tab-content-rank" class="tab-pane">
-        <div class="rank-action-bar">
-          <button id="rankExportImgBtn" type="button" class="btn-scores-import" style="flex:0 0 auto;">📷 导出图片</button>
-        </div>
         <div id="rankTableBody"></div>
+        <div style="position:sticky;bottom:0;display:flex;justify-content:center;padding:12px 0 6px;background:var(--pop-bg,#fff);z-index:5;box-shadow:0 -8px 12px -8px rgba(0,0,0,.12);margin-top:10px;">
+          <button id="rankExportImgBtn" type="button" style="padding:8px 26px;border:none;border-radius:22px;background:#2c3e50;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.5px;box-shadow:0 3px 10px rgba(0,0,0,.18);transition:background .2s, transform .15s;">📷 导出图片</button>
+        </div>
       </div>
       <div id="tab-content-trend" class="tab-pane">
         <div class="trend-toolbar">
@@ -830,8 +849,6 @@ window.openScoresPop = async function (examId) {
     if (roster.length === 0) {
       $('scoresInputBody').innerHTML = '<div class="today-empty">该班级暂无花名册学生<br>请先到「学生 → 花名册」添加学生</div>';
     } else {
-      const scoreMap = {};
-      scores.forEach(s => { scoreMap[s.student_name] = s; });
       let inputHtml = '<div class="scores-input-list">';
       roster.forEach(stu => {
         const safeName = String(stu.name || '');
@@ -862,7 +879,6 @@ window.openScoresPop = async function (examId) {
         applyScoreLevel(inp, exam);
         inp.addEventListener('input', () => applyScoreLevel(inp, exam));
       });
-      // 缺考按钮交互
       $('scoresInputBody').querySelectorAll('.absent-btn').forEach(btn => {
         btn.onclick = () => {
           const row = btn.closest('.scores-input-row');
@@ -885,12 +901,10 @@ window.openScoresPop = async function (examId) {
     if (roster.length === 0) {
       $('rankTableBody').innerHTML = '<div class="today-empty">暂无学生数据</div>';
     } else {
-      const scoreMapForRank = {};
-      scores.forEach(s => { scoreMapForRank[s.student_name] = s; });
       const hasManualOrder = scores.some(s => (s.sort_order || 0) > 0);
 
       let rankList = roster.map(stu => {
-        const rec = scoreMapForRank[stu.name];
+        const rec = scoreMap[stu.name];
         return {
           name: stu.name,
           gender: stu.gender || '',
@@ -952,7 +966,6 @@ window.openScoresPop = async function (examId) {
       rankTableHtml += '</tbody></table>';
       $('rankTableBody').innerHTML = rankTableHtml;
 
-      // 学生姓名点击（保持原有趋势图逻辑，拖动后屏蔽）
       $('rankTableBody').querySelectorAll('.rank-student-link').forEach(a => {
         a.onclick = (ev) => {
           ev.preventDefault(); ev.stopPropagation();
@@ -969,11 +982,10 @@ window.openScoresPop = async function (examId) {
         };
       });
 
-      // 绑定长按拖动
       window.bindRankDrag(exam);
     }
 
-    // 趋势下拉（原来通过下方代码生成）
+    // 趋势下拉
     const trendSel = $('trendStudentSelect');
     if (trendSel) {
       const scoredList = roster.map(stu => {
@@ -1110,12 +1122,34 @@ window.bindRankDrag = function (exam) {
 
   function activateDrag(row, x, y) {
     const rect = row.getBoundingClientRect();
-    const ghost = row.cloneNode(true);
+    const sourceTable = row.closest('table');
+
+    // ★ 用一个外层 div + 内层 table 包住克隆行，保持表格上下文，避免单元格挤在一起
+    const ghost = document.createElement('div');
     ghost.style.cssText =
-      'position:fixed;pointer-events:none;z-index:99999;opacity:.85;background:#fff;' +
-      'box-shadow:0 8px 24px rgba(0,0,0,.2);border-radius:6px;' +
-      'width:' + rect.width + 'px;left:' + rect.left + 'px;top:' + rect.top + 'px;';
+      'position:fixed;pointer-events:none;z-index:99999;' +
+      'left:' + rect.left + 'px;top:' + rect.top + 'px;' +
+      'width:' + rect.width + 'px;';
+
+    const wrapTable = document.createElement('table');
+    wrapTable.className = sourceTable ? sourceTable.className : 'rank-table';
+    wrapTable.style.cssText =
+      'width:100%;border-collapse:collapse;margin:0;' +
+      'background:var(--card-bg,#fff);' +
+      'box-shadow:0 12px 32px rgba(0,0,0,.22);' +
+      'border-radius:8px;overflow:hidden;';
+
+    const clonedRow = row.cloneNode(true);
+    // 拖动时把左列手柄符号淡一点，视觉上更干净
+    const handle = clonedRow.querySelector('.drag-handle');
+    if (handle) handle.style.opacity = '0.3';
+
+    const tb = document.createElement('tbody');
+    tb.appendChild(clonedRow);
+    wrapTable.appendChild(tb);
+    ghost.appendChild(wrapTable);
     document.body.appendChild(ghost);
+
     row.classList.add('rank-dragging');
     dragState = {
       row, ghost,
@@ -1308,7 +1342,6 @@ window.renderAttendance = async function () {
   dateInput.onchange = () => { currentAttendanceDate = dateInput.value; loadAttendance(); };
   $('attSaveBtn').onclick = saveAttendance;
 
-  // ★ 删除当天该班级的全部考勤记录
   $('attDelBtn').onclick = async () => {
     if (!currentAttendanceClassId) { showSaveStatus('请先选择班级', true); return; }
     const cls = classes.find(c => c.class_id === currentAttendanceClassId);
@@ -1551,7 +1584,6 @@ window.saveAttendance = async function () {
   const rosterExportImgBtn = $('rosterExportImgBtn');
   if (rosterExportImgBtn) rosterExportImgBtn.onclick = () => exportRosterImage();
 
-  /* 花名册右键删除 */
   document.addEventListener('contextmenu', e => {
     const item = e.target.closest && e.target.closest('.roster-tr');
     if (item) {
@@ -1564,7 +1596,6 @@ window.saveAttendance = async function () {
     }
   });
 
-  /* 导出花名册弹窗 */
   const exportRosterClose = $('exportRosterClose');
   if (exportRosterClose) exportRosterClose.onclick = () => { $('exportRosterPop').style.display = 'none'; };
   const exportRosterPopEl = $('exportRosterPop');

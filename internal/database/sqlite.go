@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings" // ★ 新增
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -1083,6 +1084,28 @@ func (s *SQLite) SetExamRankOrder(examID int64, names []string) error {
 
 func (s *SQLite) DeleteExamScore(examID int64, studentName string) error {
 	_, err := s.db.Exec(`DELETE FROM exam_scores WHERE exam_id = ? AND student_name = ?`, examID, studentName)
+	return err
+}
+
+// PruneExamScores 删除该考试中不在 validNames 里的成绩记录
+func (s *SQLite) PruneExamScores(examID int64, validNames []string) error {
+	if len(validNames) == 0 {
+		// 花名册为空，直接清空该考试所有成绩
+		_, err := s.db.Exec(`DELETE FROM exam_scores WHERE exam_id = ?`, examID)
+		return err
+	}
+	placeholders := make([]string, len(validNames))
+	args := make([]interface{}, 0, len(validNames)+1)
+	args = append(args, examID)
+	for i, n := range validNames {
+		placeholders[i] = "?"
+		args = append(args, n)
+	}
+	query := fmt.Sprintf(
+		`DELETE FROM exam_scores WHERE exam_id = ? AND student_name NOT IN (%s)`,
+		strings.Join(placeholders, ","),
+	)
+	_, err := s.db.Exec(query, args...)
 	return err
 }
 

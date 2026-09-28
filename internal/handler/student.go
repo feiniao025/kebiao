@@ -268,6 +268,10 @@ func (h *StudentHandler) SaveScores(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
 		return
 	}
+
+	// ★ 新增：保存完成后，清理该考试中不在花名册里的成绩
+	_ = h.svc.PruneExamScores(userID, examID)
+
 	stats, _ := h.svc.GetExamStats(userID, examID)
 	c.JSON(http.StatusOK, gin.H{"message": "已保存", "stats": stats})
 }
