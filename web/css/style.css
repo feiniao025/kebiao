@@ -482,7 +482,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .today-weekday-select:focus{border-color:#3498db}
 
-.today-summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;margin-bottom:14px}
+.today-summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px;margin-bottom:14px}
 .today-summary-grid>div{background:var(--table-row-alt);border-radius:8px;padding:8px 4px;text-align:center}
 .today-summary-grid .num{display:block;font-size:20px;font-weight:700;color:var(--text-main)}
 .today-summary-grid .lbl{display:block;font-size:11px;color:var(--text-sub);margin-top:2px}
@@ -878,3 +878,59 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 /* 座位表设置：班委显示开关（开/关） */
 #seatManageCommitteeToggle:not(:checked) + .tgl-slider::before{content:"关";}
 #seatManageCommitteeToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}
+
+/* ============ 26. 成绩录入：缺考按钮 ============ */
+.absent-btn {
+  padding: 6px 12px;
+  margin-right: 8px;
+  border: 1.5px solid var(--seat-border);
+  border-radius: 18px;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  transition: all .18s ease;
+  flex-shrink: 0;
+}
+.absent-btn:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.06);
+}
+.absent-btn.active {
+  border-color: #e74c3c;
+  background: #e74c3c;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+}
+.absent-btn.active:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+}
+[data-theme="dark"] .absent-btn {
+  border-color: var(--seat-border);
+  color: var(--text-sub);
+}
+[data-theme="dark"] .absent-btn:hover {
+  border-color: #f87171;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+[data-theme="dark"] .absent-btn.active {
+  border-color: #e74c3c;
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* 分数输入框：缺考（禁用）时更明显的灰色 */
+.score-input:disabled {
+  background: var(--table-row-alt);
+  border-color: var(--seat-border);
+  color: var(--text-sub);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
