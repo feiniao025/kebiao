@@ -64,6 +64,7 @@ const API = (function () {
     deleteExam: function (id) { return request('DELETE', '/students/exams/' + id); },
     getExamDetail: function (id) { return request('GET', '/students/exams/' + id); },
     saveScores: function (id, s) { return request('PUT', '/students/exams/' + id + '/scores', { scores: s }); },
+    setExamRankOrder: function (id, names) { return request('PUT', '/students/exams/' + id + '/rank-order', { names: names }); },
     getStudentHistory: function (n, s) { return request('GET', '/students/exams/history?name=' + encodeURIComponent(n) + '&subject=' + encodeURIComponent(s)); },
     listAttendance: function (c, d) { return request('GET', '/students/attendance?class_id=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(d)); },
     listAttendanceDates: function (c) { return request('GET', '/students/attendance/dates?class_id=' + encodeURIComponent(c)); },

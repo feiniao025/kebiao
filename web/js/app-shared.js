@@ -78,7 +78,20 @@ window.defaultLegend = [];
 window.classes = [];
 window.cellData = {};
 window.seat = { rows: 7, cols: 8, order: 'asc', students: [], aisle: '' };
-window.preferences = { theme: 'light', schedule_filter: 'all', week_highlight: true, active_tab: 'schedule' };
+window.preferences = {
+  theme: 'light',
+  schedule_filter: 'all',
+  week_highlight: true,
+  active_tab: 'schedule',
+  seat_show_committee: true
+};
+
+// 从 localStorage 恢复班委显示偏好（因为后端暂未持久化该字段）
+(function loadSeatShowCommitteePref() {
+  var stored = localStorage.getItem('kebiao_seat_show_committee');
+  if (stored === '0') window.preferences.seat_show_committee = false;
+  else if (stored === '1') window.preferences.seat_show_committee = true;
+})();
 
 window.meMode = 'login';
 window.meView = 'profile';
@@ -372,9 +385,10 @@ window.SUB_TABS = {
     { key: 'roster',     label: '花名册' },
   ],
   classes: [
-    { key: 'schedule', label: '课表' },
-    { key: 'seat',     label: '座位' },
-    { key: 'duty',     label: '值日' },
+    { key: 'schedule',  label: '课表' },
+    { key: 'seat',      label: '座位' },
+    { key: 'committee', label: '班委' },
+    { key: 'duty',      label: '值日' },
   ],
   me: [],
 };
@@ -474,6 +488,9 @@ window.renderContent = function () {
         window.seatCard.style.display = 'block';
         if (typeof updateSeatCardTitle === 'function') updateSeatCardTitle();
         if (typeof renderSeats === 'function') renderSeats();
+      } else if (window.activeSubTab === 'committee') {
+        window.scheduleContainer.style.display = 'block';
+        if (typeof renderCommittee === 'function') renderCommittee();
       } else if (window.activeSubTab === 'duty') {
         window.scheduleContainer.style.display = 'block';
         if (typeof renderDuty === 'function') renderDuty();

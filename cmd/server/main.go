@@ -151,6 +151,7 @@ func main() {
 			stu.PUT("/exams/:id", studentHandler.UpdateExam)
 			stu.DELETE("/exams/:id", studentHandler.DeleteExam)
 			stu.PUT("/exams/:id/scores", studentHandler.SaveScores)
+			stu.PUT("/exams/:id/rank-order", studentHandler.SetRankOrder)
 
 			stu.GET("/attendance", studentHandler.ListAttendance)
 			stu.GET("/attendance/dates", studentHandler.ListAttendanceDates)

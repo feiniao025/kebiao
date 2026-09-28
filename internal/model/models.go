@@ -134,11 +134,14 @@ type ExamScore struct {
 	ExamID      int64     `json:"exam_id"`
 	StudentName string    `json:"student_name"`
 	Score       float64   `json:"score"`
+	Absent      bool      `json:"absent"`      // 新增
+	SortOrder   int       `json:"sort_order"`  // 新增
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ExamStats struct {
 	Count          int            `json:"count"`            // 已录人数
+	AbsentCount    int            `json:"absent_count"`   	// 新增
 	Average        float64        `json:"average"`          // 平均分
 	FullScore      int            `json:"full_score"`       // 满分
 	PassRate       float64        `json:"pass_rate"`        // 及格率百分比

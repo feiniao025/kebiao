@@ -1,10 +1,12 @@
 /* ============================================================
-   app-classes.js —— 班级模块（课表/座位/值日/班级管理/导入导出）
+   app-classes.js —— 班级模块（课表/座位/班委/值日/班级管理/导入导出）
    含：
    - 课服 1 / 课服 2 按「每月 4 周循环」设置
    - 课服编辑合并视图（课服1、课服2 一起编辑）
    - 值日项目：单行编辑（点哪行改哪行）
+   - 班委管理：职务、学生（从花名册选择）、职务描述、编辑/删除
    - 座位表支持导入花名册（按讲台上/下自动排座，人数不足时提示）
+   - 座位表对应名字下方显示班委职务（可通过设置开关控制）
    - 座位表卡片「菜单」：使用 #seatManagePop 标准弹窗
    - 课表 / 值日表 / 座位表 头部统一两行布局
    - 值日表头部显示「今日值日组长」（当前星期列的最后一人）
@@ -17,6 +19,9 @@ window.currentCSTabIdx = 0;
 
 /* ---------- 座位表花名册相关全局变量 ---------- */
 window.maxRosterCount = 0; // 座位表当前班级花名册人数
+
+/* ---------- 班委相关全局变量 ---------- */
+window.currentCommitteeClassId = '';
 
 /* ---------- 座位标题 / 班级筛选 ---------- */
 window.updateSeatCardTitle = function () {
@@ -94,7 +99,6 @@ window.updateSeatImportRosterBtnVisibility = function () {
 };
 
 // 刷新「座位表当前班级」的花名册人数
-// 座位表标题用的是 classes[0]，这里就取 classes[0] 的花名册
 window.refreshMaxRosterCount = async function () {
   if (!classes || classes.length === 0) {
     window.maxRosterCount = 0;
@@ -294,7 +298,7 @@ window.refreshCellStyle = function (td) {
   const subjEl = td.querySelector('.cell-subject');
   if (!subjEl) return;
   const t = subjEl.textContent.trim();
-  
+
   const cls = td.dataset.classId;
   const key = cls + '_cell_' + td.dataset.idx;
   const data = cellData[key] || {};
@@ -305,7 +309,7 @@ window.refreshCellStyle = function (td) {
     td.classList.add('empty');
     return;
   }
-  
+
   // 有背景颜色则强制应用
   if (bg) {
     td.setAttribute('data-bg-color', bg);
@@ -322,7 +326,7 @@ window.updateClassLegend = function (classId) {
     const subjEl = td.querySelector('.cell-subject');
     if (!subjEl) return;
     let subj = subjEl.textContent.trim();
-    if (!subj || subj === '—') subj = '空白'; 
+    if (!subj || subj === '—') subj = '空白';
     const bg = td.getAttribute('data-bg-color');
     if (bg && bg !== '0' && !seen[subj]) {
       seen[subj] = true;
@@ -458,24 +462,21 @@ window.renderDuty = function () {
   const card = document.createElement('div');
   card.className = 'card class-card duty-card';
 
-  // ===== 新增：计算今日值日组长 =====
+  // ===== 计算今日值日组长 =====
   let leaderText = '今日值日组长：无';
-  const today = new Date().getDay(); // 0是周日，1-5是周一到周五，6是周六
+  const today = new Date().getDay();
   if (today >= 1 && today <= 5) {
     let lastStudent = '';
     const rows = getDutyRows(classId);
-    // 从最后一行（最后一项值日）开始往上找
     for (let row = rows - 1; row >= 0; row--) {
-      // 值日表：row * 6 是项目名，row * 6 + today 是当前星期对应的格子
-      const idx = row * 6 + today; 
+      const idx = row * 6 + today;
       const cKey = storageId + '_cell_' + idx;
       const cCell = cellData[cKey];
       if (cCell && cCell.subject) {
         const students = cCell.subject.split('\n').map(s => s.trim()).filter(Boolean);
         if (students.length > 0) {
-          // 取当前单元格（当前星期列）的最后一人
           lastStudent = students[students.length - 1];
-          break; // 找到了就跳出循环
+          break;
         }
       }
     }
@@ -495,7 +496,6 @@ window.renderDuty = function () {
       '<button class="mini-toggle" id="dutyCardMenuBtn">菜单</button>' +
     '</div>' +
     '<div class="card-hdr-row2">' +
-      // 按照要求修改了这里：将 legend-text 改为 seat-size-info 并加上 id
       '<span class="seat-size-info" id="seatSizeInfo">' + leaderText + '</span>' +
     '</div>';
   card.appendChild(header);
@@ -624,6 +624,441 @@ window.loadDutyConfigIntoPop = function (classId) {
   }
   $('dutyManageNote').value = getDutyNote(classId);
   $('dutyManagePop').dataset.classId = classId;
+};
+
+/* ============================================================
+   班委模块
+   - 存储：复用 schedule_cells，class_id 使用 _committee_<真实班级ID>
+           一行一个班委，cell_index 即行号
+           period_name = 职务，subject = 职务描述，teacher = 学生
+   - 页面：班级 → 班委（座位之后、值日之前）
+   - 列表顺序：# → 职务 → 学生 → 职务描述 → 操作
+   ============================================================ */
+
+/* ---------- 注入样式（只注入一次） ---------- */
+(function injectCommitteeStyle() {
+  if (document.getElementById('committeeStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'committeeStyle';
+  st.textContent = `
+    .committee-table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+    .committee-table th,.committee-table td{
+      padding:12px 14px;border-bottom:1px solid var(--table-border);
+      text-align:left;color:var(--text-main);word-break:break-word;
+    }
+    .committee-table th{
+      background:var(--table-row-alt);font-size:12px;color:var(--text-sub);
+      font-weight:600;letter-spacing:.5px;
+    }
+    .committee-table tbody tr{transition:background .15s}
+    .committee-table tbody tr:hover{background:var(--seat-hover)}
+
+    /* 列宽分配：# 窄，职务/学生固定，职务描述自适应，操作固定 */
+    .committee-table .cm-idx{width:50px;text-align:center;color:var(--text-sub);font-size:12px}
+    .committee-table .cm-pos{width:120px;font-weight:600}
+    .committee-table .cm-stu{width:120px;font-weight:600}
+    .committee-table .cm-desc{color:var(--text-sub);font-size:13px;line-height:1.7}
+    .committee-table .cm-act{width:150px;text-align:right;white-space:nowrap}
+
+    .cm-btn{
+      padding:5px 12px;border-radius:8px;border:none;font-size:12px;font-weight:600;
+      font-family:inherit;cursor:pointer;transition:all .2s;margin-left:6px;
+    }
+    .cm-btn-edit{background:#3498db;color:#fff}
+    .cm-btn-edit:hover{background:#2980b9}
+    .cm-btn-del{background:#e74c3c;color:#fff}
+    .cm-btn-del:hover{background:#c0392b}
+    .cm-add-btn{
+      padding:6px 14px;border-radius:10px;border:none;background:#16a085;color:#fff;
+      font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+      transition:all .2s;white-space:nowrap;
+    }
+    .cm-add-btn:hover{background:#1abc9c}
+    .cm-empty{text-align:center;color:var(--text-sub);font-size:13px;padding:26px 12px;line-height:1.8}
+
+    /* 移动端适配 */
+    @media (max-width:768px){
+      .committee-table th,.committee-table td{padding:8px 8px;font-size:12px}
+      .committee-table .cm-idx{width:34px}
+      .committee-table .cm-pos{width:70px}
+      .committee-table .cm-stu{width:70px}
+      .committee-table .cm-act{width:105px}
+      .cm-btn{padding:4px 8px;font-size:11px;margin-left:4px}
+      .cm-add-btn{padding:5px 10px;font-size:12px}
+    }
+  `;
+  document.head.appendChild(st);
+})();
+
+/* ---------- 存储辅助 ---------- */
+
+// 班委数据使用的 class_id 前缀
+window.getCommitteeStorageId = function (classId) {
+  return '_committee_' + classId;
+};
+
+// 读取某班级的班委列表（按行号排序，自动过滤空行）
+window.getCommitteeList = function (classId) {
+  if (!classId) return [];
+  const prefix = getCommitteeStorageId(classId) + '_cell_';
+  const map = {};
+  Object.keys(cellData).forEach(function (key) {
+    if (key.indexOf(prefix) !== 0) return;
+    const c = cellData[key];
+    if (!c || c.cell_type !== 'committee') return;
+    const idx = parseInt(key.slice(prefix.length), 10);
+    if (isNaN(idx) || idx < 0) return;
+    const position = (c.period_name || '').trim();
+    const desc = (c.subject || '').trim();
+    const student = (c.teacher || '').trim();
+    if (!position && !desc && !student) return;
+    map[idx] = { row: idx, position: position, desc: desc, student: student };
+  });
+  return Object.keys(map)
+    .map(function (k) { return map[k]; })
+    .sort(function (a, b) { return a.row - b.row; });
+};
+
+// 获取某班级「学生姓名 → 职务」映射，用于座位表显示
+window.getCommitteeRolesMap = function (classId) {
+  const map = {};
+  if (!classId) return map;
+  const prefix = '_committee_' + classId + '_cell_';
+  Object.keys(cellData).forEach(function (key) {
+    if (key.indexOf(prefix) === 0) {
+      const c = cellData[key];
+      if (c && c.cell_type === 'committee' && c.teacher) {
+        const studentName = String(c.teacher).trim();
+        const position = String(c.period_name || '').trim();
+        if (studentName) {
+          map[studentName] = position;
+        }
+      }
+    }
+  });
+  return map;
+};
+
+/* ---------- 渲染 ---------- */
+
+window.renderCommittee = function () {
+  const container = scheduleContainer;
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!classes || classes.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'card';
+    empty.innerHTML = '<div class="cm-empty">请先在「班级 → 课表」中创建班级</div>';
+    container.appendChild(empty);
+    return;
+  }
+
+  // 校验当前选中班级是否还存在
+  if (!currentCommitteeClassId || !classes.find(function (c) { return c.class_id === currentCommitteeClassId; })) {
+    currentCommitteeClassId = classes[0].class_id;
+  }
+  const cls = classes.find(function (c) { return c.class_id === currentCommitteeClassId; });
+  const list = getCommitteeList(currentCommitteeClassId);
+
+  const card = document.createElement('div');
+  card.className = 'card class-card';
+
+  // ---- 两行头部 ----
+  const header = document.createElement('div');
+  header.className = 'card-header card-header-2row';
+  header.innerHTML =
+    '<div class="card-hdr-row1">' +
+      '<h2>' + escapeHtml(cls.name) + ' · 班委名单</h2>' +
+      '<button class="cm-add-btn" id="committeeAddBtn">＋ 添加班委</button>' +
+    '</div>' +
+    '<div class="card-hdr-row2">' +
+      '<select id="committeeClassSel" class="cell-pop-input" style="flex:0 1 auto;max-width:200px;"></select>' +
+      '<span class="seat-size-info">共 ' + list.length + ' 项</span>' +
+    '</div>';
+  card.appendChild(header);
+
+  // ---- 表格 ----
+  const table = document.createElement('table');
+  table.className = 'committee-table';
+  table.innerHTML =
+    '<thead><tr>' +
+      '<th class="cm-idx">#</th>' +
+      '<th class="cm-pos">职务</th>' +
+      '<th class="cm-stu">学生</th>' +
+      '<th class="cm-desc">职务描述</th>' +
+      '<th class="cm-act">操作</th>' +
+    '</tr></thead>';
+
+  const tbody = document.createElement('tbody');
+
+  if (list.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.className = 'cm-empty';
+    td.textContent = '暂无班委，点击右上角「＋ 添加班委」开始录入';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    list.forEach(function (item, i) {
+      const tr = document.createElement('tr');
+
+      const tdIdx = document.createElement('td');
+      tdIdx.className = 'cm-idx';
+      tdIdx.textContent = String(i + 1);
+
+      const tdPos = document.createElement('td');
+      tdPos.className = 'cm-pos';
+      tdPos.textContent = item.position;
+
+      const tdStu = document.createElement('td');
+      tdStu.className = 'cm-stu';
+      if (item.student) tdStu.textContent = item.student;
+      else tdStu.innerHTML = '<span style="color:var(--empty-text)">—</span>';
+
+      const tdDesc = document.createElement('td');
+      tdDesc.className = 'cm-desc';
+      if (item.desc) tdDesc.textContent = item.desc;
+      else tdDesc.innerHTML = '<span style="color:var(--empty-text)">—</span>';
+
+      const tdAct = document.createElement('td');
+      tdAct.className = 'cm-act';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'cm-btn cm-btn-edit';
+      editBtn.textContent = '编辑';
+      editBtn.onclick = function () { openCommitteePop(item); };
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'cm-btn cm-btn-del';
+      delBtn.textContent = '删除';
+      delBtn.onclick = function () { deleteCommitteeItem(item); };
+
+      tdAct.appendChild(editBtn);
+      tdAct.appendChild(delBtn);
+
+      // 顺序：# → 职务 → 学生 → 职务描述 → 操作
+      tr.appendChild(tdIdx);
+      tr.appendChild(tdPos);
+      tr.appendChild(tdStu);
+      tr.appendChild(tdDesc);
+      tr.appendChild(tdAct);
+      tbody.appendChild(tr);
+    });
+  }
+
+  table.appendChild(tbody);
+  card.appendChild(table);
+  container.appendChild(card);
+
+  // ---- 事件 ----
+  const addBtn = card.querySelector('#committeeAddBtn');
+  if (addBtn) addBtn.onclick = function () { openCommitteePop(null); };
+
+  const sel = card.querySelector('#committeeClassSel');
+  if (sel) {
+    sel.innerHTML = classes.map(function (c) {
+      return '<option value="' + escapeHtml(c.class_id) + '">' + escapeHtml(c.name) + '</option>';
+    }).join('');
+    sel.value = currentCommitteeClassId;
+    sel.onchange = function () {
+      currentCommitteeClassId = sel.value;
+      renderCommittee();
+    };
+  }
+};
+
+/* ---------- 弹窗（动态创建） ---------- */
+
+window.openCommitteePop = async function (item) {
+  let pop = document.getElementById('committeePop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'committeePop';
+    pop.className = 'seat-pop';
+    pop.innerHTML =
+      '<div class="seat-pop-inner">' +
+        '<button class="pop-close-x" id="committeePopClose" type="button">×</button>' +
+        '<h3 id="committeePopTitle">添加班委</h3>' +
+        '<div class="cell-pop-row">' +
+          '<label>职务：</label>' +
+          '<input type="text" id="committeePopPosition" class="cell-pop-input" placeholder="如：班长">' +
+        '</div>' +
+        '<div class="cell-pop-row">' +
+          '<label>学生：</label>' +
+          '<div class="select-wrap" style="flex:1;">' +
+            '<select id="committeePopStudent" class="cell-pop-input"></select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="cell-pop-row" style="align-items:flex-start;">' +
+          '<label style="padding-top:9px;">职务描述：</label>' +
+          '<textarea id="committeePopDesc" class="cell-pop-input" rows="4" ' +
+            'placeholder="职责说明（可留空）" ' +
+            'style="resize:vertical;font-family:inherit;line-height:1.7;"></textarea>' +
+        '</div>' +
+        '<div class="me-error" id="committeePopError" style="min-height:18px;"></div>' +
+        '<div style="display:flex;gap:10px;margin-top:16px;">' +
+          '<button id="committeePopCancel" type="button" style="flex:1;background:transparent;color:var(--text-main);padding:10px;border:1px solid var(--seat-border);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">取消</button>' +
+          '<button id="committeePopSave" type="button" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(pop);
+    pop.addEventListener('click', function (e) {
+      if (e.target === pop) pop.style.display = 'none';
+    });
+    document.getElementById('committeePopClose').onclick = function () { pop.style.display = 'none'; };
+    document.getElementById('committeePopCancel').onclick = function () { pop.style.display = 'none'; };
+  }
+
+  const isNew = !item;
+  const classId = currentCommitteeClassId;
+  const studentSel = $('committeePopStudent');
+
+  // 加载花名册
+  studentSel.innerHTML = '<option value="">（加载中...）</option>';
+  try {
+    const resp = await API.listRoster(classId);
+    const roster = resp.students || [];
+
+    let optionsHtml = '<option value="">— 请选择学生 —</option>';
+    roster.forEach(function (stu) {
+      optionsHtml += '<option value="' + escapeHtml(stu.name) + '">' + escapeHtml(stu.name) + '</option>';
+    });
+
+    // 编辑时，如果原学生已不在花名册，保留原值并标注
+    if (!isNew && item.student) {
+      const exists = roster.some(function (stu) { return stu.name === item.student; });
+      if (!exists) {
+        optionsHtml += '<option value="' + escapeHtml(item.student) + '">' +
+                       escapeHtml(item.student) + '（不在当前花名册）</option>';
+      }
+    }
+    studentSel.innerHTML = optionsHtml;
+
+    if (!isNew && item.student) {
+      studentSel.value = item.student;
+    }
+  } catch (e) {
+    studentSel.innerHTML = '<option value="">（花名册加载失败）</option>';
+  }
+
+  // 填充表单其余部分
+  pop.dataset.row = isNew ? '' : String(item.row);
+  pop.dataset.isNew = isNew ? '1' : '0';
+
+  $('committeePopTitle').textContent = isNew ? '添加班委' : '编辑班委';
+  $('committeePopPosition').value = isNew ? '' : (item.position || '');
+  $('committeePopDesc').value = isNew ? '' : (item.desc || '');
+  $('committeePopError').textContent = '';
+  $('committeePopSave').onclick = saveCommitteeItem;
+
+  pop.style.display = 'flex';
+  setTimeout(function () { $('committeePopPosition').focus(); }, 100);
+};
+
+/* ---------- 保存 ---------- */
+
+window.saveCommitteeItem = async function () {
+  const pop = document.getElementById('committeePop');
+  if (!pop) return;
+
+  const errEl = $('committeePopError');
+  errEl.textContent = '';
+
+  const classId = currentCommitteeClassId;
+  if (!classId) { errEl.textContent = '请先选择班级'; return; }
+
+  const position = $('committeePopPosition').value.trim();
+  const desc = $('committeePopDesc').value.trim();
+  const student = $('committeePopStudent').value.trim();
+
+  if (!position) {
+    errEl.textContent = '请填写职务名称';
+    $('committeePopPosition').focus();
+    return;
+  }
+  if (position.length > 30) {
+    errEl.textContent = '职务名称不能超过 30 个字符';
+    return;
+  }
+
+  const isNew = pop.dataset.isNew === '1';
+  let row;
+  if (isNew) {
+    const list = getCommitteeList(classId);
+    row = list.length ? Math.max.apply(null, list.map(function (it) { return it.row; })) + 1 : 0;
+  } else {
+    row = parseInt(pop.dataset.row, 10);
+    if (isNaN(row) || row < 0) row = 0;
+  }
+
+  const storageId = getCommitteeStorageId(classId);
+  const payload = {
+    class_id: storageId,
+    cell_index: row,
+    cell_type: 'committee',
+    period_name: position,
+    period_time: '',
+    subject: desc,
+    teacher: student,
+    bg_color: '0',
+  };
+
+  const saveBtn = $('committeePopSave');
+  saveBtn.disabled = true;
+  saveBtn.style.opacity = '.7';
+
+  try {
+    await apiCall(API.upsertCell, payload);
+    cellData[storageId + '_cell_' + row] = payload;
+    pop.style.display = 'none';
+    renderCommittee();
+    if (typeof renderSeats === 'function') renderSeats(); // 同步座位表小字
+    showSaveStatus(isNew ? '已添加班委' : '已保存', false);
+    scheduleAutoSync();
+  } catch (err) {
+    errEl.textContent = err.message || '保存失败';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '';
+  }
+};
+
+/* ---------- 删除 ---------- */
+
+window.deleteCommitteeItem = async function (item) {
+  if (!item) return;
+  const classId = currentCommitteeClassId;
+  if (!classId) return;
+
+  const label = item.position || '该班委';
+  if (!confirm('确认删除「' + label + '」？')) return;
+
+  const storageId = getCommitteeStorageId(classId);
+  const payload = {
+    class_id: storageId,
+    cell_index: item.row,
+    cell_type: 'committee',
+    period_name: '',
+    period_time: '',
+    subject: '',
+    teacher: '',
+    bg_color: '0',
+  };
+
+  try {
+    await apiCall(API.upsertCell, payload);
+    cellData[storageId + '_cell_' + item.row] = payload;
+    renderCommittee();
+    if (typeof renderSeats === 'function') renderSeats(); // 同步座位表小字
+    showSaveStatus('已删除', false);
+    scheduleAutoSync();
+  } catch (err) {
+    showSaveStatus(err.message || '删除失败', true);
+  }
 };
 
 /* ---------- 班级 CRUD ---------- */
@@ -941,6 +1376,27 @@ window.displayToData = function (row, col) {
   return (seat.rows - 1 - row) * seat.cols + (seat.cols - 1 - col);
 };
 
+/* ---------- 座位表显示班委职务：注入样式 ---------- */
+(function injectSeatRoleStyle() {
+  if (document.getElementById('seatRoleStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'seatRoleStyle';
+  st.textContent = `
+    .seat-item .seat-role-text {
+      font-size: 8px;
+      color: var(--text-sub);
+      font-weight: 400;
+      margin-top: 1px;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+  `;
+  document.head.appendChild(st);
+})();
+
 window.renderSeats = function () {
   const grid = $('seatGrid');
   const stage = $('seatStage');
@@ -949,6 +1405,10 @@ window.renderSeats = function () {
   const segments = getAisleSegments(seat.aisle || '', seat.cols);
   const hasAisle = segments.length > 1;
   grid.style.gridTemplateColumns = getGridColumns(segments);
+
+  // 获取当前座位表班级（座位表默认展示第一个班级）的班委映射
+  const currentSeatClassId = classes.length > 0 ? classes[0].class_id : '';
+  const committeeRolesMap = getCommitteeRolesMap(currentSeatClassId);
 
   let maleCount = 0, femaleCount = 0, totalCount = 0;
   seat.students.forEach(s => {
@@ -990,8 +1450,20 @@ window.renderSeats = function () {
       div.style.gridColumn = getGridColIdx(c, segments);
       div.style.gridRow = (r + 1);
 
-      if (hasName) div.textContent = String(stu.name);
-      else { div.textContent = seatEditOn ? '＋' : '空'; div.style.color = 'var(--empty-text)'; }
+      if (hasName) {
+        const showRole = preferences.seat_show_committee !== false;
+        const role = showRole ? committeeRolesMap[String(stu.name).trim()] : null;
+        if (role) {
+          div.innerHTML =
+            '<span class="seat-name-text">' + escapeHtml(String(stu.name)) + '</span>' +
+            '<span class="seat-role-text">' + escapeHtml(role) + '</span>';
+        } else {
+          div.textContent = String(stu.name);
+        }
+      } else {
+        div.textContent = seatEditOn ? '＋' : '空';
+        div.style.color = 'var(--text-empty)';
+      }
 
       div.addEventListener('click', () => {
         if (Date.now() - suppressClickTime < 400) return;
@@ -1157,7 +1629,6 @@ window.resizeSeat = async function (dr, dc) {
    座位表卡片「菜单」：使用 index.html 里的 #seatManagePop
    ============================================================ */
 
-// 确保座位表卡片「菜单」按钮的点击事件
 window.ensureSeatCardMenuBtn = function () {
   const btn = $('seatCardMenuBtn');
   if (!btn) return;
@@ -1172,20 +1643,16 @@ window.ensureSeatCardMenuBtn = function () {
   };
 };
 
-// 打开座位表设置弹窗（使用 #seatManagePop）
 window.openSeatSettingsPop = function () {
   if (!classes || classes.length === 0) { alert('请先在「班级 → 课表」中创建班级'); return; }
   const baseCls = classes[0];
 
-  // 年级
   const gradeSel = $('seatManageGrade');
   if (typeof fillGradeSelect === 'function') fillGradeSelect(gradeSel, baseCls.grade || 7);
 
-  // 班级
   const numSel = $('seatManageNum');
   if (typeof fillClassNumSelect === 'function') fillClassNumSelect(numSel, baseCls.class_num || 1);
 
-  // 行数
   const rowsSel = $('seatManageRows');
   rowsSel.innerHTML = '';
   for (let n = 2; n <= 12; n++) {
@@ -1196,7 +1663,6 @@ window.openSeatSettingsPop = function () {
     rowsSel.appendChild(o);
   }
 
-  // 列数
   const colsSel = $('seatManageCols');
   colsSel.innerHTML = '';
   for (let n = 2; n <= 10; n++) {
@@ -1207,7 +1673,6 @@ window.openSeatSettingsPop = function () {
     colsSel.appendChild(o);
   }
 
-  // 过道
   const hasAisle = !!(seat.aisle && String(seat.aisle).trim());
   const aisleToggle = $('seatManageAisleToggle');
   const aisleRow = $('seatManageAisleRow');
@@ -1222,8 +1687,21 @@ window.openSeatSettingsPop = function () {
     if (on) setTimeout(() => aisleInput.focus(), 60);
   };
 
-  // 讲台位置（开 = 讲台上，关 = 讲台下）
-  $('seatManageOrderToggle').checked = (seat.order === 'asc');
+  // 讲台位置（关 = 讲台上，开 = 讲台下）
+  const orderToggle = $('seatManageOrderToggle');
+  if (orderToggle) orderToggle.checked = (seat.order === 'desc');
+
+  // 班委显示（默认开启）
+  const committeeToggle = $('seatManageCommitteeToggle');
+  if (committeeToggle) {
+    committeeToggle.checked = (preferences.seat_show_committee !== false);
+    committeeToggle.onchange = function () {
+      preferences.seat_show_committee = committeeToggle.checked;
+      try { localStorage.setItem('kebiao_seat_show_committee', committeeToggle.checked ? '1' : '0'); } catch (e) {}
+      // 立即生效，无需等保存
+      if (typeof renderSeats === 'function') renderSeats();
+    };
+  }
 
   $('seatManageError').textContent = '';
   $('seatManagePop').style.display = 'flex';
@@ -1955,11 +2433,10 @@ window.doExportScheduleExcel = async function (list) {
     const newRows = parseInt($('seatManageRows').value, 10);
     const newCols = parseInt($('seatManageCols').value, 10);
     const aisleOn = $('seatManageAisleToggle').checked;
-    const stageUp = $('seatManageOrderToggle').checked;
+    const stageUp = !$('seatManageOrderToggle').checked;
 
     if (!grade || !classNum) { errEl.textContent = '请选择年级和班级'; return; }
 
-    // 过道校验
     let newAisle = '';
     if (aisleOn) {
       let raw = ($('seatManageAisleInput').value || '').trim().replace(/\s+/g, '');
@@ -1983,7 +2460,6 @@ window.doExportScheduleExcel = async function (list) {
       const baseCls = classes[0];
       const cls = classes.find(c => c.class_id === baseCls.class_id);
 
-      // 1) 年级 / 班级
       if (cls && (grade !== cls.grade || classNum !== cls.class_num)) {
         if (classes.some(c => c.class_id !== cls.class_id && c.grade === grade && c.class_num === classNum)) {
           errEl.textContent = '该班级已存在';
@@ -2004,28 +2480,33 @@ window.doExportScheduleExcel = async function (list) {
         cls.class_num = classNum;
       }
 
-      // 2) 行列
       if (newRows !== seat.rows || newCols !== seat.cols) {
         await apiCall(API.resize, newRows, newCols);
       }
 
-      // 3) 过道
       const oldAisle = String(seat.aisle || '');
       if (newAisle !== oldAisle) {
         await apiCall(API.setAisle, newAisle);
       }
 
-      // 4) 讲台方向
       const newOrder = stageUp ? 'asc' : 'desc';
       if (newOrder !== seat.order) {
         await apiCall(API.setOrder, newOrder);
       }
 
-      // 5) 刷新
+      // 保存班委显示偏好（localStorage 兜底 + 后端尝试同步）
+      var committeeToggle = $('seatManageCommitteeToggle');
+      if (committeeToggle) {
+        preferences.seat_show_committee = committeeToggle.checked;
+        try { localStorage.setItem('kebiao_seat_show_committee', committeeToggle.checked ? '1' : '0'); } catch (e) {}
+        API.updatePreferences({ seat_show_committee: preferences.seat_show_committee }).catch(function () {});
+      }
+
       await reloadSeatData();
       if (typeof updateAisleBtn === 'function') updateAisleBtn();
       updateSeatCardTitle();
       renderSchedule();
+      if (typeof renderSeats === 'function') renderSeats();
       showSaveStatus('座位表设置已保存', false);
       scheduleAutoSync();
       $('seatManagePop').style.display = 'none';

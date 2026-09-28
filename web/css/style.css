@@ -75,7 +75,7 @@ body{
   transition: all .2s;
   flex-shrink: 0;
   vertical-align: middle;
-  margin-right: 6px; /* 跟后面文字拉开一点距离 */
+  margin-right: 6px;
 }
 .card-header .legend button{padding:6px 12px;border-radius:10px;border:none;background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap}
 .card-header .legend button:hover{background:var(--btn-hover)}
@@ -86,21 +86,21 @@ body{
 .legend-items {
   display: inline-flex;
   align-items: center;
-  gap: 8px 12px;        /* 行间距 8px，列间距 12px */
+  gap: 8px 12px;
   flex-wrap: wrap;
 }
 
 .legend-group {
   display: inline-flex;
   align-items: center;
-  gap: 0;               /* 组内色块和文字仍保持无间隙 */
+  gap: 0;
   flex-wrap: nowrap;
   white-space: nowrap;
 }
 
 .legend-items .sep {
   color: var(--text-sub);
-  margin: 0 -4px;       /* 因为 gap 已经是 12px，这里稍微收一点使视觉更均匀 */
+  margin: 0 -4px;
 }
 .legend-items .legend-text{color:var(--text-sub);font-size:14px}
 .legend-items .sep{color:var(--text-sub);margin:0 2px}
@@ -109,9 +109,7 @@ body{
 .seat-resize-panel{display:none;gap:8px;align-items:center;flex-wrap:wrap}
 .seat-resize-panel.open{display:flex}
 
-/* ============ 6.1 卡片头部两行布局（课程表 / 值日表 / 座位表 通用） ============ */
-
-/* 容器：覆盖 .card-header 默认的单行布局 */
+/* ============ 6.1 卡片头部两行布局 ============ */
 .card-header.card-header-2row{
   flex-direction:column;
   align-items:stretch;
@@ -119,64 +117,14 @@ body{
   flex-wrap:nowrap;
   gap:6px;
 }
-
-/* 第一行：标题（左）+ 菜单（右） */
-.card-hdr-row1{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-}
-
-/* 第二行：图例 / 统计信息 / 导入按钮等 */
-.card-hdr-row2{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  min-height:18px;
-}
-
-/* 座位表专用：统计信息胶囊 */
-.seat-size-info{
-  font-size:13px;
-  color:var(--text-sub);
-  background:var(--table-row-alt);
-  padding:2px 12px;
-  border-radius:12px;
-  letter-spacing:.5px;
-}
-
-/* 第二行里的「导入花名册」按钮 */
-.card-hdr-row2 .seat-ctrl{
-  padding:6px 14px;
-  border-radius:10px;
-  border:none;
-  background:#7d5ba6;
-  color:#fff;
-  font-size:13px;
-  cursor:pointer;
-  transition:all .2s;
-  font-family:inherit;
-  white-space:nowrap;
-}
+.card-hdr-row1{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.card-hdr-row2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:18px;}
+.seat-size-info{font-size:13px;color:var(--text-sub);background:var(--table-row-alt);padding:2px 12px;border-radius:12px;letter-spacing:.5px;}
+.card-hdr-row2 .seat-ctrl{padding:6px 14px;border-radius:10px;border:none;background:#7d5ba6;color:#fff;font-size:13px;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;}
 .card-hdr-row2 .seat-ctrl:hover{background:#9573c0}
 
-/* ============ 6.2 「菜单」按钮：三卡统一 ============ */
-.mini-toggle{
-  padding:3px 14px;
-  border-radius:10px;
-  border:1px solid transparent;
-  background:rgba(0,0,0,0.06);
-  color:var(--text-sub);
-  font-size:12px;
-  cursor:pointer;
-  transition:all .2s;
-  font-family:inherit;
-  line-height:1.6;
-  white-space:nowrap;
-  margin-left:4px;
-}
+/* ============ 6.2 「菜单」按钮 ============ */
+.mini-toggle{padding:3px 14px;border-radius:10px;border:1px solid transparent;background:rgba(0,0,0,0.06);color:var(--text-sub);font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit;line-height:1.6;white-space:nowrap;margin-left:4px;}
 .mini-toggle:hover{background:rgba(0,0,0,0.12)}
 .mini-toggle.active{background:#3498db !important;color:#fff !important;border-color:#2980b9}
 [data-theme="dark"] .mini-toggle{background:rgba(255,255,255,0.08);color:var(--text-sub)}
@@ -236,7 +184,6 @@ body{
 [data-theme="dark"] .schedule-table tbody tr.break-row td,
 [data-theme="dark"] .schedule-table tbody tr.break-row td:first-child{background:#2b3140;color:var(--text-main);border-bottom-color:#3b4252}
 
-/* 课服标签 & 节次名不换行 */
 .cs-week-tag{font-size:11px;font-weight:400;color:var(--text-sub);margin-left:4px;white-space:nowrap}
 .schedule-table tbody td:first-child .cell-period-name{white-space:nowrap}
 
@@ -285,12 +232,10 @@ textarea.cell-pop-input{line-height:1.6;resize:vertical}
 .select-wrap:has(> select.cell-pop-input:disabled)::after{opacity:.35}
 select.cell-pop-input:disabled{background-color:var(--table-row-alt);cursor:default;border-color:transparent;opacity:.6}
 
-/* 电话按钮 */
 .tel-btn{padding:8px 12px;border:none;border-radius:8px;background:#5dade2;color:#fff;cursor:pointer;font-size:14px;font-family:inherit;flex-shrink:0;transition:background .2s,opacity .2s;line-height:1}
 .tel-btn:hover{background:#3498db}
 .tel-btn:disabled{background:#95a5a6;cursor:not-allowed;opacity:.5}
 
-/* 学生弹窗保存/删除 */
 .seat-pop-btns{display:flex;gap:10px;margin-top:20px}
 .seat-pop-btns button{flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit}
 #popDeleteBtn{background:#e74c3c;color:#fff}
@@ -298,7 +243,6 @@ select.cell-pop-input:disabled{background-color:var(--table-row-alt);cursor:defa
 body:not(.person-mode) .seat-pop-btns{display:none}
 body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cursor:default;border-color:transparent}
 
-/* 颜色选择器 */
 .color-picker{display:flex;gap:8px;flex-wrap:wrap;flex:1}
 .color-picker button{width:30px;height:30px;border-radius:50%;border:2px solid var(--seat-border);cursor:pointer;transition:transform .15s,border-color .15s;padding:0;font-family:inherit}
 .color-picker button:hover{transform:scale(1.15)}
@@ -315,7 +259,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 #cellPopSave{background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:20px}
 #cellPopSave:hover{background:#2980b9}
 
-/* 分数线输入 */
 .score-line-wrap{position:relative;display:flex;flex:1;align-items:center;gap:8px;min-width:0}
 .score-line-wrap > input.cell-pop-input{flex:1;padding-right:60px !important;min-width:0}
 .score-pct-tag{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:#3498db;background:rgba(52,152,219,0.10);padding:2px 8px;border-radius:8px;pointer-events:none;white-space:nowrap}
@@ -354,7 +297,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .me-warn{background:#fef9c3;color:#713f12;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5;margin-bottom:16px;border:1px solid #f0e08b}
 [data-theme="dark"] .me-warn{background:#713f12;color:#fef08a;border-color:#92650f}
 
-/* 用户列表 */
 .user-list{margin-top:8px}
 .user-row{padding:14px;border-radius:12px;background:var(--table-row-alt);margin-bottom:10px;transition:all .2s}
 .user-row:hover{background:var(--seat-hover)}
@@ -379,13 +321,13 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .admin-title .back-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--seat-border);background:transparent;color:var(--text-main);font-size:13px;font-family:inherit;cursor:pointer}
 .admin-title .back-btn:hover{background:var(--table-row-alt)}
 
-/* ============ 12. 保存提示 / 诊断面板 ============ */
+/* ============ 12. 保存提示 ============ */
 #saveStatus{position:fixed;top:10px;right:16px;padding:6px 14px;border-radius:20px;background:#27ae60;color:#fff;font-size:12px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:opacity .3s;opacity:0;pointer-events:none}
 #saveStatus.show{opacity:1}
 #saveStatus.err{background:#e74c3c}
 #saveStatus.info{background:#3498db}
 
-/* ============ 13. 云同步 / Supabase ============ */
+/* ============ 13. 云同步 ============ */
 .sync-section{margin-top:14px;padding:16px 16px 12px;background:var(--table-row-alt);border-radius:12px}
 .sync-section h4{font-size:15px;color:var(--text-main);margin-bottom:12px;font-weight:600}
 .sync-row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
@@ -440,7 +382,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .admin-schedule-table tr.admin-break-row td{background:#2b3140!important;color:#a2a8b5!important}
 .user-detail-pop-inner{min-width:640px;max-width:92vw}
 
-/* 管理员用户详情 - 折叠面板 */
 .admin-fold{border:1px solid var(--table-border);border-radius:10px;margin-bottom:10px;background:var(--card-bg);overflow:hidden;transition:box-shadow .15s}
 .admin-fold[open]{box-shadow:0 2px 10px rgba(0,0,0,.04)}
 .admin-fold > summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:14px;color:var(--text-main);background:var(--table-row-alt);user-select:none;list-style:none;display:flex;align-items:center;gap:8px;transition:background .15s}
@@ -521,7 +462,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .tc-subj{font-weight:600;min-width:40px}
 .tc-tchr{color:var(--text-sub);font-size:12px;margin-left:auto}
 
-/* 今日课程标题栏 */
 .today-section-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--legend-item-border);flex-wrap:nowrap}
 .today-section-header > h4{flex:0 0 auto;font-size:15px;font-weight:700;color:var(--text-main);margin:0;padding:0;border:none;white-space:nowrap}
 .today-section-header > .today-header-controls{margin-left:auto}
@@ -529,7 +469,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-section-header .today-grade-filter{flex:0 1 auto !important;width:auto !important;min-width:100px;max-width:180px;padding:5px 30px 5px 12px;font-size:13px;border-radius:10px;background-color:var(--table-row-alt);border-color:transparent}
 .today-section-header .today-grade-filter:focus{border-color:#3498db}
 
-/* 周末「第几周·周几」下拉框 */
 .today-header-controls{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .today-weekday-picker{display:flex;justify-content:center;align-items:center;gap:8px}
 .today-weekday-picker .select-wrap{flex:0 1 auto !important;width:auto !important;min-width:0}
@@ -543,7 +482,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .today-weekday-select:focus{border-color:#3498db}
 
-/* 今日考勤汇总网格 */
 .today-summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px;margin-bottom:14px}
 .today-summary-grid>div{background:var(--table-row-alt);border-radius:8px;padding:8px 4px;text-align:center}
 .today-summary-grid .num{display:block;font-size:20px;font-weight:700;color:var(--text-main)}
@@ -553,8 +491,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-summary-grid .info .num{color:#3498db}
 .today-summary-grid .bad .num{color:#e74c3c}
 .today-summary-grid .date-cell .num{color:#7f8c8d}
-
-/* 考勤明细弹窗标题 */
 .today-att-sub{font-size:14px;font-weight:400;color:var(--text-sub);margin-left:6px}
 
 /* ============ 20. 花名册 ============ */
@@ -606,7 +542,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .btn-del-exam{background:#e74c3c;color:#fff}
 .btn-del-exam:hover{background:#c0392b}
 
-/* Tab 切换 */
 .tab-header{display:flex;gap:10px;margin-bottom:15px;border-bottom:1px solid var(--table-border);padding-bottom:10px;flex-wrap:wrap}
 .tab-btn{padding:6px 16px;border:none;background:transparent;cursor:pointer;color:var(--text-sub);font-weight:600;border-radius:8px;transition:all 0.2s;font-family:inherit;font-size:14px}
 .tab-btn:hover{background:var(--table-row-alt);color:var(--text-main)}
@@ -614,7 +549,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .tab-pane{display:none}
 .tab-pane.active{display:block}
 
-/* 名次表 */
 .rank-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
 .rank-table th,.rank-table td{padding:10px;border-bottom:1px solid var(--table-border);text-align:left;color:var(--text-main)}
 .rank-table th{background:var(--table-row-alt);font-size:12px;color:var(--text-sub);font-weight:600;position:sticky;top:0}
@@ -626,7 +560,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .rank-table .student-name a.rank-student-link:hover{background:rgba(52,152,219,0.12)}
 .rank-table .student-name a.rank-student-link.selected{background:#3498db;color:#fff}
 
-/* 成绩录入 */
 .scores-action-bar{position:sticky;bottom:0;display:flex;gap:10px;margin-top:14px;padding:12px 0 4px;background:var(--pop-bg);z-index:10;box-shadow:0 -6px 12px -6px rgba(0,0,0,.08)}
 [data-theme="dark"] .scores-action-bar{box-shadow:0 -6px 12px -6px rgba(0,0,0,.4)}
 .btn-scores-import{flex:1;padding:11px;border:none;border-radius:8px;background:#3498db;color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .2s}
@@ -664,14 +597,12 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
 #chartDistribution,#chartHistory{width:100%;border-radius:8px}
 
-/* 成绩走势 - 选择学生 */
 .trend-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--table-row-alt);border-radius:10px}
 .trend-toolbar label{font-size:13px;color:var(--text-sub);flex-shrink:0}
 .trend-toolbar .select-wrap{flex:0 1 auto !important;width:auto !important;min-width:0;margin-left:auto}
 .trend-toolbar .cell-pop-input{flex:0 1 auto;min-width:110px;max-width:180px}
 #trendStudentSelect{text-align:right;text-align-last:right;-moz-text-align-last:right;padding-right:30px !important}
 
-/* 成绩报告头部 */
 .report-header{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--legend-item-border);margin-bottom:12px}
 .report-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
 .report-avatar.male{background:#3b82f6}
@@ -723,7 +654,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .att-remark{padding:6px 10px;border:1px solid var(--seat-border);border-radius:8px;background-color:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;width:100%;min-width:0;box-sizing:border-box}
 .att-remark:focus{border-color:#3498db}
 
-/* 考勤工具栏 保存/删除按钮 */
 #attSaveBtn:disabled{cursor:not-allowed}
 #attSaveBtn.saved{background:#27ae60 !important}
 #attDelBtn:hover{background:#e74c3c !important;color:#fff !important}
@@ -760,13 +690,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .cs-input{width:100%;padding:5px 6px;border:1px solid var(--seat-border);border-radius:6px;background:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;text-align:center}
 .cs-input:focus{border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
-
-
-/* 课服编辑框的 placeholder 更淡 */
-.cs-input::placeholder{
-  color: #d5d9de;
-  opacity: 1;
-}
+.cs-input::placeholder{color: #d5d9de;opacity: 1}
 .cs-input::-webkit-input-placeholder{color: #d5d9de;opacity: 1}
 .cs-input::-moz-placeholder{color: #d5d9de;opacity: 1}
 .cs-input:-ms-input-placeholder{color: #d5d9de}
@@ -789,19 +713,16 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .page-sub{font-size:12px;margin-bottom:10px}
   .main-content{padding:0}
 
-  /* 卡片 / 表头 */
   .card{padding:16px 12px 22px;border-radius:16px;margin-bottom:20px}
   .card-header h2{font-size:19px;flex-wrap:wrap}
   .card-header .legend{font-size:12px}
   .legend-items .legend-text{font-size:12px}
 
-  /* 两行头部 */
   .card-hdr-row1{gap:8px}
   .card-hdr-row2{gap:8px}
   .seat-size-info{font-size:12px;padding:2px 10px}
   .card-hdr-row2 .seat-ctrl{padding:5px 12px;font-size:12px}
 
-  /* 课表 */
   .schedule-table{font-size:13px}
   .schedule-table thead th{padding:10px 4px;font-size:13px}
   .schedule-table tbody td{padding:8px 3px;font-size:12px;min-width:44px}
@@ -811,24 +732,20 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .schedule-table tbody tr.break-row td .cell-period-name{font-size:12px;font-weight:600;letter-spacing:.5px}
   .schedule-table tbody tr.break-row td .cell-time{font-size:10px;font-weight:600;margin-left:6px;letter-spacing:normal}
 
-  /* 图例 */
   .legend-grid{grid-template-columns:repeat(2,1fr);gap:6px 14px}
   .legend-item{font-size:13px}
   .legend-item .abbr{font-size:12px;line-height:24px;padding:0 8px;min-width:28px}
   .legend-item .full{font-size:12px}
   .legend-card .card-header h2{font-size:19px}
 
-  /* 控制条 */
   .control-bar{gap:8px;margin-bottom:14px}
   .control-bar button{padding:7px 12px;font-size:13px}
 
-  /* 座位 */
   .seat-item{padding:8px 3px;min-height:44px;font-size:13px}
   .seat-item.seat-empty{font-size:11px}
-  .seat-grid{gap:6px}
+  .seat-grid{gap:4px}
   .seat-stage{width:88%;padding:10px;font-size:14px;letter-spacing:4px}
 
-  /* 弹窗 */
   .seat-pop{padding:10px}
   .seat-pop-inner{padding:22px 20px;min-width:0;width:100%;max-width:400px}
   .cell-pop-row label{width:80px;font-size:13px}
@@ -837,23 +754,19 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .user-detail-pop-inner{min-width:0 !important;width:100% !important;max-width:100% !important;padding:20px 14px;box-sizing:border-box}
   .user-detail-pop-inner h3{font-size:18px;padding-right:24px}
 
-  /* 管理员座位表 */
   .admin-seat-grid{gap:3px!important}
   .admin-seat-cell{font-size:11px;min-height:28px;padding:4px 2px}
   .admin-schedule-table{font-size:11px}
   .admin-schedule-table th,.admin-schedule-table td{padding:4px 2px;font-size:11px}
   .admin-seat-stage{width:88%;padding:6px;font-size:11px;letter-spacing:3px}
 
-  /* 我的 */
   .me-card{padding:20px 16px;border-radius:18px}
   .me-username-big{font-size:19px}
 
-  /* 云同步 */
   .sync-row{gap:8px}
   .sync-row button{min-width:70px;height:36px;font-size:12px;padding:0 10px}
   .reg-lock-toggle{min-width:100px;height:36px;font-size:12px;padding:0 10px}
 
-  /* 底部导航 */
   .class-drag-ghost{border-radius:18px}
   .bottom-nav{height:54px}
   .bottom-nav .nav-icon{width:20px;height:20px}
@@ -861,17 +774,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .sub-nav{margin:0 0 12px;border-radius:12px;padding:6px 8px}
   .sub-tab{padding:6px 12px;font-size:13px}
 
-  /* 花名册 */
   .roster-table{font-size:12px;min-width:820px}
   .roster-table th,.roster-table td{padding:7px 8px}
 
-  /* 考试 */
   .exam-stats,.scores-stats{grid-template-columns:repeat(2,1fr)}
   .tab-header{gap:6px;flex-wrap:wrap}
   .tab-btn{padding:5px 10px;font-size:12px}
   .rank-table th,.rank-table td{padding:6px 4px;font-size:12px}
 
-  /* 成绩录入 */
   .scores-action-bar{gap:8px;margin-top:10px;padding:10px 0 4px;border-top:1px solid var(--table-border)}
   .btn-scores-import,.btn-scores-save{padding:10px;font-size:14px}
   .scores-input-row{padding:8px 10px}
@@ -880,7 +790,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .score-input{width:64px;padding:6px 8px;font-size:14px}
   .scores-max{font-size:11px}
 
-  /* 走势 */
   .report-avatar{width:34px;height:34px;font-size:14px}
   .report-name{font-size:15px}
   #chartInlineHistory{height:200px !important}
@@ -889,7 +798,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .report-subject-tab{padding:4px 12px;font-size:12px}
   #trendStudentSelect{max-width:130px !important;padding-right:26px !important}
 
-  /* 考勤 */
   .att-row{padding:8px 10px;gap:8px}
   .att-avatar{width:30px;height:30px;font-size:14px}
   .att-name{font-size:14px;min-width:50px}
@@ -897,23 +805,19 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .att-remark{padding:4px 8px}
   .today-summary-grid{grid-template-columns:repeat(3,1fr)}
 
-  /* 值日表 */
   .duty-table tbody td .cell-student{font-size:12px}
   .duty-table tbody td:first-child{min-width:70px;max-width:120px}
   .duty-note{padding:12px 14px;font-size:12px;line-height:1.8}
 
-  /* 今天页头 */
   .today-section-header h4{font-size:14px}
   .today-section-header .today-grade-filter{min-width:90px;max-width:140px;font-size:12px;padding:4px 26px 4px 10px}
   .today-header-controls{gap:6px}
   .today-weekday-picker .select-wrap > select.cell-pop-input,
   .today-weekday-select{min-width:118px;max-width:150px;font-size:12px;padding:4px 10px !important}
 
-  /* 折叠面板 */
   .admin-fold > summary{padding:10px 12px;font-size:13px}
   .admin-fold-body{padding:10px 12px 12px}
 
-  /* 课服编辑 */
   .cs-table{font-size:11px;min-width:420px}
   .cs-table th,.cs-table td{padding:4px 3px}
   .cs-table th{font-size:11px}
@@ -923,7 +827,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .cs-cell-row{gap:4px;margin-bottom:3px}
   .cs-cell-label{font-size:11px;min-width:14px}
 
-  /* 深色模式开关移动端略小 */
   .tgl-slider{ width: 36px; height: 20px; border-radius: 10px; }
   .tgl-slider::before{ width: 16px; height: 16px; font-size: 9px; }
   .tgl input:checked + .tgl-slider::before{ transform: translateX(16px); }
@@ -934,97 +837,35 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 
 /* ============ 我的 - 深色模式开关行 ============ */
-.me-info-row.theme-toggle-row{
-  padding: 12px 0;
-}
-.theme-toggle-group{
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.tgl{
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  cursor: pointer;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
+.me-info-row.theme-toggle-row{ padding: 12px 0; }
+.theme-toggle-group{ display: inline-flex; align-items: center; gap: 8px; }
+.tgl{ display: inline-flex; align-items: center; gap: 0; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
 .tgl input{ display: none; }
-.tgl-slider{
-  position: relative;
-  width: 40px;
-  height: 22px;
-  background: #bdc3c7;
-  border-radius: 11px;
-  transition: background .25s;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,.12);
-}
-.tgl-slider::before{
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform .25s, color .25s;
-  box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #7f8c8d;
-}
-.tgl input:checked + .tgl-slider{
-  background: #27ae60;
-}
-.tgl input:checked + .tgl-slider::before{
-  transform: translateX(18px);
-}
-.tgl input:disabled + .tgl-slider{
-  opacity: .45;
-  cursor: not-allowed;
-}
-.tgl-text{
-  font-size: 13px;
-  color: var(--text-sub);
-  font-weight: 500;
-}
+.tgl-slider{ position: relative; width: 40px; height: 22px; background: #bdc3c7; border-radius: 11px; transition: background .25s; flex-shrink: 0; box-shadow: inset 0 1px 3px rgba(0,0,0,.12); }
+.tgl-slider::before{ content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform .25s, color .25s; box-shadow: 0 1px 3px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #7f8c8d; }
+.tgl input:checked + .tgl-slider{ background: #27ae60; }
+.tgl input:checked + .tgl-slider::before{ transform: translateX(18px); }
+.tgl input:disabled + .tgl-slider{ opacity: .45; cursor: not-allowed; }
+.tgl-text{ font-size: 13px; color: var(--text-sub); font-weight: 500; }
 [data-theme="dark"] .tgl-slider{ background: #4a5568; }
 [data-theme="dark"] .tgl-text{ color: var(--text-sub); }
 
-/* 深色模式开关：未开启显示“关”，开启显示“开” */
-.tgl input:not(#themeAutoToggle):not(:checked) + .tgl-slider::before {
-  content: "关";
-}
-.tgl input:not(#themeAutoToggle):checked + .tgl-slider::before {
-  content: "开";
-  color: #27ae60;
-}
+.tgl input:not(#themeAutoToggle):not(:checked) + .tgl-slider::before { content: "关"; }
+.tgl input:not(#themeAutoToggle):checked + .tgl-slider::before { content: "开"; color: #27ae60; }
+#themeAutoToggle + .tgl-slider::before { content: "自"; font-size: 9px; }
+#themeAutoToggle:checked + .tgl-slider::before { color: #27ae60; }
 
-/* 自动开关：圆纽显示“自” */
-#themeAutoToggle + .tgl-slider::before {
-  content: "自";
-  font-size: 9px;
-}
-#themeAutoToggle:checked + .tgl-slider::before {
-  color: #27ae60;
-}
 /* 座位表设置：过道开关（开/关） */
 #seatManageAisleToggle:not(:checked) + .tgl-slider::before{content:"关";}
 #seatManageAisleToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}
 
-/* 座位表设置：讲台位置开关（上/下） */
+/* 强制覆盖：座位表设置-讲台位置开关（上/下） */
 #seatManageOrderToggle:not(:checked) + .tgl-slider::before {
-  content: "下";
+  content: "上" !important;
 }
 #seatManageOrderToggle:checked + .tgl-slider::before {
-  content: "上";
-  color: #27ae60;
+  content: "下" !important;
+  color: #27ae60 !important;
 }
 @media print{
   .control-bar,.seat-tools,#saveStatus,.bottom-nav,.sub-nav{display:none!important}
@@ -1033,11 +874,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .admin-fold{break-inside:avoid}
   .admin-fold[open] > summary{background:#f5f5f5!important}
 }
-/* 强制覆盖：座位表设置-讲台位置开关（上/下） */
-#seatManageOrderToggle:not(:checked) + .tgl-slider::before {
-  content: "下" !important;
-}
-#seatManageOrderToggle:checked + .tgl-slider::before {
-  content: "上" !important;
-  color: #27ae60 !important;
-}
+
+/* 座位表设置：班委显示开关（开/关） */
+#seatManageCommitteeToggle:not(:checked) + .tgl-slider::before{content:"关";}
+#seatManageCommitteeToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}

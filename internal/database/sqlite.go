@@ -178,6 +178,8 @@ func (s *SQLite) migrate() error {
 		user_id INTEGER NOT NULL,
 		student_name TEXT NOT NULL,
 		score REAL DEFAULT 0,
+		absent INTEGER DEFAULT 0,
+		sort_order INTEGER DEFAULT 0,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(exam_id, student_name)
 	);
@@ -213,6 +215,9 @@ func (s *SQLite) migrate() error {
 	// 考试：中等线、良好线
 	_, _ = s.db.Exec(`ALTER TABLE exams ADD COLUMN medium_score INTEGER DEFAULT 0`)
 	_, _ = s.db.Exec(`ALTER TABLE exams ADD COLUMN good_score INTEGER DEFAULT 0`)
+	// 成绩：缺考、手动排序
+	_, _ = s.db.Exec(`ALTER TABLE exam_scores ADD COLUMN absent INTEGER DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE exam_scores ADD COLUMN sort_order INTEGER DEFAULT 0`)
 	// 老数据回填
 	_, _ = s.db.Exec(`UPDATE exams SET medium_score = CAST(full_score * 0.7 AS INTEGER) WHERE medium_score IS NULL OR medium_score = 0`)
 	_, _ = s.db.Exec(`UPDATE exams SET good_score = CAST(full_score * 0.8 AS INTEGER) WHERE good_score IS NULL OR good_score = 0`)
@@ -1003,7 +1008,9 @@ func (s *SQLite) DeleteExam(userID, examID int64) error {
 
 func (s *SQLite) GetExamScores(examID int64) ([]model.ExamScore, error) {
 	rows, err := s.db.Query(
-		`SELECT id, exam_id, student_name, score, updated_at FROM exam_scores WHERE exam_id = ?`, examID)
+		`SELECT id, exam_id, student_name, score,
+		        COALESCE(absent,0), COALESCE(sort_order,0), updated_at
+		 FROM exam_scores WHERE exam_id = ?`, examID)
 	if err != nil {
 		return nil, err
 	}
@@ -1012,9 +1019,12 @@ func (s *SQLite) GetExamScores(examID int64) ([]model.ExamScore, error) {
 	var list []model.ExamScore
 	for rows.Next() {
 		var es model.ExamScore
-		if err := rows.Scan(&es.ID, &es.ExamID, &es.StudentName, &es.Score, &es.UpdatedAt); err != nil {
+		var absent int
+		if err := rows.Scan(&es.ID, &es.ExamID, &es.StudentName, &es.Score,
+			&absent, &es.SortOrder, &es.UpdatedAt); err != nil {
 			continue
 		}
+		es.Absent = absent == 1
 		list = append(list, es)
 	}
 	return list, nil
@@ -1039,11 +1049,32 @@ func (s *SQLite) BatchUpsertExamScores(userID, examID int64, scores []model.Exam
 
 	for _, sc := range scores {
 		if _, err := tx.Exec(
-			`INSERT INTO exam_scores (exam_id, user_id, student_name, score, updated_at)
-			 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+			`INSERT INTO exam_scores (exam_id, user_id, student_name, score, absent, updated_at)
+			 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 			 ON CONFLICT(exam_id, student_name) DO UPDATE SET
-				score=excluded.score, updated_at=CURRENT_TIMESTAMP`,
-			examID, userID, sc.StudentName, sc.Score); err != nil {
+				score=excluded.score,
+				absent=excluded.absent,
+				updated_at=CURRENT_TIMESTAMP`,
+			examID, userID, sc.StudentName, sc.Score, boolToInt(sc.Absent)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// SetExamRankOrder 按 names 顺序把 sort_order 更新为 1,2,3...
+func (s *SQLite) SetExamRankOrder(examID int64, names []string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for i, name := range names {
+		if _, err := tx.Exec(
+			`UPDATE exam_scores SET sort_order = ?
+			 WHERE exam_id = ? AND student_name = ?`,
+			i+1, examID, name); err != nil {
 			return err
 		}
 	}

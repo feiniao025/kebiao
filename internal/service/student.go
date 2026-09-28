@@ -131,6 +131,14 @@ func (s *StudentService) SaveScores(userID, examID int64, scores []model.ExamSco
 	return s.db.BatchUpsertExamScores(userID, examID, scores)
 }
 
+// SaveRankOrder 保存名次表手动排序
+func (s *StudentService) SaveRankOrder(userID, examID int64, names []string) error {
+	if _, err := s.db.GetExamByID(userID, examID); err != nil {
+		return fmt.Errorf("考试不存在")
+	}
+	return s.db.SetExamRankOrder(examID, names)
+}
+
 func (s *StudentService) GetExamStats(userID, examID int64) (*model.ExamStats, error) {
 	e, err := s.db.GetExamByID(userID, examID)
 	if err != nil {
@@ -157,26 +165,34 @@ func (s *StudentService) GetExamStats(userID, examID int64) (*model.ExamStats, e
 		return st, nil
 	}
 	var sum float64
-	st.MaxScore = scores[0].Score
-	st.MinScore = scores[0].Score
-	for _, s := range scores {
-		sum += s.Score
+	firstScored := true
+	for _, sc := range scores {
+		if sc.Absent {
+			st.AbsentCount++
+			continue
+		}
+		sum += sc.Score
 		st.Count++
-		if s.Score >= float64(e.PassScore) {
+		if sc.Score >= float64(e.PassScore) {
 			st.PassCount++
 		}
-		if s.Score >= float64(e.ExcellentScore) {
+		if sc.Score >= float64(e.ExcellentScore) {
 			st.ExcellentCount++
 		}
-		if s.Score > st.MaxScore {
-			st.MaxScore = s.Score
+		if firstScored {
+			st.MaxScore = sc.Score
+			st.MinScore = sc.Score
+			firstScored = false
 		}
-		if s.Score < st.MinScore {
-			st.MinScore = s.Score
+		if sc.Score > st.MaxScore {
+			st.MaxScore = sc.Score
+		}
+		if sc.Score < st.MinScore {
+			st.MinScore = sc.Score
 		}
 
 		// 分数段统计（按固定区间划分，不依赖及格线/优秀线）
-		score := s.Score
+		score := sc.Score
 		switch {
 		case score < 60:
 			st.Distribution["<60"]++
@@ -192,8 +208,8 @@ func (s *StudentService) GetExamStats(userID, examID int64) (*model.ExamStats, e
 			st.Distribution["100+"]++
 		}
 	}
-	st.Average = sum / float64(st.Count)
 	if st.Count > 0 {
+		st.Average = sum / float64(st.Count)
 		st.PassRate = float64(st.PassCount) / float64(st.Count) * 100
 		st.ExcellentRate = float64(st.ExcellentCount) / float64(st.Count) * 100
 	}

@@ -234,6 +234,7 @@ func (h *StudentHandler) GetStudentHistory(c *gin.Context) {
 type scoreItem struct {
 	StudentName string  `json:"student_name"`
 	Score       float64 `json:"score"`
+	Absent      bool    `json:"absent"`
 }
 
 type saveScoresReq struct {
@@ -260,6 +261,7 @@ func (h *StudentHandler) SaveScores(c *gin.Context) {
 		items = append(items, model.ExamScore{
 			StudentName: s.StudentName,
 			Score:       s.Score,
+			Absent:      s.Absent,
 		})
 	}
 	if err := h.svc.SaveScores(userID, examID, items); err != nil {
@@ -268,6 +270,30 @@ func (h *StudentHandler) SaveScores(c *gin.Context) {
 	}
 	stats, _ := h.svc.GetExamStats(userID, examID)
 	c.JSON(http.StatusOK, gin.H{"message": "已保存", "stats": stats})
+}
+
+// 保存名次表手动排序
+type setRankOrderReq struct {
+	Names []string `json:"names" binding:"required"`
+}
+
+func (h *StudentHandler) SetRankOrder(c *gin.Context) {
+	examID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	if examID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的考试ID"})
+		return
+	}
+	var req setRankOrderReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
+		return
+	}
+	userID := c.GetInt64("user_id")
+	if err := h.svc.SaveRankOrder(userID, examID, req.Names); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "已保存"})
 }
 
 // ============ 考勤 ============

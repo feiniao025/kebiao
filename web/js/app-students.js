@@ -442,7 +442,7 @@ window.loadExamStats = async function (examId) {
       '<div class="stat-cell"><span class="k">及格率</span><span class="v">' + (st.pass_rate ? st.pass_rate.toFixed(1) : '0.0') + '% (' + (st.pass_count || 0) + '人 ≥' + (st.pass_line || 0) + ')</span></div>' +
       '<div class="stat-cell"><span class="k">优秀率</span><span class="v">' + (st.excellent_rate ? st.excellent_rate.toFixed(1) : '0.0') + '% (' + (st.excellent_count || 0) + '人 ≥' + (st.excellent_line || 0) + ')</span></div>' +
       '<div class="stat-cell"><span class="k">最高/最低</span><span class="v">' + (st.max_score || 0) + ' / ' + (st.min_score || 0) + '</span></div>' +
-      '<div class="stat-cell"><span class="k">已录人数</span><span class="v">' + (st.count || 0) + '</span></div>';
+      '<div class="stat-cell"><span class="k">已录/缺考</span><span class="v">' + (st.count || 0) + ' / ' + (st.absent_count || 0) + '</span></div>';
   } catch { el.textContent = '加载失败'; }
 };
 
@@ -780,7 +780,10 @@ window.openScoresPop = async function (examId) {
       { label: excellentLine + '~' + fullScore, name: '优秀', color: '#81c784', min: excellentLine, max: Infinity },
     ];
     const counts = bands.map(() => 0);
-    scores.forEach(s => { for (let i = 0; i < bands.length; i++) { if (s.score >= bands[i].min && s.score < bands[i].max) { counts[i]++; break; } } });
+    scores.forEach(s => {
+      if (s.absent) return;
+      for (let i = 0; i < bands.length; i++) { if (s.score >= bands[i].min && s.score < bands[i].max) { counts[i]++; break; } }
+    });
 
     let html = `
       <div class="tab-header">
@@ -801,6 +804,9 @@ window.openScoresPop = async function (examId) {
         <div id="chartDistribution" style="width:100%;height:300px;"></div>
       </div>
       <div id="tab-content-rank" class="tab-pane">
+        <div class="rank-action-bar">
+          <button id="rankExportImgBtn" type="button" class="btn-scores-import" style="flex:0 0 auto;">📷 导出图片</button>
+        </div>
         <div id="rankTableBody"></div>
       </div>
       <div id="tab-content-trend" class="tab-pane">
@@ -819,80 +825,138 @@ window.openScoresPop = async function (examId) {
       '<div class="stat-cell"><span class="k">及格率</span><span class="v">' + (stats.pass_rate ? stats.pass_rate.toFixed(1) : '0.0') + '% (' + (stats.pass_count || 0) + '人 ≥' + exam.pass_score + ')</span></div>' +
       '<div class="stat-cell"><span class="k">优秀率</span><span class="v">' + (stats.excellent_rate ? stats.excellent_rate.toFixed(1) : '0.0') + '% (' + (stats.excellent_count || 0) + '人 ≥' + exam.excellent_score + ')</span></div>' +
       '<div class="stat-cell"><span class="k">最高/最低</span><span class="v">' + (stats.max_score || 0) + ' / ' + (stats.min_score || 0) + '</span></div>' +
-      '<div class="stat-cell"><span class="k">已录人数</span><span class="v">' + (stats.count || 0) + ' / ' + roster.length + '</span></div>';
+      '<div class="stat-cell"><span class="k">已录/缺考/总</span><span class="v">' + (stats.count || 0) + ' / ' + (stats.absent_count || 0) + ' / ' + roster.length + '</span></div>';
 
     if (roster.length === 0) {
       $('scoresInputBody').innerHTML = '<div class="today-empty">该班级暂无花名册学生<br>请先到「学生 → 花名册」添加学生</div>';
     } else {
       const scoreMap = {};
-      scores.forEach(s => { scoreMap[s.student_name] = s.score; });
+      scores.forEach(s => { scoreMap[s.student_name] = s; });
       let inputHtml = '<div class="scores-input-list">';
       roster.forEach(stu => {
-        const val = scoreMap[stu.name];
         const safeName = String(stu.name || '');
+        const rec = scoreMap[safeName];
+        const isAbsent = rec ? !!rec.absent : false;
+        const val = (rec && !rec.absent) ? rec.score : undefined;
         const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
         const genderClass = stu.gender === '女' ? 'female' : (stu.gender === '男' ? 'male' : 'unknown');
-        inputHtml += '<div class="scores-input-row"><div class="scores-input-info">' +
-          '<div class="scores-avatar ' + genderClass + '">' + initial + '</div>' +
-          '<span class="scores-name">' + escapeHtml(safeName) + '</span></div>' +
+        inputHtml += '<div class="scores-input-row">' +
+          '<div class="scores-input-info">' +
+            '<div class="scores-avatar ' + genderClass + '">' + initial + '</div>' +
+            '<span class="scores-name">' + escapeHtml(safeName) + '</span>' +
+          '</div>' +
           '<div class="scores-input-wrap">' +
-          '<input type="number" class="score-input" data-name="' + escapeHtml(safeName) + '" value="' + (val !== undefined ? val : '') + '" min="0" max="' + exam.full_score + '" step="0.5" inputmode="decimal">' +
-          '<span class="scores-max">/ ' + exam.full_score + '</span></div></div>';
+            '<button type="button" class="absent-btn' + (isAbsent ? ' active' : '') +
+              '" data-name="' + escapeHtml(safeName) + '">缺考</button>' +
+            '<input type="number" class="score-input" data-name="' + escapeHtml(safeName) +
+              '" value="' + (val !== undefined ? val : '') + '" min="0" max="' + exam.full_score +
+              '" step="0.5" inputmode="decimal"' + (isAbsent ? ' disabled' : '') + '>' +
+            '<span class="scores-max">/ ' + exam.full_score + '</span>' +
+          '</div>' +
+        '</div>';
       });
       inputHtml += '</div>';
       $('scoresInputBody').innerHTML = inputHtml;
       $('scoresInputBody').querySelectorAll('.score-input').forEach(inp => {
+        if (inp.disabled) return;
         applyScoreLevel(inp, exam);
         inp.addEventListener('input', () => applyScoreLevel(inp, exam));
       });
+      // 缺考按钮交互
+      $('scoresInputBody').querySelectorAll('.absent-btn').forEach(btn => {
+        btn.onclick = () => {
+          const row = btn.closest('.scores-input-row');
+          const inp = row.querySelector('.score-input');
+          const nowActive = btn.classList.toggle('active');
+          if (nowActive) {
+            inp.value = '';
+            inp.disabled = true;
+            inp.removeAttribute('data-level');
+          } else {
+            inp.disabled = false;
+            applyScoreLevel(inp, exam);
+            inp.focus();
+          }
+        };
+      });
     }
 
-    if (roster.length === 0) $('rankTableBody').innerHTML = '<div class="today-empty">暂无学生数据</div>';
-    else {
-      const rankList = roster.map(stu => {
-        const scoreObj = scores.find(s => s.student_name === stu.name);
-        return { name: stu.name, gender: stu.gender || '', score: scoreObj ? scoreObj.score : null };
-      }).sort((a, b) => {
-        if (a.score === null && b.score === null) return 0;
-        if (a.score === null) return 1;
-        if (b.score === null) return -1;
-        return b.score - a.score;
+    /* ---------- 名次表 ---------- */
+    if (roster.length === 0) {
+      $('rankTableBody').innerHTML = '<div class="today-empty">暂无学生数据</div>';
+    } else {
+      const scoreMapForRank = {};
+      scores.forEach(s => { scoreMapForRank[s.student_name] = s; });
+      const hasManualOrder = scores.some(s => (s.sort_order || 0) > 0);
+
+      let rankList = roster.map(stu => {
+        const rec = scoreMapForRank[stu.name];
+        return {
+          name: stu.name,
+          gender: stu.gender || '',
+          score: (rec && !rec.absent) ? rec.score : null,
+          absent: rec ? !!rec.absent : false,
+          sortOrder: (rec && rec.sort_order) || 0,
+        };
       });
 
-      let rankTableHtml = '<table class="rank-table"><thead><tr><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th></tr></thead><tbody>';
+      if (hasManualOrder) {
+        rankList.sort((a, b) => {
+          const ao = a.sortOrder || 999999;
+          const bo = b.sortOrder || 999999;
+          if (ao !== bo) return ao - bo;
+          return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+        });
+      } else {
+        rankList.sort((a, b) => {
+          if (a.score === null && b.score === null) return 0;
+          if (a.score === null) return 1;
+          if (b.score === null) return -1;
+          return b.score - a.score;
+        });
+      }
+
+      let rankTableHtml = '<table class="rank-table" id="rankTableEl"><thead><tr>' +
+        '<th style="width:34px;"></th><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th>' +
+        '</tr></thead><tbody>';
       let rank = 1;
       rankList.forEach(item => {
-        if (item.score === null) {
-          rankTableHtml += '<tr><td class="rank-num">-</td><td class="student-name">' + escapeHtml(item.name) + '</td><td>' + escapeHtml(item.gender) + '</td><td colspan="3" style="color:var(--empty-text);">未录入</td></tr>';
-          return;
+        rankTableHtml += '<tr data-name="' + escapeHtml(item.name) + '">';
+        rankTableHtml += '<td class="drag-handle" title="长按拖动排序">⋮⋮</td>';
+        if (item.absent) {
+          rankTableHtml += '<td class="rank-num">-</td>' +
+            '<td class="student-name">' + escapeHtml(item.name) + '</td>' +
+            '<td>' + escapeHtml(item.gender) + '</td>' +
+            '<td colspan="3" style="color:#f39c12;font-weight:600;">缺考</td>';
+        } else if (item.score === null) {
+          rankTableHtml += '<td class="rank-num">-</td>' +
+            '<td class="student-name">' + escapeHtml(item.name) + '</td>' +
+            '<td>' + escapeHtml(item.gender) + '</td>' +
+            '<td colspan="3" style="color:var(--empty-text);">未录入</td>';
+        } else {
+          let level, levelColor;
+          if (item.score >= exam.excellent_score) { level = '优秀'; levelColor = '#27ae60'; }
+          else if (item.score >= exam.good_score) { level = '良好'; levelColor = '#3498db'; }
+          else if (item.score >= exam.medium_score) { level = '中等'; levelColor = '#f39c12'; }
+          else if (item.score >= exam.pass_score) { level = '及格'; levelColor = '#e67e22'; }
+          else { level = '不及格'; levelColor = '#e74c3c'; }
+          rankTableHtml += '<td class="rank-num">' + (rank++) + '</td>' +
+            '<td class="student-name"><a href="javascript:void(0)" class="rank-student-link" data-name="' + escapeHtml(item.name) + '" data-gender="' + escapeHtml(item.gender) + '">' + escapeHtml(item.name) + '</a></td>' +
+            '<td>' + escapeHtml(item.gender) + '</td>' +
+            '<td class="score-val">' + item.score + '</td>' +
+            '<td>' + exam.full_score + '</td>' +
+            '<td><span style="color:' + levelColor + ';font-weight:600;">' + level + '</span></td>';
         }
-        let level, levelColor;
-        if (item.score >= exam.excellent_score) { level = '优秀'; levelColor = '#27ae60'; }
-        else if (item.score >= exam.good_score) { level = '良好'; levelColor = '#3498db'; }
-        else if (item.score >= exam.medium_score) { level = '中等'; levelColor = '#f39c12'; }
-        else if (item.score >= exam.pass_score) { level = '及格'; levelColor = '#e67e22'; }
-        else { level = '不及格'; levelColor = '#e74c3c'; }
-        rankTableHtml += '<tr><td class="rank-num">' + (rank++) + '</td>' +
-          '<td class="student-name"><a href="javascript:void(0)" class="rank-student-link" data-name="' + escapeHtml(item.name) + '" data-gender="' + escapeHtml(item.gender) + '">' + escapeHtml(item.name) + '</a></td>' +
-          '<td>' + escapeHtml(item.gender) + '</td><td class="score-val">' + item.score + '</td>' +
-          '<td>' + exam.full_score + '</td><td><span style="color:' + levelColor + ';font-weight:600;">' + level + '</span></td></tr>';
+        rankTableHtml += '</tr>';
       });
       rankTableHtml += '</tbody></table>';
       $('rankTableBody').innerHTML = rankTableHtml;
 
-      const trendSel = $('trendStudentSelect');
-      if (trendSel) {
-        trendSel.innerHTML = '<option value="">— 请选择 —</option>' +
-          rankList.map(s => '<option value="' + escapeHtml(s.name) + '" data-gender="' + escapeHtml(s.gender) + '">' + escapeHtml(s.name) + '</option>').join('');
-        trendSel.onchange = () => {
-          const opt = trendSel.options[trendSel.selectedIndex];
-          if (!opt || !opt.value) { const panel = document.getElementById('rankRightPanel'); if (panel) panel.innerHTML = '<div class="rank-right-empty">请选择学生查看个人成绩走势</div>'; return; }
-          window.showStudentReportInline(opt.value, exam.subject, exam.full_score, opt.dataset.gender);
-        };
-      }
+      // 学生姓名点击（保持原有趋势图逻辑，拖动后屏蔽）
       $('rankTableBody').querySelectorAll('.rank-student-link').forEach(a => {
         a.onclick = (ev) => {
           ev.preventDefault(); ev.stopPropagation();
+          if (Date.now() < (window.suppressClickTime || 0)) return;
           $('scoresPopBody').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
           $('scoresPopBody').querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
           const trendBtn = $('scoresPopBody').querySelector('.tab-btn[data-tab="trend"]');
@@ -904,6 +968,25 @@ window.openScoresPop = async function (examId) {
           window.showStudentReportInline(a.dataset.name, exam.subject, exam.full_score, a.dataset.gender);
         };
       });
+
+      // 绑定长按拖动
+      window.bindRankDrag(exam);
+    }
+
+    // 趋势下拉（原来通过下方代码生成）
+    const trendSel = $('trendStudentSelect');
+    if (trendSel) {
+      const scoredList = roster.map(stu => {
+        const rec = scoreMap[stu.name];
+        return { name: stu.name, gender: stu.gender || '', absent: rec ? !!rec.absent : false };
+      });
+      trendSel.innerHTML = '<option value="">— 请选择 —</option>' +
+        scoredList.map(s => '<option value="' + escapeHtml(s.name) + '" data-gender="' + escapeHtml(s.gender) + '">' + escapeHtml(s.name) + '</option>').join('');
+      trendSel.onchange = () => {
+        const opt = trendSel.options[trendSel.selectedIndex];
+        if (!opt || !opt.value) { const panel = document.getElementById('rankRightPanel'); if (panel) panel.innerHTML = '<div class="rank-right-empty">请选择学生查看个人成绩走势</div>'; return; }
+        window.showStudentReportInline(opt.value, exam.subject, exam.full_score, opt.dataset.gender);
+      };
     }
 
     const importBtn = $('scoresImportBtn');
@@ -913,13 +996,21 @@ window.openScoresPop = async function (examId) {
       const inputs = $('scoresInputBody').querySelectorAll('.score-input');
       const toSave = [];
       inputs.forEach(inp => {
+        const name = inp.dataset.name;
+        const row = inp.closest('.scores-input-row');
+        const absentBtn = row ? row.querySelector('.absent-btn') : null;
+        const isAbsent = absentBtn && absentBtn.classList.contains('active');
+        if (isAbsent) {
+          toSave.push({ student_name: name, score: 0, absent: true });
+          return;
+        }
         const v = inp.value.trim();
         if (v === '') return;
         const score = parseFloat(v);
         if (isNaN(score)) return;
-        toSave.push({ student_name: inp.dataset.name, score });
+        toSave.push({ student_name: name, score: score, absent: false });
       });
-      if (toSave.length === 0) { alert('请至少录入一个成绩'); return; }
+      if (toSave.length === 0) { alert('请至少录入一个成绩或勾选缺考'); return; }
       try {
         await apiCall(API.saveScores, examId, toSave);
         showSaveStatus('已保存 ' + toSave.length + ' 条成绩', false);
@@ -927,6 +1018,9 @@ window.openScoresPop = async function (examId) {
         loadExamStats(examId);
       } catch {}
     };
+
+    const rankExportBtn = $('rankExportImgBtn');
+    if (rankExportBtn) rankExportBtn.onclick = () => window.exportRankImage(exam);
 
     $('scoresPopBody').querySelectorAll('.tab-btn').forEach(btn => {
       btn.onclick = () => {
@@ -976,6 +1070,215 @@ window.openScoresPop = async function (examId) {
     });
   } catch (err) {
     $('scoresPopBody').innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>';
+  }
+};
+
+/* ============================================================
+   名次表：长按拖动排序
+   ============================================================ */
+window.suppressClickTime = window.suppressClickTime || 0;
+window._rankDragCleanup = null;
+
+window.bindRankDrag = function (exam) {
+  if (window._rankDragCleanup) {
+    window._rankDragCleanup();
+    window._rankDragCleanup = null;
+  }
+
+  const tbody = document.querySelector('#rankTableBody tbody');
+  if (!tbody) return;
+  const LONG_PRESS = 400;
+
+  let pressTimer = null;
+  let pressState = null;
+  let dragState = null;
+
+  function onStart(e, row) {
+    if (e.target.closest('a, button')) return;
+    const touch = e.touches && e.touches[0];
+    const x = touch ? touch.clientX : e.clientX;
+    const y = touch ? touch.clientY : e.clientY;
+    pressState = { row, x, y };
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      if (!pressState) return;
+      const ps = pressState;
+      pressState = null;
+      activateDrag(ps.row, ps.x, ps.y);
+    }, LONG_PRESS);
+  }
+
+  function activateDrag(row, x, y) {
+    const rect = row.getBoundingClientRect();
+    const ghost = row.cloneNode(true);
+    ghost.style.cssText =
+      'position:fixed;pointer-events:none;z-index:99999;opacity:.85;background:#fff;' +
+      'box-shadow:0 8px 24px rgba(0,0,0,.2);border-radius:6px;' +
+      'width:' + rect.width + 'px;left:' + rect.left + 'px;top:' + rect.top + 'px;';
+    document.body.appendChild(ghost);
+    row.classList.add('rank-dragging');
+    dragState = {
+      row, ghost,
+      offsetX: x - rect.left,
+      offsetY: y - rect.top,
+      targetRow: null,
+    };
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+  }
+
+  function onMove(e) {
+    if (pressState) {
+      const touch = e.touches && e.touches[0];
+      const x = touch ? touch.clientX : e.clientX;
+      const y = touch ? touch.clientY : e.clientY;
+      const dx = x - pressState.x, dy = y - pressState.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 8) {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        pressState = null;
+      }
+      return;
+    }
+    if (!dragState) return;
+    if (e.cancelable) e.preventDefault();
+    const touch = e.touches && e.touches[0];
+    const x = touch ? touch.clientX : e.clientX;
+    const y = touch ? touch.clientY : e.clientY;
+    dragState.ghost.style.left = (x - dragState.offsetX) + 'px';
+    dragState.ghost.style.top = (y - dragState.offsetY) + 'px';
+
+    dragState.ghost.style.display = 'none';
+    const el = document.elementFromPoint(x, y);
+    dragState.ghost.style.display = '';
+    const targetTr = el && el.closest ? el.closest('tr[data-name]') : null;
+    if (dragState.targetRow && dragState.targetRow !== targetTr) {
+      dragState.targetRow.classList.remove('rank-drag-over');
+    }
+    if (targetTr && targetTr !== dragState.row && targetTr.parentNode === tbody) {
+      targetTr.classList.add('rank-drag-over');
+      dragState.targetRow = targetTr;
+    } else {
+      dragState.targetRow = null;
+    }
+  }
+
+  function renumber() {
+    let r = 1;
+    tbody.querySelectorAll('tr[data-name]').forEach(row => {
+      if (row.querySelector('.score-val')) {
+        const c = row.querySelector('.rank-num');
+        if (c) c.textContent = r++;
+      }
+    });
+  }
+
+  function onEnd() {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    pressState = null;
+    if (!dragState) return;
+    const state = dragState;
+    dragState = null;
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    try { state.ghost.remove(); } catch (e) {}
+    state.row.classList.remove('rank-dragging');
+    if (state.targetRow) {
+      state.targetRow.classList.remove('rank-drag-over');
+      const allRows = Array.from(tbody.querySelectorAll('tr[data-name]'));
+      const fromIdx = allRows.indexOf(state.row);
+      const toIdx = allRows.indexOf(state.targetRow);
+      if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+        if (fromIdx < toIdx) {
+          tbody.insertBefore(state.row, state.targetRow.nextSibling);
+        } else {
+          tbody.insertBefore(state.row, state.targetRow);
+        }
+        renumber();
+        window.suppressClickTime = Date.now() + 400;
+        const names = Array.from(tbody.querySelectorAll('tr[data-name]')).map(r => r.dataset.name);
+        API.setExamRankOrder(exam.id, names)
+          .then(() => showSaveStatus('名次顺序已保存', false))
+          .catch(err => showSaveStatus('保存排序失败: ' + (err.message || ''), true));
+      }
+    }
+  }
+
+  const rows = Array.from(tbody.querySelectorAll('tr[data-name]'));
+  rows.forEach(row => {
+    row.addEventListener('mousedown', (e) => onStart(e, row));
+    row.addEventListener('touchstart', (e) => onStart(e, row), { passive: true });
+  });
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onEnd);
+  document.addEventListener('touchend', onEnd);
+  document.addEventListener('touchcancel', onEnd);
+
+  window._rankDragCleanup = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('mouseup', onEnd);
+    document.removeEventListener('touchend', onEnd);
+    document.removeEventListener('touchcancel', onEnd);
+  };
+};
+
+/* ============================================================
+   名次表：导出图片
+   ============================================================ */
+window.exportRankImage = async function (exam) {
+  try { await ensureHtml2Canvas(); }
+  catch (e) { alert('图片导出库加载失败，请检查网络'); return; }
+
+  const src = $('rankTableBody');
+  if (!src) return;
+  const table = src.querySelector('.rank-table');
+  if (!table) { alert('暂无名次表内容'); return; }
+
+  const clsName = (classes.find(c => c.class_id === exam.class_id) || {}).name || '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;padding:24px;width:680px;' +
+                       'font-family:"PingFang SC","Microsoft YaHei",sans-serif;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'font-size:18px;font-weight:700;text-align:center;color:#2c3e50;margin-bottom:16px;';
+  header.textContent = (clsName ? clsName + ' · ' : '') + exam.name + ' · ' + exam.subject + ' · 名次表';
+  wrap.appendChild(header);
+
+  const cloned = table.cloneNode(true);
+  cloned.style.cssText = 'width:100%;border-collapse:collapse;font-size:14px;color:#2c3e50;';
+  cloned.querySelectorAll('th').forEach(th => {
+    th.style.cssText = 'background:#2c3e50;color:#fff;padding:10px 8px;text-align:left;font-weight:600;font-size:13px;';
+  });
+  cloned.querySelectorAll('td').forEach(td => {
+    td.style.cssText = 'border-bottom:1px solid #edf2f7;padding:8px;';
+  });
+  cloned.querySelectorAll('tr').forEach(tr => {
+    const first = tr.firstElementChild;
+    if (first && (first.classList.contains('drag-handle') || first.textContent.trim() === '')) {
+      first.remove();
+    }
+  });
+  wrap.appendChild(cloned);
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'text-align:right;color:#7f8c8d;font-size:11px;margin-top:12px;';
+  footer.textContent = '导出时间：' + new Date().toLocaleString('zh-CN');
+  wrap.appendChild(footer);
+
+  document.body.appendChild(wrap);
+  try {
+    const canvas = await html2canvas(wrap, { useCORS: true, scale: 2, backgroundColor: '#fff' });
+    const link = document.createElement('a');
+    link.download = (clsName ? clsName + '_' : '') + exam.name + '_' + exam.subject + '_名次表.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showSaveStatus('已导出图片', false);
+  } catch (e) {
+    alert('导出失败：' + (e.message || e));
+  } finally {
+    wrap.remove();
   }
 };
 
@@ -1081,7 +1384,6 @@ window.updateAttSummary = function () {
   el.querySelectorAll('.att-status-btn.active').forEach(b => { if (counts[b.dataset.status] !== undefined) counts[b.dataset.status]++; });
   const total = attendanceList.length;
 
-  // ★ 第 6 格固定显示"今天"的日期，不跟随上面的选择器
   const today = new Date();
   const mmdd = String(today.getMonth() + 1).padStart(2, '0') + '/' +
                String(today.getDate()).padStart(2, '0');
@@ -1113,7 +1415,6 @@ window.saveAttendance = async function () {
   });
   if (items.length === 0) { alert('没有可保存的记录'); return; }
 
-  // 按钮进入"保存中"状态
   const saveBtn = $('attSaveBtn');
   const oldText = saveBtn ? saveBtn.textContent : '';
   if (saveBtn) {
@@ -1124,14 +1425,8 @@ window.saveAttendance = async function () {
 
   try {
     await apiCall(API.saveAttendance, currentAttendanceClassId, currentAttendanceDate, items);
-
-    // 从服务端重新加载，保证显示与实际一致
     await loadAttendance();
-
-    // 顶部绿条
     showSaveStatus('已保存 ' + items.length + ' 条', false);
-
-    // 按钮短暂显示"✓ 已保存"
     if (saveBtn) {
       saveBtn.textContent = '✓';
       saveBtn.style.background = '#27ae60';
@@ -1141,7 +1436,6 @@ window.saveAttendance = async function () {
       }, 1200);
     }
   } catch (err) {
-    // apiCall 已经弹过错误提示
     if (saveBtn) saveBtn.textContent = oldText;
   } finally {
     if (saveBtn) {
