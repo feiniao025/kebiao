@@ -295,19 +295,18 @@ window.fillClassSelect = function (sel, defaultVal) {
 window.TEACHER_ROLES = ['班主任', '任课教师'];
 
 // 组装成 "好老师 · 班主任"（兼容旧调用签名，subject 不再写入徽章）
+// 组装成 "姓名 · 角色 · 科目"（兼容旧调用签名）
 window.formatTeacherInfo = function (role, subject, name) {
   const r = (role || '').trim();
+  const s = (subject || '').trim();
   const n = (name || '').trim();
   const parts = [];
   if (n) parts.push(n);
   if (r) parts.push(r);
+  if (s) parts.push(s);   // ★ 新增
   return parts.join(' · ');
 };
 
-// 解析 badge：
-//   新格式 "好老师 · 班主任"          → { name:'好老师', role:'班主任', subject:'' }
-//   旧格式 "班主任 · 英语 · 好老师"   → { role:'班主任', subject:'英语', name:'好老师' }
-//   旧数据 "班主任 · 张三"            → { role:'班主任', name:'张三', subject:'' }
 window.parseTeacherInfo = function (badge) {
   const info = { role: '', subject: '', name: '' };
   const t = String(badge || '').trim();
@@ -319,17 +318,24 @@ window.parseTeacherInfo = function (badge) {
   const ROLE_SET = ['班主任', '任课教师'];
 
   if (parts.length >= 3) {
-    // 旧格式：角色 · 科目 · 姓名
-    info.role = parts[0];
-    info.subject = parts[1];
-    info.name = parts.slice(2).join(' · ');
+    if (ROLE_SET.indexOf(parts[0]) >= 0) {
+      // 旧格式：角色 · 科目 · 姓名
+      info.role    = parts[0];
+      info.subject = parts[1];
+      info.name    = parts.slice(2).join(' · ');
+    } else {
+      // ★ 新格式：姓名 · 角色 · 科目
+      info.name    = parts[0];
+      info.role    = parts[1];
+      info.subject = parts.slice(2).join(' · ');
+    }
   } else if (parts.length === 2) {
     if (ROLE_SET.indexOf(parts[0]) >= 0) {
       // 旧数据缺科目：角色 · 姓名
       info.role = parts[0];
       info.name = parts[1];
     } else {
-      // 新格式：姓名 · 角色
+      // 姓名 · 角色
       info.name = parts[0];
       info.role = parts[1];
     }
@@ -340,10 +346,13 @@ window.parseTeacherInfo = function (badge) {
   return info;
 };
 
-/* 显示用：把 badge 统一成「姓名 · 角色」格式（兼容旧格式） */
+// 徽章展示：过滤掉科目，只显示 "姓名 · 角色"
 window.formatTeacherBadgeDisplay = function (badge) {
   const info = window.parseTeacherInfo(badge);
-  return window.formatTeacherInfo(info.role, info.subject, info.name);
+  const parts = [];
+  if (info.name) parts.push(info.name);
+  if (info.role) parts.push(info.role);
+  return parts.join(' · ');
 };
 
 // 向后兼容：不再自动加/去前缀，只做 trim

@@ -1083,7 +1083,7 @@ function fillTeacherSubjectSelect(sel, defaultVal) {
     ? window.SUBJECTS.slice()
     : ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
   const dv = (defaultVal || '').trim();
-  let html = '<option value="">— 请选择 —</option>';
+  let html = '<option value="">— 选择任教科目 —</option>';
   const seen = {};
   subjects.forEach(function (s) {
     if (seen[s]) return;
@@ -2153,6 +2153,7 @@ window.doExportScheduleExcel = async function (list) {
 
     // 校验：教师角色 + 教师姓名 必填（任教科目不再强制）
     if (!role)        { errEl.textContent = '请选择教师角色（班主任 / 任课教师）'; return; }
+	if (!subject)     { errEl.textContent = '请选择任教科目'; return; }
     if (!teacherName) { errEl.textContent = '请输入教师姓名'; return; }
     if (teacherName.length > 20) { errEl.textContent = '教师姓名不能超过 20 个字符'; return; }
 
@@ -2211,6 +2212,7 @@ window.doExportScheduleExcel = async function (list) {
 
     // 校验：教师角色 + 教师姓名 必填（任教科目不再强制）
     if (!role)        { errEl.textContent = '请选择教师角色（班主任 / 任课教师）'; return; }
+	if (!subject)     { errEl.textContent = '请选择任教科目'; return; }
     if (!teacherName) { errEl.textContent = '请输入教师姓名'; return; }
     if (teacherName.length > 20) { errEl.textContent = '教师姓名不能超过 20 个字符'; return; }
 
