@@ -985,10 +985,13 @@ func (s *SQLite) CreateExam(e *model.Exam) error {
 
 func (s *SQLite) UpdateExam(e *model.Exam) error {
 	_, err := s.db.Exec(
-		`UPDATE exams SET full_score = ?, pass_score = ?, medium_score = ?, good_score = ?, excellent_score = ?,
+		`UPDATE exams SET class_id = ?, subject = ?, name = ?,
+		        full_score = ?, pass_score = ?, medium_score = ?, good_score = ?, excellent_score = ?,
 		        updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ? AND user_id = ?`,
-		e.FullScore, e.PassScore, e.MediumScore, e.GoodScore, e.ExcellentScore, e.ID, e.UserID)
+		e.ClassID, e.Subject, e.Name,
+		e.FullScore, e.PassScore, e.MediumScore, e.GoodScore, e.ExcellentScore,
+		e.ID, e.UserID)
 	return err
 }
 
