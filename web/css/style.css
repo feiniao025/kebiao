@@ -145,9 +145,9 @@ body{
 .schedule-table{
   width:100%;
   font-size:15px;
-  border-collapse:separate;      /* 关键：独立边框 */
-  border-spacing:6px;            /* 格子之间的间距 */
-  background:transparent;        /* 去掉表格底色，让每个格子独立 */
+  border-collapse:separate;
+  border-spacing:6px;
+  background:transparent;
   border:none;
   box-shadow:none;
 }
@@ -167,7 +167,7 @@ body{
   letter-spacing:1px;
   text-shadow:0 1px 2px rgba(0,0,0,.35);
   border:1px solid rgba(0,0,0,.12);
-  border-radius:10px;            /* 小圆角 */
+  border-radius:10px;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.25),
     0 2px 4px rgba(0,0,0,.10),
@@ -198,7 +198,7 @@ body{
   min-width:50px;
   cursor:pointer;
   border:1px solid var(--table-border);
-  border-radius:10px;            /* 小圆角 */
+  border-radius:10px;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.60),
     0 2px 4px rgba(0,0,0,.08),
@@ -211,9 +211,8 @@ body{
     0 3px 6px rgba(0,0,0,.12),
     0 6px 12px rgba(0,0,0,.08);
 }
-.schedule-table tbody tr:hover td{filter:none}  /* 用单元格自己的hover代替整行滤镜 */
+.schedule-table tbody tr:hover td{filter:none}
 
-/* 第一列（节次）同样圆角立体，但底色浅一些 */
 .schedule-table tbody td:first-child{
   background:var(--table-row-alt);
   background-image:linear-gradient(180deg,
@@ -236,25 +235,22 @@ body{
   border-color:var(--table-border);
 }
 
-/* 今日高亮列：保留背景色，圆角与阴影不变 */
 .schedule-table .today-col{
   background-color:var(--today-col-bg)!important;
   color:var(--today-col-text)!important;
 }
 
-/* 空白格子 */
 .schedule-table tbody td.empty{
   color:var(--empty-text);
   font-weight:300;
 }
 
-/* ---- 单元格内文字 ---- */
 .cell-period-name{font-weight:600;display:block}
 .cell-time{font-size:12px;color:var(--text-sub);display:block;margin-top:3px}
 .cell-subject{display:block}
 .cell-teacher{font-size:12px;color:var(--text-sub);display:block;margin-top:3px}
 
-/* ---- 彩色格子：保留原色，但加上立体感 ---- */
+/* ---- 彩色格子：保留原色 + 立体感 ---- */
 .schedule-table tbody td[data-bg-color="1"]{
   background-color:#fce4e4!important;color:#a02b2b!important;font-weight:600;
   border-color:#f5c8c8;
@@ -299,7 +295,7 @@ body{
   background-color:#7c2d12!important;color:#fed7aa!important;border-color:#9c4a1a;
 }
 
-/* ---- 午休行：跨列单元格同样处理 ---- */
+/* ---- 午休行 ---- */
 .schedule-table tbody tr.break-row td,
 .schedule-table tbody tr.break-row td:first-child{
   background:#eef1f5;
@@ -335,47 +331,6 @@ body{
 
 .cs-week-tag{font-size:11px;font-weight:400;color:var(--text-sub);margin-left:4px;white-space:nowrap}
 .schedule-table tbody td:first-child .cell-period-name{white-space:nowrap}
-
-/* ---- 移动端：圆角与间距适当缩小 ---- */
-@media (max-width: 768px){
-  .schedule-table{
-    border-spacing:1px;
-    font-size:13px;
-  }
-  .schedule-table thead th{
-    padding:10px 4px;
-    font-size:13px;
-    border-radius:8px;
-  }
-  .schedule-table tbody td{
-    padding:6px 2px;
-    font-size:12px;
-    min-width:44px;
-    border-radius:8px;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.60),
-      0 1px 3px rgba(0,0,0,.08),
-      0 2px 5px rgba(0,0,0,.04);
-  }
-  .schedule-table tbody td:first-child{
-    font-size:12px;
-    padding:6px 2px;
-    width:60px;
-    min-width:55px;
-  }
-  .cell-time,.cell-teacher{font-size:10px}
-  .schedule-table tbody tr.break-row td{
-    font-size:12px;
-    padding:4px 6px;
-    border-radius:8px;
-  }
-  [data-theme="dark"] .schedule-table tbody td{
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.08),
-      0 1px 3px rgba(0,0,0,.30),
-      0 2px 5px rgba(0,0,0,.20);
-  }
-}
 
 /* ============ 9. 座位表 ============ */
 .seat-stage{width:66.67%;margin:18px auto 18px;text-align:center;padding:14px;background:var(--table-head-bg);color:#fff;border-radius:12px;font-weight:bold;letter-spacing:6px;font-size:16px}
@@ -643,14 +598,184 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-section{margin-bottom:22px}
 .today-section h4{font-size:15px;font-weight:700;color:var(--text-main);margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--legend-item-border)}
 .today-empty{text-align:center;color:var(--text-sub);font-size:13px;padding:16px 8px;line-height:1.6}
-.today-class-block{margin-bottom:12px;padding:10px 12px;background:var(--table-row-alt);border-radius:10px}
-.today-class-name{font-weight:600;color:var(--text-main);font-size:14px;margin-bottom:6px}
-.today-course-ul{list-style:none;padding:0;margin:0}
-.today-course-ul li{display:flex;gap:10px;align-items:baseline;padding:6px 0;font-size:13px;color:var(--text-main);border-bottom:1px dashed var(--legend-item-border)}
-.today-course-ul li:last-child{border-bottom:none}
-.tc-time{color:var(--text-sub);font-size:12px;min-width:110px}
-.tc-subj{font-weight:600;min-width:40px}
-.tc-tchr{color:var(--text-sub);font-size:12px;margin-left:auto}
+
+/* ---- 班级分组：大卡片容器 ---- */
+.today-class-block{
+  margin-bottom:16px;
+}
+
+/* ---- 班级名称 ---- */
+.today-class-name{
+  font-weight:700;
+  color:var(--text-main);
+  font-size:15px;
+  letter-spacing:.5px;
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.today-class-name::before{
+  content:'';
+  display:inline-block;
+  width:8px; height:8px;
+  border-radius:50%;
+  background:#10b981;
+  box-shadow:0 0 0 3px rgba(16,185,129,.18);
+  flex-shrink:0;
+}
+
+/* ---- 课程列表：独立列表卡片，内部横滑线 ---- */
+.today-course-ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+  background:var(--card-bg);
+  border-radius:14px;
+  border:1px solid var(--table-border);
+  box-shadow:0 4px 16px rgba(0,0,0,0.04);
+  overflow:hidden;
+}
+
+/* ---- 单节课：Grid 布局还原图片 ---- */
+.today-course-ul li{
+  display:grid;
+  grid-template-columns:max-content 12px 1fr 20px;
+  align-items:center;
+  gap:0 14px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--table-border);
+  transition:background .15s ease;
+  cursor:pointer;
+}
+.today-course-ul li:last-child{
+  border-bottom:none;
+}
+.today-course-ul li:hover{
+  background:var(--table-row-alt);
+}
+
+/* 时间（左侧两行展示，格式与课表一致，居中显示） */
+.today-course-ul .tc-time {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center; /* 居中显示 */
+  text-align: center;  /* 居中显示 */
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.today-course-ul .tc-time .tc-period-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  display: block;
+}
+
+.today-course-ul .tc-time .tc-period-time {
+  font-size: 12px;
+  color: var(--text-sub);
+  font-weight: normal;
+  margin-top: 3px;
+  display: block;
+}
+
+/* ★ 新增：“第X周”标签字体缩小至10px */
+.today-course-ul .tc-time .tc-week-tag {
+  font-size: 10px;
+  font-weight: 400;
+}
+
+/* 绿色小圆点 */
+.today-course-ul li::before{
+  content:'';
+  grid-column:2;
+  grid-row:1 / span 2;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background-color:#10b981;
+  justify-self:center;
+  flex-shrink:0;
+}
+
+/* 主科目（上方） */
+.today-course-ul .tc-subj{
+  grid-column:3;
+  grid-row:1;
+  font-size:16px;
+  font-weight:700;
+  color:var(--text-main);
+  align-self:end;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* 老师 / 教室（下方） */
+.today-course-ul .tc-tchr{
+  grid-column:3;
+  grid-row:2;
+  font-size:13px;
+  color:var(--text-sub);
+  align-self:start;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* 状态标签 */
+.today-course-ul .tc-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.today-course-ul .tc-status.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.today-course-ul .tc-status.pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+[data-theme="dark"] .today-course-ul .tc-status.completed {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+[data-theme="dark"] .today-course-ul .tc-status.pending {
+  background: #713f12;
+  color: #fef08a;
+}
+
+/* 右侧箭头 */
+.today-course-ul li::after{
+  content:'›';
+  grid-column:4;
+  grid-row:1 / span 2;
+  font-size:24px;
+  color:#cbd5e1;
+  justify-self:end;
+  line-height:1;
+  transition:transform .2s,color .2s;
+  font-family:Arial, sans-serif;
+}
+.today-course-ul li:hover::after{
+  color:#94a3b8;
+  transform:translateX(2px);
+}
 
 .today-section-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--legend-item-border);flex-wrap:nowrap}
 .today-section-header > h4{flex:0 0 auto;font-size:15px;font-weight:700;color:var(--text-main);margin:0;padding:0;border:none;white-space:nowrap}
@@ -773,7 +898,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   width: 76px;
   padding: 7px 10px;
   border: 2px solid var(--seat-border);
-  border-radius: 999px;    /* 胶囊圆角，与缺考按钮一致 */
+  border-radius: 999px;
   background: var(--card-bg);
   color: var(--text-main);
   font-size: 15px;
@@ -849,14 +974,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   flex-direction: column;
   gap: 6px;
   align-items: stretch;
-  flex: 1;              /* 占据 .att-row 剩余宽度 */
-  min-width: 0;         /* 允许收缩，防止溢出 */
+  flex: 1;
+  min-width: 0;
 }
 .att-status-btns {
   display: flex;
   gap: 6px;
   align-items: center;
-  justify-content: flex-start; /* 按钮从左侧开始排列 */
+  justify-content: flex-start;
   flex-wrap: wrap;
 }
 .att-status-btn{padding:5px 16px;border-radius:20px;border:1px solid var(--seat-border);background-color:transparent;color:var(--text-sub);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.2s;white-space:nowrap}
@@ -879,16 +1004,15 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   font-family: inherit;
   outline: none;
   width: 100%;
-  box-sizing: border-box;   /* 关键：宽度把 padding 算进去 */
+  box-sizing: border-box;
   min-width: 0;
 }
-/* 与 .att-status-group 平级的右侧包裹层 */
 .att-month-wrapper {
   display: flex;
-  align-items: center;      /* 垂直居中 */
+  align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  align-self: stretch;      /* 撑满整个 .att-row 高度，配合 align-items 实现居中 */
+  align-self: stretch;
 }
 .att-remark:focus{border-color:#3498db}
 #attSaveBtn:disabled{cursor:not-allowed}
@@ -960,28 +1084,44 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .seat-size-info{font-size:12px;padding:2px 10px}
   .card-hdr-row2 .seat-ctrl{padding:5px 12px;font-size:12px}
 
-  /* 课表 / 值日表移动端圆角略收 */
+  /* 课表 / 值日表：移动端圆角与间距适当缩小 */
   .schedule-table{
-    border-radius:14px;
-    box-shadow:
-      0 1px 0 rgba(255,255,255,.85) inset,
-      0 10px 22px -10px rgba(18,38,63,.28),
-      0 3px 8px -2px rgba(18,38,63,.07);
+    border-spacing:3px;
+    font-size:13px;
   }
-  [data-theme="dark"] .schedule-table{
-    box-shadow:
-      0 1px 0 rgba(255,255,255,.06) inset,
-      0 10px 22px -10px rgba(0,0,0,.6),
-      0 3px 8px -2px rgba(0,0,0,.38);
+  .schedule-table thead th{
+    padding:10px 4px;
+    font-size:13px;
+    border-radius:8px;
   }
-  .schedule-table{font-size:13px}
-  .schedule-table thead th{padding:10px 4px;font-size:13px}
-  .schedule-table tbody td{padding:8px 3px;font-size:12px;min-width:44px}
-  .schedule-table tbody td:first-child{font-size:12px;padding:8px 2px;width:60px;min-width:55px}
+  .schedule-table tbody td{
+    padding:6px 2px;
+    font-size:12px;
+    min-width:44px;
+    border-radius:8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.60),
+      0 1px 3px rgba(0,0,0,.08),
+      0 2px 5px rgba(0,0,0,.04);
+  }
+  .schedule-table tbody td:first-child{
+    font-size:12px;
+    padding:6px 2px;
+    width:60px;
+    min-width:55px;
+  }
   .cell-time,.cell-teacher{font-size:10px}
-  .schedule-table tbody tr.break-row td{font-size:12px;font-weight:600;padding:1px 4px;letter-spacing:.5px}
-  .schedule-table tbody tr.break-row td .cell-period-name{font-size:12px;font-weight:600;letter-spacing:.5px}
-  .schedule-table tbody tr.break-row td .cell-time{font-size:10px;font-weight:600;margin-left:6px;letter-spacing:normal}
+  .schedule-table tbody tr.break-row td{
+    font-size:12px;
+    padding:4px 6px;
+    border-radius:8px;
+  }
+  [data-theme="dark"] .schedule-table tbody td{
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.08),
+      0 1px 3px rgba(0,0,0,.30),
+      0 2px 5px rgba(0,0,0,.20);
+  }
 
   .legend-grid{grid-template-columns:repeat(2,1fr);gap:6px 14px}
   .legend-item{font-size:13px}
@@ -1065,6 +1205,37 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .today-header-controls{gap:6px}
   .today-weekday-picker .select-wrap > select.cell-pop-input,
   .today-weekday-select{min-width:118px;max-width:150px;font-size:12px;padding:4px 10px !important}
+
+  /* 今天页面 - 移动端适配 */
+  .today-course-ul li{
+    grid-template-columns:max-content 10px 1fr 16px;
+    padding:8px 10px;
+    gap:0 10px;
+  }
+  .today-course-ul .tc-time .tc-period-name {
+    font-size: 12px;
+  }
+  .today-course-ul .tc-time .tc-period-time {
+    font-size: 10px;
+    margin-top: 2px;
+  }
+  /* ★ 新增：移动端“第X周”字号 */
+  .today-course-ul .tc-time .tc-week-tag {
+    font-size: 10px;
+  }
+  .today-course-ul .tc-subj{
+    font-size:15px;
+  }
+  .today-course-ul .tc-tchr{
+    font-size:12px;
+  }
+  .today-course-ul .tc-status {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+  .today-course-ul li::after{
+    font-size:20px;
+  }
 
   .admin-fold > summary{padding:10px 12px;font-size:13px}
   .admin-fold-body{padding:10px 12px 12px}

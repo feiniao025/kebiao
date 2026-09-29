@@ -5,6 +5,9 @@
    - 考勤统计格子可点击，弹出该状态的学生名单
    - 「第几周 · 周几」下拉选择器（周末显示）
    - 手动选择仅当天有效，第二天自动恢复「跟随今天」
+   - 课程状态根据时间节点动态显示「已完成」/「未完成」
+   - 「第几节」和时间上下两行居中显示，“第X周”字体缩小至10px
+   - 点击课程卡片右侧箭头（整行），跳转至对应班级的课表
    ============================================================ */
 
 /* 今日考勤明细缓存（供点击查看用） */
@@ -153,6 +156,31 @@ window.renderToday = function () {
   if (now.getDay() === 0 || now.getDay() === 6) {
     renderTodayWeekdayPicker();
   }
+
+  // ★ 绑定课程点击跳转：点击右侧箭头（或整行）跳转到对应班级的课表
+  const todayClassesEl = $('todayClasses');
+  if (todayClassesEl) {
+    todayClassesEl.addEventListener('click', (e) => {
+      const li = e.target.closest('.today-course-item');
+      if (!li) return;
+      const classId = li.dataset.classId;
+      if (classId) {
+        // 1. 更新偏好设置中的课表过滤条件
+        window.preferences.schedule_filter = classId;
+        if (window.API && window.API.updatePreferences) {
+          window.API.updatePreferences({ schedule_filter: classId }).catch(() => {});
+        }
+        // 2. 切换到「班级 -> 课表」标签页
+        if (typeof window.switchTopTab === 'function') {
+          window.switchTopTab('classes');
+        }
+        // 确保二级标签是课表（通常默认就是）
+        if (typeof window.switchSubTab === 'function') {
+          window.switchSubTab('schedule');
+        }
+      }
+    });
+  }
 };
 
 window.renderTodayCourses = function (wd, week) {
@@ -166,23 +194,46 @@ window.renderTodayCourses = function (wd, week) {
   }
   if (list.length === 0) return '<div class="today-empty">该班级不存在</div>';
 
-  // ★ 当前是月内第几周（供课服使用）
   const curWeek = (week && week >= 1 && week <= 4)
     ? week
     : ((typeof getWeekOfMonth === 'function') ? getWeekOfMonth() : 1);
+
+  // 获取当前时间，用于判断课程状态
+  const now = new Date();
+  const currentDay = now.getDay() === 0 ? 7 : now.getDay(); // 将周日映射为7，方便与wd(1-5)比较
+
+  // 辅助函数：判断课程是否已完成
+  const getCourseStatus = (targetWd, pTime) => {
+    if (!pTime || !pTime.includes('-')) return '未完成';
+    
+    const isPast = targetWd < currentDay;
+    const isToday = targetWd === currentDay;
+    const isFuture = targetWd > currentDay;
+
+    if (isPast) return '已完成';
+    if (isFuture) return '未完成';
+
+    // 是同一天，按时间判断
+    const parts = pTime.split('-');
+    if (parts.length !== 2) return '未完成';
+    const endPart = parts[1].trim();
+    const timeMatch = endPart.match(/(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return '未完成';
+
+    const endH = parseInt(timeMatch[1], 10);
+    const endM = parseInt(timeMatch[2], 10);
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endH, endM, 0);
+
+    return now >= endDate ? '已完成' : '未完成';
+  };
 
   let html = '';
   list.forEach(cls => {
     const lessons = [];
     const periodCount = (cls.period_count && cls.period_count > 0) ? cls.period_count : defaultPeriods.length;
     for (let pIdx = 0; pIdx < periodCount; pIdx++) {
-      // ★ 判断这一节是不是"课服"
-      const isCS = (typeof isClassServicePeriod === 'function')
-        ? isClassServicePeriod(cls, pIdx)
-        : false;
-
+      const isCS = (typeof isClassServicePeriod === 'function') ? isClassServicePeriod(cls, pIdx) : false;
       const baseIdx = pIdx * 6 + (wd - 1) + 1;
-      // ★ 课服按当前周读取对应 slot
       const idx = isCS ? (baseIdx + (curWeek - 1) * 100) : baseIdx;
 
       const key = cls.class_id + '_cell_' + idx;
@@ -193,23 +244,46 @@ window.renderTodayCourses = function (wd, week) {
       let pName = (pCell && pCell.period_name) || (defaultPeriods[pIdx] && defaultPeriods[pIdx].name) || ('第' + (pIdx + 1) + '节');
       const pTime = (pCell && pCell.period_time) || (defaultPeriods[pIdx] && defaultPeriods[pIdx].time) || '';
 
-      // ★ 课服节次名后追加「 · 第N周」
       if (isCS) pName = pName + ' · 第' + curWeek + '周';
 
       if (cell && cell.cell_type === 'lesson' && cell.subject) {
-        lessons.push({ pName: pName, pTime: pTime, subject: cell.subject, teacher: cell.teacher || '' });
+        lessons.push({ 
+          pName: pName, 
+          pTime: pTime, 
+          subject: cell.subject, 
+          teacher: cell.teacher || '',
+          status: getCourseStatus(wd, pTime)
+        });
       }
     }
     html += '<div class="today-class-block">';
-    html += '<div class="today-class-name">' + escapeHtml(cls.name) + '</div>';
     if (lessons.length === 0) {
       html += '<div class="today-empty">今日无课程</div>';
     } else {
       html += '<ul class="today-course-ul">';
       lessons.forEach(l => {
-        html += '<li><span class="tc-time">' + escapeHtml(l.pName) + ' ' + escapeHtml(l.pTime) + '</span>' +
+        const statusClass = l.status === '已完成' ? 'completed' : 'pending';
+        
+        // 拆分“课服1 · 第1周”，将“第1周”单独包裹以缩小字体
+        let pNameHtml = escapeHtml(l.pName);
+        if (l.pName.includes(' · 第')) {
+          const parts = l.pName.split(' · ');
+          if (parts.length === 2) {
+            pNameHtml = escapeHtml(parts[0]) + ' · <span class="tc-week-tag">' + escapeHtml(parts[1]) + '</span>';
+          }
+        }
+
+        // ★ 增加 data-class-id 和 class="today-course-item" 以便绑定点击事件
+        html += '<li class="today-course-item" data-class-id="' + escapeHtml(cls.class_id) + '">' +
+                '<span class="tc-time">' +
+                  '<span class="tc-period-name">' + pNameHtml + '</span>' +
+                  '<span class="tc-period-time">' + escapeHtml(l.pTime) + '</span>' +
+                '</span>' +
                 '<span class="tc-subj">' + escapeHtml(l.subject) + '</span>' +
-                (l.teacher ? '<span class="tc-tchr">' + escapeHtml(l.teacher) + '</span>' : '') +
+                '<span class="tc-tchr">' +
+                   (l.teacher ? escapeHtml(l.teacher) : '') +
+                   '<span class="tc-status ' + statusClass + '">' + l.status + '</span>' +
+                '</span>' +
                 '</li>';
       });
       html += '</ul>';
