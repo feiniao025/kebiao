@@ -163,7 +163,17 @@
     <label>从花名册：</label>
     <select id="classPopRoster" class="cell-pop-input"></select>
   </div>
-  <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classPopBadge" class="cell-pop-input" placeholder="可留空"></div>
+  <div class="cell-pop-row"><label>教师角色：</label>
+  <select id="classPopRole" class="cell-pop-input">
+    <option value="">— 请选择 —</option>
+    <option value="班主任">班主任</option>
+    <option value="任课教师">任课教师</option>
+  </select>
+</div>
+<div class="cell-pop-row"><label>任教科目：</label>
+  <select id="classPopSubject" class="cell-pop-input"></select>
+</div>
+<div class="cell-pop-row"><label>教师姓名：</label><input type="text" id="classPopName" class="cell-pop-input" placeholder="请输入教师姓名"></div>
   <div class="me-error" id="classPopError" style="min-height:18px;margin-top:6px;"></div>
   <button id="classPopSave" style="background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:16px;">💾 创建</button>
 </div>
@@ -180,7 +190,16 @@
     <input type="text" id="classManageCustomName" class="cell-pop-input" placeholder="如：竞赛班、特色班">
   </div>
   <div class="cell-pop-row"><label>课节数：</label><select id="classManagePeriods" class="cell-pop-input"></select></div>
-  <div class="cell-pop-row"><label>班主任：</label><input type="text" id="classManageBadge" class="cell-pop-input"></div>
+  <div class="cell-pop-row"><label>教师角色：</label>
+  <select id="classManageRole" class="cell-pop-input">
+    <option value="班主任">班主任</option>
+    <option value="任课教师">任课教师</option>
+  </select>
+</div>
+<div class="cell-pop-row"><label>任教科目：</label>
+  <select id="classManageSubject" class="cell-pop-input"></select>
+</div>
+<div class="cell-pop-row"><label>教师姓名：</label><input type="text" id="classManageName" class="cell-pop-input" placeholder="请输入教师姓名"></div>
   <div class="me-error" id="classManageError" style="min-height:18px;margin-top:6px;"></div>
   <button id="classManageEditCsBtn" style="display:none;width:100%;margin-top:10px;padding:9px;border-radius:8px;border:none;background:#7d5ba6;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">📅 编辑课服（4周循环）</button>
   <div style="display:flex;gap:10px;margin-top:16px;">
@@ -437,6 +456,21 @@
             style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">
       💾 保存
     </button>
+  </div>
+</div>
+
+<!-- ★ 新增：某学生某月考勤弹窗 -->
+<div class="seat-pop" id="attendanceMonthPop">
+  <div class="seat-pop-inner user-detail-pop-inner">
+    <button id="attendanceMonthClose" class="pop-close-x">×</button>
+    <h3 id="attendanceMonthTitle">月度考勤明细</h3>
+    <div class="cell-pop-row" style="margin-bottom: 12px;">
+      <label>选择月份：</label>
+      <input type="month" id="attendanceMonthPicker" class="cell-pop-input" style="flex:1;">
+    </div>
+    <div id="attendanceMonthBody" style="max-height: 60vh; overflow: auto; margin-top: 10px;">
+      <div class="today-empty">加载中...</div>
+    </div>
   </div>
 </div>
 

@@ -61,7 +61,7 @@ body{
 .card:hover{transform:translateY(-2px)}
 .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px 16px}
 .card-header h2{font-size:24px;font-weight:700;color:var(--text-main);letter-spacing:2px;display:flex;align-items:center;gap:12px}
-.card-header h2 .badge{font-size:14px;font-weight:400;background:#ecf0f1;color:#2c3e50;padding:2px 14px;border-radius:20px;letter-spacing:1px}
+.card-header h2 .badge{font-size:12px;font-weight:400;background:#ecf0f1;color:#2c3e50;padding:2px 6px;border-radius:20px;letter-spacing:1px}
 [data-theme="dark"] .card-header h2 .badge{background:#3b4252;color:#e6e9f0}
 .card-header .legend{font-size:14px;color:var(--text-sub);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .legend-items .dot,
@@ -653,7 +653,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .att-status-btn.active.status-缺勤{background:#8c1d18;color:#fad2cf;border-color:#fad2cf}
 .att-remark{padding:6px 10px;border:1px solid var(--seat-border);border-radius:8px;background-color:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;width:100%;min-width:0;box-sizing:border-box}
 .att-remark:focus{border-color:#3498db}
-
 #attSaveBtn:disabled{cursor:not-allowed}
 #attSaveBtn.saved{background:#27ae60 !important}
 #attDelBtn:hover{background:#e74c3c !important;color:#fff !important}
@@ -933,4 +932,31 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: var(--text-sub);
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* ★ 新增：考勤月度查看按钮 */
+.att-month-btn {
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px dashed #3498db;
+  background-color: transparent;
+  color: #3498db;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+.att-month-btn:hover {
+  background: #eaf4fc;
+  border-style: solid;
+}
+[data-theme="dark"] .att-month-btn {
+  border-color: #5dade2;
+  color: #5dade2;
+}
+[data-theme="dark"] .att-month-btn:hover {
+  background: rgba(93, 173, 226, 0.15);
 }

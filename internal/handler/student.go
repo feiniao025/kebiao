@@ -413,3 +413,24 @@ func (h *StudentHandler) AttendanceSummary(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, sum)
 }
+
+// ★ 新增：查询某学生某月全部考勤
+func (h *StudentHandler) GetStudentMonthlyAttendance(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	classID := c.Query("class_id")
+	studentName := c.Query("student_name")
+	month := c.Query("month") // 格式如 "2023-10"
+	if classID == "" || studentName == "" || month == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少参数"})
+		return
+	}
+	list, err := h.svc.GetStudentMonthlyAttendance(userID, classID, studentName, month)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取考勤失败"})
+		return
+	}
+	if list == nil {
+		list = []model.AttendanceRecord{}
+	}
+	c.JSON(http.StatusOK, gin.H{"records": list})
+}

@@ -156,6 +156,7 @@ func main() {
 			stu.GET("/attendance", studentHandler.ListAttendance)
 			stu.GET("/attendance/dates", studentHandler.ListAttendanceDates)
 			stu.GET("/attendance/summary", studentHandler.AttendanceSummary)
+			stu.GET("/attendance/monthly", studentHandler.GetStudentMonthlyAttendance)
 			stu.POST("/attendance", studentHandler.SaveAttendance)
 			stu.DELETE("/attendance", studentHandler.DeleteAttendance)
 		}

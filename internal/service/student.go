@@ -311,3 +311,8 @@ func (s *StudentService) GetAttendanceSummary(userID int64, classID, date string
 	}
 	return sum, nil
 }
+
+// ★ 新增：查询某个学生某月全部考勤记录
+func (s *StudentService) GetStudentMonthlyAttendance(userID int64, classID, studentName, month string) ([]model.AttendanceRecord, error) {
+	return s.db.GetStudentMonthlyAttendance(userID, classID, studentName, month)
+}

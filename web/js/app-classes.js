@@ -10,7 +10,19 @@
    - 座位表卡片「菜单」：使用 #seatManagePop 标准弹窗
    - 课表 / 值日表 / 座位表 头部统一两行布局
    - 值日表头部显示「今日值日组长」（当前星期列的最后一人）
+   - 班级新建 / 管理：教师信息（教师角色 · 任教科目 · 教师姓名）
+     徽章显示为「姓名 · 角色」，兼容旧格式「角色 · 科目 · 姓名」
    ============================================================ */
+
+/* ---------- 徽章显示辅助（把旧格式统一成「姓名 · 角色」） ---------- */
+window.formatTeacherBadgeDisplay = window.formatTeacherBadgeDisplay || function (badge) {
+  if (!badge) return '';
+  if (typeof parseTeacherInfo !== 'function' || typeof formatTeacherInfo !== 'function') {
+    return String(badge);
+  }
+  const info = parseTeacherInfo(badge);
+  return formatTeacherInfo(info.role, info.subject, info.name);
+};
 
 /* ---------- 课服 4 周循环状态 ---------- */
 window.currentCSClassId = '';
@@ -173,13 +185,14 @@ window.renderClassCard = function (container, cls) {
   card.className = 'card class-card';
   card.dataset.class = cls.class_id;
 
-  // ★ 统一两行头部
+  // ★ 统一两行头部（徽章显示为「姓名 · 角色」，兼容旧数据）
+  const badgeText = cls.badge ? formatTeacherBadgeDisplay(cls.badge) : '';
   const header = document.createElement('div');
   header.className = 'card-header card-header-2row';
   header.innerHTML =
     '<div class="card-hdr-row1">' +
       '<h2>' + escapeHtml(cls.name) + ' · 课程表' +
-        (cls.badge ? '<span class="badge">' + escapeHtml(cls.badge) + '</span>' : '') +
+        (badgeText ? '<span class="badge">' + escapeHtml(badgeText) + '</span>' : '') +
       '</h2>' +
       '<button class="mini-toggle" data-class-menu="' + escapeHtml(cls.class_id) + '">菜单</button>' +
     '</div>' +
@@ -1061,6 +1074,29 @@ window.deleteCommitteeItem = async function (item) {
   }
 };
 
+/* ============================================================
+   教师信息表单辅助：填充任教科目下拉
+   ============================================================ */
+function fillTeacherSubjectSelect(sel, defaultVal) {
+  if (!sel) return;
+  const subjects = (window.SUBJECTS && window.SUBJECTS.length)
+    ? window.SUBJECTS.slice()
+    : ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
+  const dv = (defaultVal || '').trim();
+  let html = '<option value="">— 请选择 —</option>';
+  const seen = {};
+  subjects.forEach(function (s) {
+    if (seen[s]) return;
+    seen[s] = true;
+    html += '<option value="' + escapeHtml(s) + '"' + (s === dv ? ' selected' : '') + '>' + escapeHtml(s) + '</option>';
+  });
+  // 兼容非标准科目（老数据里的科目名）
+  if (dv && !seen[dv]) {
+    html += '<option value="' + escapeHtml(dv) + '" selected>' + escapeHtml(dv) + '</option>';
+  }
+  sel.innerHTML = html;
+}
+
 /* ---------- 班级 CRUD ---------- */
 window.openCreateClassPop = async function () {
   const gradeSel = $('classPopGrade');
@@ -1069,7 +1105,13 @@ window.openCreateClassPop = async function () {
   if (errEl) errEl.textContent = '';
   fillGradeSelect(gradeSel, 7);
   fillClassNumSelect(numSel, 1, true);
-  $('classPopBadge').value = '';
+
+  // 教师信息（角色 / 科目 / 姓名）
+  const roleSel = $('classPopRole');
+  if (roleSel) roleSel.value = '';
+  fillTeacherSubjectSelect($('classPopSubject'), '');
+  const nameEl = $('classPopName');
+  if (nameEl) nameEl.value = '';
 
   const customRow = $('classPopCustomNameRow');
   const customInput = $('classPopCustomName');
@@ -1113,7 +1155,14 @@ window.openClassManagePop = function (cls) {
   const isCustom = (cls.class_num === 0 || !cls.class_num);
   fillClassNumSelect(numSel, isCustom ? 'custom' : (cls.class_num || 1), true);
   fillPeriodCountSelect($('classManagePeriods'), cls.period_count || 8);
-  $('classManageBadge').value = stripBadgePrefix(cls.badge);
+
+  // 教师信息回填：解析 badge
+  const tInfo = parseTeacherInfo(cls.badge);
+  const roleSel = $('classManageRole');
+  if (roleSel) roleSel.value = tInfo.role || '班主任';
+  fillTeacherSubjectSelect($('classManageSubject'), tInfo.subject || '');
+  const mName = $('classManageName');
+  if (mName) mName.value = tInfo.name || '';
 
   const customRow = $('classManageCustomNameRow');
   const customInput = $('classManageCustomName');
@@ -1916,7 +1965,9 @@ window.openExportSchedulePop = function () {
     cb.type = 'checkbox'; cb.dataset.classId = cls.class_id; cb.checked = true;
     cb.style.cssText = 'width:16px;height:16px;cursor:pointer;';
     const text = document.createElement('span');
-    text.innerHTML = escapeHtml(cls.name) + (cls.badge ? ' <span style="color:var(--text-sub);font-size:12px;">· ' + escapeHtml(cls.badge) + '</span>' : '');
+    // ★ 徽章显示用 formatTeacherBadgeDisplay（统一为「姓名 · 角色」）
+    const badgeText = cls.badge ? formatTeacherBadgeDisplay(cls.badge) : '';
+    text.innerHTML = escapeHtml(cls.name) + (badgeText ? ' <span style="color:var(--text-sub);font-size:12px;">· ' + escapeHtml(badgeText) + '</span>' : '');
     row.appendChild(cb); row.appendChild(text);
     listEl.appendChild(row);
   });
@@ -2072,6 +2123,7 @@ window.doExportScheduleExcel = async function (list) {
   const classPopEl = $('classPop');
   if (classPopEl) classPopEl.addEventListener('click', e => { if (e.target === classPopEl) classPopEl.style.display = 'none'; });
 
+  /* ============ 新建班级：教师信息（角色 / 科目 / 姓名） ============ */
   const classPopSave = $('classPopSave');
   if (classPopSave) classPopSave.onclick = async () => {
     const grade = parseInt($('classPopGrade').value, 10);
@@ -2079,7 +2131,12 @@ window.doExportScheduleExcel = async function (list) {
     const isCustom = numVal === 'custom';
     const classNum = isCustom ? 0 : parseInt(numVal, 10);
     const customName = isCustom ? ($('classPopCustomName').value || '').trim() : '';
-    const badgeName = $('classPopBadge').value.trim();
+
+    // 教师信息（角色 / 科目 / 姓名）
+    const role = ($('classPopRole').value || '').trim();
+    const subject = ($('classPopSubject').value || '').trim();
+    const teacherName = ($('classPopName').value || '').trim();
+
     const pendingName = ($('classPopRoster') || {}).value || '';
     const errEl = $('classPopError');
     errEl.textContent = '';
@@ -2093,8 +2150,16 @@ window.doExportScheduleExcel = async function (list) {
       if (!classNum || classNum < 1 || classNum > 30) { errEl.textContent = '请选择班级'; return; }
       if (classes.some(c => c.grade === grade && c.class_num === classNum)) { errEl.textContent = '该班级已存在'; return; }
     }
+
+    // 校验：教师角色 + 教师姓名 必填（任教科目不再强制）
+    if (!role)        { errEl.textContent = '请选择教师角色（班主任 / 任课教师）'; return; }
+    if (!teacherName) { errEl.textContent = '请输入教师姓名'; return; }
+    if (teacherName.length > 20) { errEl.textContent = '教师姓名不能超过 20 个字符'; return; }
+
+    const teacherInfo = formatTeacherInfo(role, subject, teacherName);
+
     try {
-      const resp = await apiCall(API.createClass, grade, classNum, withBadgePrefix(badgeName), customName);
+      const resp = await apiCall(API.createClass, grade, classNum, teacherInfo, customName);
       classes.push(resp.class);
       classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       if (pendingName && resp.class) {
@@ -2114,18 +2179,25 @@ window.doExportScheduleExcel = async function (list) {
   const classManagePopEl = $('classManagePop');
   if (classManagePopEl) classManagePopEl.addEventListener('click', e => { if (e.target === classManagePopEl) classManagePopEl.style.display = 'none'; });
 
+  /* ============ 班级管理：教师信息（角色 / 科目 / 姓名） ============ */
   const classManageSave = $('classManageSave');
   if (classManageSave) classManageSave.onclick = async () => {
     if (!currentManageClassId) return;
     const cls = classes.find(c => c.class_id === currentManageClassId);
     if (!cls) return;
+
     const grade = parseInt($('classManageGrade').value, 10);
     const numVal = $('classManageNum').value;
     const isCustom = numVal === 'custom';
     const classNum = isCustom ? 0 : parseInt(numVal, 10);
     const customName = isCustom ? ($('classManageCustomName').value || '').trim() : '';
     const periodCount = parseInt(($('classManagePeriods') || {}).value, 10) || 8;
-    const badgeName = $('classManageBadge').value.trim();
+
+    // 教师信息（角色 / 科目 / 姓名）
+    const role = ($('classManageRole').value || '').trim();
+    const subject = ($('classManageSubject').value || '').trim();
+    const teacherName = ($('classManageName').value || '').trim();
+
     const errEl = $('classManageError');
     errEl.textContent = '';
     if (!grade) { errEl.textContent = '请选择年级'; return; }
@@ -2136,14 +2208,25 @@ window.doExportScheduleExcel = async function (list) {
       if (!classNum) { errEl.textContent = '请选择班级'; return; }
       if (classes.some(c => c.class_id !== cls.class_id && c.grade === grade && c.class_num === classNum)) { errEl.textContent = '该班级已存在'; return; }
     }
+
+    // 校验：教师角色 + 教师姓名 必填（任教科目不再强制）
+    if (!role)        { errEl.textContent = '请选择教师角色（班主任 / 任课教师）'; return; }
+    if (!teacherName) { errEl.textContent = '请输入教师姓名'; return; }
+    if (teacherName.length > 20) { errEl.textContent = '教师姓名不能超过 20 个字符'; return; }
+
+    const teacherInfo = formatTeacherInfo(role, subject, teacherName);
+
     try {
       const newName = isCustom ? customName : formatClassName(grade, classNum);
       await apiCall(API.updateClass, cls.class_id, {
-        name: newName, badge: withBadgePrefix(badgeName), grade: grade, class_num: classNum,
+        name: newName, badge: teacherInfo, grade: grade, class_num: classNum,
         period_count: periodCount, custom_name: isCustom ? customName : '',
       });
-      cls.name = newName; cls.badge = withBadgePrefix(badgeName);
-      cls.grade = grade; cls.class_num = classNum; cls.period_count = periodCount;
+      cls.name = newName;
+      cls.badge = teacherInfo;
+      cls.grade = grade;
+      cls.class_num = classNum;
+      cls.period_count = periodCount;
       renderSchedule();
       updateSeatCardTitle();
       showSaveStatus('班级已更新', false);

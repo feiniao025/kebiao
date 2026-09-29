@@ -71,6 +71,10 @@ const API = (function () {
     attendanceSummary: function (c, d) { return request('GET', '/students/attendance/summary?class_id=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(d)); },
     saveAttendance: function (c, d, i) { return request('POST', '/students/attendance', { class_id: c, date: d, items: i }); },
     deleteAttendance: function (c, d) { return request('DELETE', '/students/attendance?class_id=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(d)); },
+    // ★ 新增：查询某学生某月全部考勤记录
+    getStudentMonthlyAttendance: function (classId, studentName, month) {
+      return request('GET', '/students/attendance/monthly?class_id=' + encodeURIComponent(classId) + '&student_name=' + encodeURIComponent(studentName) + '&month=' + encodeURIComponent(month));
+    },
     listUsers: function () { return request('GET', '/admin/users'); },
     getUserDetail: function (u) { return request('GET', '/admin/users/' + encodeURIComponent(u)); },
     adminUpdateUser: function (u, n, p) { return request('PUT', '/admin/users/' + encodeURIComponent(u), { new_username: n || '', new_password: p || '' }); },

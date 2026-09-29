@@ -437,12 +437,21 @@ window.loadExamStats = async function (examId) {
   try {
     const resp = await API.getExamDetail(examId);
     const st = resp.stats || {};
+
+    // 取该考试对应班级的花名册人数
+    let total = 0;
+    try {
+      const cid = (resp.exam && resp.exam.class_id) || currentGradesClassId;
+      const rosterResp = await API.listRoster(cid);
+      total = (rosterResp.students || []).length;
+    } catch (e) { total = 0; }
+
     el.innerHTML =
       '<div class="stat-cell"><span class="k">平均分</span><span class="v">' + (st.average ? st.average.toFixed(1) : '—') + ' / ' + (st.full_score || 0) + '</span></div>' +
       '<div class="stat-cell"><span class="k">及格率</span><span class="v">' + (st.pass_rate ? st.pass_rate.toFixed(1) : '0.0') + '% (' + (st.pass_count || 0) + '人 ≥' + (st.pass_line || 0) + ')</span></div>' +
       '<div class="stat-cell"><span class="k">优秀率</span><span class="v">' + (st.excellent_rate ? st.excellent_rate.toFixed(1) : '0.0') + '% (' + (st.excellent_count || 0) + '人 ≥' + (st.excellent_line || 0) + ')</span></div>' +
       '<div class="stat-cell"><span class="k">最高/最低</span><span class="v">' + (st.max_score || 0) + ' / ' + (st.min_score || 0) + '</span></div>' +
-      '<div class="stat-cell"><span class="k">已录/缺考</span><span class="v">' + (st.count || 0) + ' / ' + (st.absent_count || 0) + '</span></div>';
+      '<div class="stat-cell"><span class="k">已录/缺考/总</span><span class="v">' + (st.count || 0) + ' / ' + (st.absent_count || 0) + ' / ' + total + '</span></div>';
   } catch { el.textContent = '加载失败'; }
 };
 
@@ -931,22 +940,22 @@ window.openScoresPop = async function (examId) {
       }
 
       let rankTableHtml = '<table class="rank-table" id="rankTableEl"><thead><tr>' +
-        '<th style="width:34px;"></th><th>名次</th><th>姓名</th><th>性别</th><th>分数</th><th>总分</th><th>层次</th>' +
+        '<th style="width:20px;text-align:center;"></th><th style="text-align:center;">名次</th><th style="text-align:center;">姓名</th><th style="text-align:center;">性别</th><th style="text-align:center;">分数</th><th style="text-align:center;">总分</th><th style="text-align:center;">层次</th>' +
         '</tr></thead><tbody>';
       let rank = 1;
       rankList.forEach(item => {
         rankTableHtml += '<tr data-name="' + escapeHtml(item.name) + '">';
-        rankTableHtml += '<td class="drag-handle" title="长按拖动排序">⋮⋮</td>';
+        rankTableHtml += '<td class="drag-handle" style="text-align:center;" title="长按拖动排序">⋮⋮</td>';
         if (item.absent) {
-          rankTableHtml += '<td class="rank-num">-</td>' +
-            '<td class="student-name">' + escapeHtml(item.name) + '</td>' +
-            '<td>' + escapeHtml(item.gender) + '</td>' +
-            '<td colspan="3" style="color:#f39c12;font-weight:600;">缺考</td>';
+          rankTableHtml += '<td class="rank-num" style="text-align:center;">-</td>' +
+            '<td class="student-name" style="text-align:center;">' + escapeHtml(item.name) + '</td>' +
+            '<td style="text-align:center;">' + escapeHtml(item.gender) + '</td>' +
+            '<td colspan="3" style="color:#f39c12;font-weight:600;text-align:center;">缺考</td>';
         } else if (item.score === null) {
-          rankTableHtml += '<td class="rank-num">-</td>' +
-            '<td class="student-name">' + escapeHtml(item.name) + '</td>' +
-            '<td>' + escapeHtml(item.gender) + '</td>' +
-            '<td colspan="3" style="color:var(--empty-text);">未录入</td>';
+          rankTableHtml += '<td class="rank-num" style="text-align:center;">-</td>' +
+            '<td class="student-name" style="text-align:center;">' + escapeHtml(item.name) + '</td>' +
+            '<td style="text-align:center;">' + escapeHtml(item.gender) + '</td>' +
+            '<td colspan="3" style="color:var(--empty-text);text-align:center;">未录入</td>';
         } else {
           let level, levelColor;
           if (item.score >= exam.excellent_score) { level = '优秀'; levelColor = '#27ae60'; }
@@ -954,12 +963,12 @@ window.openScoresPop = async function (examId) {
           else if (item.score >= exam.medium_score) { level = '中等'; levelColor = '#f39c12'; }
           else if (item.score >= exam.pass_score) { level = '及格'; levelColor = '#e67e22'; }
           else { level = '不及格'; levelColor = '#e74c3c'; }
-          rankTableHtml += '<td class="rank-num">' + (rank++) + '</td>' +
-            '<td class="student-name"><a href="javascript:void(0)" class="rank-student-link" data-name="' + escapeHtml(item.name) + '" data-gender="' + escapeHtml(item.gender) + '">' + escapeHtml(item.name) + '</a></td>' +
-            '<td>' + escapeHtml(item.gender) + '</td>' +
-            '<td class="score-val">' + item.score + '</td>' +
-            '<td>' + exam.full_score + '</td>' +
-            '<td><span style="color:' + levelColor + ';font-weight:600;">' + level + '</span></td>';
+          rankTableHtml += '<td class="rank-num" style="text-align:center;">' + (rank++) + '</td>' +
+            '<td class="student-name" style="text-align:center;"><a href="javascript:void(0)" class="rank-student-link" data-name="' + escapeHtml(item.name) + '" data-gender="' + escapeHtml(item.gender) + '">' + escapeHtml(item.name) + '</a></td>' +
+            '<td style="text-align:center;">' + escapeHtml(item.gender) + '</td>' +
+            '<td class="score-val" style="text-align:center;">' + item.score + '</td>' +
+            '<td style="text-align:center;">' + exam.full_score + '</td>' +
+            '<td style="text-align:center;"><span style="color:' + levelColor + ';font-weight:600;">' + level + '</span></td>';
         }
         rankTableHtml += '</tr>';
       });
@@ -1391,6 +1400,8 @@ window.loadAttendance = async function () {
               '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') +
               '" data-name="' + escapeHtml(safeName) + '" data-status="' + s + '">' + s + '</button>'
             ).join('') +
+            // ★ 新增：查看月度考勤
+            '<button class="att-month-btn" data-name="' + escapeHtml(safeName) + '" title="查看月度考勤">📅 月</button>' +
           '</div>' +
           '<input type="text" class="att-remark" data-name="' + escapeHtml(safeName) +
           '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
@@ -1405,9 +1416,69 @@ window.loadAttendance = async function () {
         updateAttSummary();
       };
     });
+    // ★ 新增：月度考勤按钮事件
+    el.querySelectorAll('.att-month-btn').forEach(b => {
+      b.onclick = () => { openStudentMonthPop(b.dataset.name); };
+    });
     updateAttSummary();
   } catch (err) { el.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>'; }
 };
+
+/* ★ 新增：打开月度考勤弹窗 */
+window.openStudentMonthPop = function (studentName) {
+  const pop = $('attendanceMonthPop');
+  const picker = $('attendanceMonthPicker');
+  const title = $('attendanceMonthTitle');
+  const body = $('attendanceMonthBody');
+
+  // 默认当前月份
+  const now = new Date();
+  const defaultMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  picker.value = defaultMonth;
+  title.textContent = studentName + ' · 月度考勤明细';
+
+  const loadData = async () => {
+    body.innerHTML = '<div class="today-empty">加载中...</div>';
+    try {
+      const resp = await API.getStudentMonthlyAttendance(currentAttendanceClassId, studentName, picker.value);
+      const records = resp.records || [];
+      if (records.length === 0) {
+        body.innerHTML = '<div class="today-empty">该月暂无考勤记录</div>';
+        return;
+      }
+      let html = '<table class="rank-table">' +
+        '<thead><tr><th style="width:100px;">日期</th><th style="width:70px;">状态</th><th>备注</th></tr></thead><tbody>';
+      records.forEach(r => {
+        let color = '#333';
+        if (r.status === '出勤') color = '#137333';
+        else if (r.status === '迟到') color = '#b06000';
+        else if (r.status === '请假') color = '#1967d2';
+        else if (r.status === '缺勤') color = '#c5221f';
+        html += '<tr>' +
+          '<td>' + escapeHtml(r.date) + '</td>' +
+          '<td><span style="color:' + color + ';font-weight:600;">' + escapeHtml(r.status) + '</span></td>' +
+          '<td style="color:var(--text-sub);font-size:12px;">' + escapeHtml(r.remark || '') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    } catch (err) {
+      body.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>';
+    }
+  };
+
+  picker.onchange = loadData;
+  loadData();
+  pop.style.display = 'flex';
+};
+
+/* ★ 新增：绑定月度考勤弹窗关闭事件 */
+(function bindMonthlyAttendancePop() {
+  const closeBtn = $('attendanceMonthClose');
+  const pop = $('attendanceMonthPop');
+  if (closeBtn) closeBtn.onclick = () => { pop.style.display = 'none'; };
+  if (pop) pop.addEventListener('click', e => { if (e.target === pop) pop.style.display = 'none'; });
+})();
 
 window.updateAttSummary = function () {
   const el = $('attList');

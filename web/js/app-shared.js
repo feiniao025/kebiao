@@ -279,14 +279,6 @@ window.fillPeriodCountSelect = function (sel, defaultVal) {
     sel.appendChild(opt);
   }
 };
-window.stripBadgePrefix = function (badge) {
-  if (!badge) return '';
-  return String(badge).replace(/^班主任\s*·\s*/, '').trim();
-};
-window.withBadgePrefix = function (name) {
-  const t = (name || '').trim();
-  return t ? ('班主任 · ' + t) : '';
-};
 window.fillClassSelect = function (sel, defaultVal) {
   if (!sel) return;
   sel.innerHTML = '';
@@ -297,6 +289,69 @@ window.fillClassSelect = function (sel, defaultVal) {
     if (c.class_id === defaultVal) opt.selected = true;
     sel.appendChild(opt);
   });
+};
+
+/* ========== 教师信息（姓名 · 角色） ========== */
+window.TEACHER_ROLES = ['班主任', '任课教师'];
+
+// 组装成 "好老师 · 班主任"（兼容旧调用签名，subject 不再写入徽章）
+window.formatTeacherInfo = function (role, subject, name) {
+  const r = (role || '').trim();
+  const n = (name || '').trim();
+  const parts = [];
+  if (n) parts.push(n);
+  if (r) parts.push(r);
+  return parts.join(' · ');
+};
+
+// 解析 badge：
+//   新格式 "好老师 · 班主任"          → { name:'好老师', role:'班主任', subject:'' }
+//   旧格式 "班主任 · 英语 · 好老师"   → { role:'班主任', subject:'英语', name:'好老师' }
+//   旧数据 "班主任 · 张三"            → { role:'班主任', name:'张三', subject:'' }
+window.parseTeacherInfo = function (badge) {
+  const info = { role: '', subject: '', name: '' };
+  const t = String(badge || '').trim();
+  if (!t) return info;
+
+  const parts = t.split(/\s*·\s*/).filter(Boolean);
+  if (!parts.length) return info;
+
+  const ROLE_SET = ['班主任', '任课教师'];
+
+  if (parts.length >= 3) {
+    // 旧格式：角色 · 科目 · 姓名
+    info.role = parts[0];
+    info.subject = parts[1];
+    info.name = parts.slice(2).join(' · ');
+  } else if (parts.length === 2) {
+    if (ROLE_SET.indexOf(parts[0]) >= 0) {
+      // 旧数据缺科目：角色 · 姓名
+      info.role = parts[0];
+      info.name = parts[1];
+    } else {
+      // 新格式：姓名 · 角色
+      info.name = parts[0];
+      info.role = parts[1];
+    }
+  } else {
+    if (ROLE_SET.indexOf(parts[0]) >= 0) info.role = parts[0];
+    else info.name = parts[0];
+  }
+  return info;
+};
+
+/* 显示用：把 badge 统一成「姓名 · 角色」格式（兼容旧格式） */
+window.formatTeacherBadgeDisplay = function (badge) {
+  const info = window.parseTeacherInfo(badge);
+  return window.formatTeacherInfo(info.role, info.subject, info.name);
+};
+
+// 向后兼容：不再自动加/去前缀，只做 trim
+window.withBadgePrefix = function (name) {
+  return String(name || '').trim();
+};
+window.stripBadgePrefix = function (badge) {
+  return String(badge || '').trim();
 };
 
 window.getAisleSegments = function (aisle, cols) {

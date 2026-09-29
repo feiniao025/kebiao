@@ -1188,6 +1188,30 @@ func (s *SQLite) DeleteAttendanceDate(userID int64, classID, date string) error 
 	return err
 }
 
+// ★ 新增：查询某个学生某个月（格式 "2023-10"）的全部考勤记录
+func (s *SQLite) GetStudentMonthlyAttendance(userID int64, classID, studentName, month string) ([]model.AttendanceRecord, error) {
+	rows, err := s.db.Query(
+		`SELECT id, user_id, class_id, date, student_name, status, remark, updated_at
+		 FROM attendance_records
+		 WHERE user_id = ? AND class_id = ? AND student_name = ? AND date LIKE ?
+		 ORDER BY date ASC`,
+		userID, classID, studentName, month+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.AttendanceRecord
+	for rows.Next() {
+		var r model.AttendanceRecord
+		if err := rows.Scan(&r.ID, &r.UserID, &r.ClassID, &r.Date, &r.StudentName, &r.Status, &r.Remark, &r.UpdatedAt); err != nil {
+			continue
+		}
+		list = append(list, r)
+	}
+	return list, nil
+}
+
 // ============ 管理员：获取用户全部考勤记录 ============
 
 func (s *SQLite) GetAllAttendance(userID int64) ([]model.AttendanceRecord, error) {
