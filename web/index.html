@@ -391,6 +391,10 @@
     <div class="cell-pop-row"><label>班级：</label><select id="examPopClass" class="cell-pop-input"></select></div>
     <div class="cell-pop-row"><label>科目：</label><select id="examPopSubject" class="cell-pop-input"></select></div>
     <div class="cell-pop-row"><label>考试：</label><select id="examPopName" class="cell-pop-input"></select></div>
+	<div class="cell-pop-row" id="examPopCustomNameRow" style="display:none;">
+		<label>自定义名称：</label>
+		<input type="text" id="examPopCustomName" class="cell-pop-input" placeholder="请输入考试名称" maxlength="30">
+	</div>
     <div class="cell-pop-row"><label>满分：</label><input type="number" id="examPopFull" class="cell-pop-input" value="100"></div>
     <div class="cell-pop-row"><label>及格线：</label>
       <div class="score-line-wrap">
@@ -470,6 +474,24 @@
     </div>
     <div id="attendanceMonthBody" style="max-height: 60vh; overflow: auto; margin-top: 10px;">
       <div class="today-empty">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 通用确认弹窗 ============ -->
+<div class="seat-pop" id="confirmPop">
+  <div class="seat-pop-inner" style="min-width:300px;max-width:88vw;">
+    <h3 id="confirmPopTitle">确认操作</h3>
+    <div id="confirmPopMsg" style="font-size:14px;color:var(--text-main);line-height:1.8;white-space:pre-wrap;margin-bottom:4px;"></div>
+    <div style="display:flex;gap:10px;margin-top:22px;">
+      <button id="confirmPopCancel" type="button"
+        style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--seat-border);background:transparent;color:var(--text-main);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
+        取消
+      </button>
+      <button id="confirmPopOk" type="button"
+        style="flex:2;padding:10px;border-radius:8px;border:none;background:#e74c3c;color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">
+        确认删除
+      </button>
     </div>
   </div>
 </div>

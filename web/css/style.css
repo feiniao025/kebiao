@@ -141,51 +141,241 @@ body{
 [data-theme="dark"] .legend-item .abbr.special{background:#423554;color:#e2d4f2}
 .legend-item .full{color:var(--text-sub);font-weight:400;font-size:14px;word-break:break-word}
 
-/* ============ 8. 课表（通用表格） ============ */
-.schedule-table{width:100%;border-collapse:collapse;font-size:15px;border-radius:16px;overflow:hidden}
-.schedule-table thead th{background:var(--table-head-bg);color:#fff;font-weight:600;font-size:15px;padding:14px 8px;text-align:center;letter-spacing:1px}
-.schedule-table thead th:first-child{background:var(--table-head-first);width:80px}
-.schedule-table tbody td{padding:5px 2px;text-align:center;border-bottom:1px solid var(--table-border);background-color:var(--card-bg);transition:background-color .15s ease;font-weight:500;color:var(--text-main);min-width:50px;cursor:pointer}
-.schedule-table tbody tr:last-child td{border-bottom:none}
-.schedule-table tbody td:first-child{background:var(--table-row-alt);font-weight:600;color:var(--text-main);font-size:14px;letter-spacing:.5px;border-right:1px solid var(--table-border)}
-.schedule-table tbody tr:hover td{filter:brightness(.97)}
-.schedule-table .today-col{background-color:var(--today-col-bg)!important;color:var(--today-col-text)!important}
-.schedule-table tbody td.empty{color:var(--empty-text);font-weight:300}
+/* ============ 8. 课表 / 值日表（独立格子 + 小圆角立体） ============ */
+.schedule-table{
+  width:100%;
+  font-size:15px;
+  border-collapse:separate;      /* 关键：独立边框 */
+  border-spacing:6px;            /* 格子之间的间距 */
+  background:transparent;        /* 去掉表格底色，让每个格子独立 */
+  border:none;
+  box-shadow:none;
+}
 
+/* ---- 表头：圆角立体 ---- */
+.schedule-table thead th{
+  background-color:var(--table-head-bg);
+  background-image:linear-gradient(180deg,
+      rgba(255,255,255,.22) 0%,
+      rgba(255,255,255,.05) 48%,
+      rgba(0,0,0,.16) 100%);
+  color:#fff;
+  font-weight:600;
+  font-size:15px;
+  padding:14px 8px;
+  text-align:center;
+  letter-spacing:1px;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:10px;            /* 小圆角 */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.25),
+    0 2px 4px rgba(0,0,0,.10),
+    0 4px 8px rgba(0,0,0,.06);
+}
+.schedule-table thead th:first-child{
+  background-color:var(--table-head-first);
+  width:80px;
+}
+[data-theme="dark"] .schedule-table thead th{
+  background-image:linear-gradient(180deg,
+      rgba(255,255,255,.12) 0%,
+      rgba(255,255,255,.02) 48%,
+      rgba(0,0,0,.25) 100%);
+  border-color:rgba(0,0,0,.25);
+}
+
+/* ---- 表体单元格：圆角立体小卡片 ---- */
+.schedule-table tbody td{
+  padding:8px 4px;
+  text-align:center;
+  background-color:var(--card-bg);
+  background-image:linear-gradient(180deg,
+      rgba(255,255,255,.40) 0%,
+      rgba(255,255,255,0) 100%);
+  color:var(--text-main);
+  font-weight:500;
+  min-width:50px;
+  cursor:pointer;
+  border:1px solid var(--table-border);
+  border-radius:10px;            /* 小圆角 */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.60),
+    0 2px 4px rgba(0,0,0,.08),
+    0 4px 8px rgba(0,0,0,.04);
+  transition:background-color .15s ease, box-shadow .15s ease;
+}
+.schedule-table tbody td:hover{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.70),
+    0 3px 6px rgba(0,0,0,.12),
+    0 6px 12px rgba(0,0,0,.08);
+}
+.schedule-table tbody tr:hover td{filter:none}  /* 用单元格自己的hover代替整行滤镜 */
+
+/* 第一列（节次）同样圆角立体，但底色浅一些 */
+.schedule-table tbody td:first-child{
+  background:var(--table-row-alt);
+  background-image:linear-gradient(180deg,
+      rgba(255,255,255,.50) 0%,
+      rgba(255,255,255,0) 100%);
+  font-weight:600;
+  color:var(--text-main);
+  font-size:14px;
+  letter-spacing:.5px;
+  border:1px solid var(--table-border);
+}
+[data-theme="dark"] .schedule-table tbody td{
+  background-image:linear-gradient(180deg,
+      rgba(255,255,255,.06) 0%,
+      rgba(255,255,255,0) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 2px 4px rgba(0,0,0,.30),
+    0 4px 8px rgba(0,0,0,.20);
+  border-color:var(--table-border);
+}
+
+/* 今日高亮列：保留背景色，圆角与阴影不变 */
+.schedule-table .today-col{
+  background-color:var(--today-col-bg)!important;
+  color:var(--today-col-text)!important;
+}
+
+/* 空白格子 */
+.schedule-table tbody td.empty{
+  color:var(--empty-text);
+  font-weight:300;
+}
+
+/* ---- 单元格内文字 ---- */
 .cell-period-name{font-weight:600;display:block}
 .cell-time{font-size:12px;color:var(--text-sub);display:block;margin-top:3px}
 .cell-subject{display:block}
 .cell-teacher{font-size:12px;color:var(--text-sub);display:block;margin-top:3px}
 
-/* 单元格背景色 */
-.schedule-table tbody td[data-bg-color="1"]{background-color:#fce4e4!important;color:#a02b2b!important;font-weight:600;box-shadow:inset 0 0 0 1px #f5c8c8}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="1"]{background-color:#602c2c!important;color:#ffbaba!important;box-shadow:inset 0 0 0 1px #803b3b}
-.schedule-table tbody td[data-bg-color="2"]{background-color:#dbeafe!important;color:#1e40af!important;font-weight:600;box-shadow:inset 0 0 0 1px #a9c9f0}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="2"]{background-color:#1e3a8a!important;color:#bfdbfe!important;box-shadow:inset 0 0 0 1px #35567e}
-.schedule-table tbody td[data-bg-color="3"]{background-color:#dcfce7!important;color:#166534!important;font-weight:600;box-shadow:inset 0 0 0 1px #a7e0b9}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="3"]{background-color:#14532d!important;color:#bbf7d0!important;box-shadow:inset 0 0 0 1px #2c6b46}
-.schedule-table tbody td[data-bg-color="4"]{background-color:#fef9c3!important;color:#713f12!important;font-weight:600;box-shadow:inset 0 0 0 1px #f0e08b}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="4"]{background-color:#713f12!important;color:#fef08a!important;box-shadow:inset 0 0 0 1px #92650f}
-.schedule-table tbody td[data-bg-color="5"]{background-color:#e9d5ff!important;color:#4c1d95!important;font-weight:600;box-shadow:inset 0 0 0 1px #c9a8f0}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="5"]{background-color:#4c1d95!important;color:#ddd6fe!important;box-shadow:inset 0 0 0 1px #6236a5}
-.schedule-table tbody td[data-bg-color="6"]{background-color:#fed7aa!important;color:#7c2d12!important;font-weight:600;box-shadow:inset 0 0 0 1px #f0b98a}
-[data-theme="dark"] .schedule-table tbody td[data-bg-color="6"]{background-color:#7c2d12!important;color:#fed7aa!important;box-shadow:inset 0 0 0 1px #9c4a1a}
+/* ---- 彩色格子：保留原色，但加上立体感 ---- */
+.schedule-table tbody td[data-bg-color="1"]{
+  background-color:#fce4e4!important;color:#a02b2b!important;font-weight:600;
+  border-color:#f5c8c8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.70), 0 2px 4px rgba(0,0,0,.08), 0 4px 8px rgba(0,0,0,.04);
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="1"]{
+  background-color:#602c2c!important;color:#ffbaba!important;border-color:#803b3b;
+}
+.schedule-table tbody td[data-bg-color="2"]{
+  background-color:#dbeafe!important;color:#1e40af!important;font-weight:600;
+  border-color:#a9c9f0;
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="2"]{
+  background-color:#1e3a8a!important;color:#bfdbfe!important;border-color:#35567e;
+}
+.schedule-table tbody td[data-bg-color="3"]{
+  background-color:#dcfce7!important;color:#166534!important;font-weight:600;
+  border-color:#a7e0b9;
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="3"]{
+  background-color:#14532d!important;color:#bbf7d0!important;border-color:#2c6b46;
+}
+.schedule-table tbody td[data-bg-color="4"]{
+  background-color:#fef9c3!important;color:#713f12!important;font-weight:600;
+  border-color:#f0e08b;
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="4"]{
+  background-color:#713f12!important;color:#fef08a!important;border-color:#92650f;
+}
+.schedule-table tbody td[data-bg-color="5"]{
+  background-color:#e9d5ff!important;color:#4c1d95!important;font-weight:600;
+  border-color:#c9a8f0;
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="5"]{
+  background-color:#4c1d95!important;color:#ddd6fe!important;border-color:#6236a5;
+}
+.schedule-table tbody td[data-bg-color="6"]{
+  background-color:#fed7aa!important;color:#7c2d12!important;font-weight:600;
+  border-color:#f0b98a;
+}
+[data-theme="dark"] .schedule-table tbody td[data-bg-color="6"]{
+  background-color:#7c2d12!important;color:#fed7aa!important;border-color:#9c4a1a;
+}
 
-/* 午休行 */
+/* ---- 午休行：跨列单元格同样处理 ---- */
 .schedule-table tbody tr.break-row td,
 .schedule-table tbody tr.break-row td:first-child{
-  background:#eef1f5;color:var(--text-main);padding:2px 8px;line-height:1.5;
-  border-bottom:1px solid var(--table-border);border-right:none;
-  cursor:pointer;text-align:center;font-size:14px;font-weight:600;letter-spacing:.5px;
+  background:#eef1f5;
+  background-image:linear-gradient(180deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 100%);
+  color:var(--text-main);
+  padding:6px 8px;
+  line-height:1.5;
+  cursor:pointer;
+  text-align:center;
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.5px;
+  border:1px solid var(--table-border);
+  border-radius:10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.60),
+    0 2px 4px rgba(0,0,0,.08),
+    0 4px 8px rgba(0,0,0,.04);
 }
-.schedule-table tbody tr.break-row:hover td{filter:brightness(.96)}
-.schedule-table tbody tr.break-row td .cell-period-name{display:inline;font-size:14px;font-weight:600;color:var(--text-main);letter-spacing:.5px}
-.schedule-table tbody tr.break-row td .cell-time{display:inline;font-size:12px;font-weight:600;color:var(--text-sub);letter-spacing:normal;margin-left:8px;margin-top:0}
+.schedule-table tbody tr.break-row td .cell-period-name{
+  display:inline;font-size:14px;font-weight:600;color:var(--text-main);letter-spacing:.5px;
+}
+.schedule-table tbody tr.break-row td .cell-time{
+  display:inline;font-size:12px;font-weight:600;color:var(--text-sub);letter-spacing:normal;margin-left:8px;margin-top:0;
+}
 [data-theme="dark"] .schedule-table tbody tr.break-row td,
-[data-theme="dark"] .schedule-table tbody tr.break-row td:first-child{background:#2b3140;color:var(--text-main);border-bottom-color:#3b4252}
+[data-theme="dark"] .schedule-table tbody tr.break-row td:first-child{
+  background:#2b3140;
+  background-image:linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 100%);
+  color:var(--text-main);
+  border-color:var(--table-border);
+}
 
 .cs-week-tag{font-size:11px;font-weight:400;color:var(--text-sub);margin-left:4px;white-space:nowrap}
 .schedule-table tbody td:first-child .cell-period-name{white-space:nowrap}
+
+/* ---- 移动端：圆角与间距适当缩小 ---- */
+@media (max-width: 768px){
+  .schedule-table{
+    border-spacing:1px;
+    font-size:13px;
+  }
+  .schedule-table thead th{
+    padding:10px 4px;
+    font-size:13px;
+    border-radius:8px;
+  }
+  .schedule-table tbody td{
+    padding:6px 2px;
+    font-size:12px;
+    min-width:44px;
+    border-radius:8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.60),
+      0 1px 3px rgba(0,0,0,.08),
+      0 2px 5px rgba(0,0,0,.04);
+  }
+  .schedule-table tbody td:first-child{
+    font-size:12px;
+    padding:6px 2px;
+    width:60px;
+    min-width:55px;
+  }
+  .cell-time,.cell-teacher{font-size:10px}
+  .schedule-table tbody tr.break-row td{
+    font-size:12px;
+    padding:4px 6px;
+    border-radius:8px;
+  }
+  [data-theme="dark"] .schedule-table tbody td{
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.08),
+      0 1px 3px rgba(0,0,0,.30),
+      0 2px 5px rgba(0,0,0,.20);
+  }
+}
 
 /* ============ 9. 座位表 ============ */
 .seat-stage{width:66.67%;margin:18px auto 18px;text-align:center;padding:14px;background:var(--table-head-bg);color:#fff;border-radius:12px;font-weight:bold;letter-spacing:6px;font-size:16px}
@@ -503,13 +693,13 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .roster-table th{background:var(--table-row-alt);font-size:12px;color:var(--text-sub);font-weight:600;letter-spacing:.5px}
 .roster-table tbody tr{cursor:pointer;transition:background .15s}
 .roster-table tbody tr:hover{background:var(--seat-hover)}
-.roster-table th:nth-child(1),.roster-table td:nth-child(1){width:52px;text-align:center}
-.roster-table th:nth-child(2),.roster-table td:nth-child(2){width:100px}
-.roster-table th:nth-child(3),.roster-table td:nth-child(3){width:60px;text-align:center}
-.roster-table th:nth-child(4),.roster-table td:nth-child(4){width:180px}
-.roster-table th:nth-child(5),.roster-table td:nth-child(5){width:90px}
-.roster-table th:nth-child(6),.roster-table td:nth-child(6){width:110px}
-.roster-table th:nth-child(7),.roster-table td:nth-child(7){width:110px}
+.roster-table th:nth-child(1),.roster-table td:nth-child(1){width:50px;text-align:center}
+.roster-table th:nth-child(2),.roster-table td:nth-child(2){width:60px;text-align:center}
+.roster-table th:nth-child(3),.roster-table td:nth-child(3){width:50px;text-align:center}
+.roster-table th:nth-child(4),.roster-table td:nth-child(4){width:150px;text-align:center}
+.roster-table th:nth-child(5),.roster-table td:nth-child(5){width:60px;text-align:center}
+.roster-table th:nth-child(6),.roster-table td:nth-child(6){width:90px;text-align:center}
+.roster-table th:nth-child(7),.roster-table td:nth-child(7){width:90px;text-align:center}
 .roster-table th:nth-child(8),.roster-table td:nth-child(8){width:auto;white-space:normal;word-break:break-all}
 .roster-table .idx{color:var(--text-sub);font-size:12px;text-align:center}
 .roster-table .name{font-weight:600}
@@ -578,8 +768,23 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .scores-avatar.female{background:#ec4899}
 .scores-avatar.unknown{background:#94a3b8}
 .scores-name{font-weight:600;font-size:14px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.scores-input-wrap{display:flex;align-items:baseline;gap:4px;flex-shrink:0}
-.score-input{width:76px;padding:7px 10px;border:2px solid var(--seat-border);border-radius:8px;background:var(--card-bg);color:var(--text-main);font-size:15px;font-weight:700;font-family:inherit;text-align:center;outline:none;transition:border-color .2s, box-shadow .2s, color .2s;-moz-appearance:textfield;box-sizing:border-box}
+.scores-input-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.score-input {
+  width: 76px;
+  padding: 7px 10px;
+  border: 2px solid var(--seat-border);
+  border-radius: 999px;    /* 胶囊圆角，与缺考按钮一致 */
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, color .2s;
+  -moz-appearance: textfield;
+  box-sizing: border-box;
+}
 .score-input::-webkit-outer-spin-button,
 .score-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .score-input:focus{border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,.15)}
@@ -634,13 +839,26 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
 /* ============ 22. 考勤 ============ */
 .att-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:8px;background:var(--table-row-alt);border-radius:12px;flex-wrap:wrap}
-.att-student-info{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.att-student-info{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .att-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
 .att-avatar.male{background-color:#3b82f6}
 .att-avatar.female{background-color:#ec4899}
 .att-name{font-weight:600;font-size:15px;color:var(--text-main);min-width:60px}
-.att-status-group{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex-shrink:0;max-width:100%}
-.att-status-btns{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.att-status-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  flex: 1;              /* 占据 .att-row 剩余宽度 */
+  min-width: 0;         /* 允许收缩，防止溢出 */
+}
+.att-status-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start; /* 按钮从左侧开始排列 */
+  flex-wrap: wrap;
+}
 .att-status-btn{padding:5px 16px;border-radius:20px;border:1px solid var(--seat-border);background-color:transparent;color:var(--text-sub);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.2s;white-space:nowrap}
 .att-status-btn:hover{background:var(--card-bg);color:var(--text-main);border-color:var(--text-sub);transform:translateY(-1px)}
 .att-status-btn.active.status-出勤{background:#e6f4ea;color:#137333;border-color:#137333;box-shadow:0 2px 6px rgba(19,115,51,0.15)}
@@ -651,7 +869,27 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .att-status-btn.active.status-迟到{background:#7a3800;color:#feefc3;border-color:#feefc3}
 [data-theme="dark"] .att-status-btn.active.status-请假{background:#174ea6;color:#d2e3fc;border-color:#d2e3fc}
 [data-theme="dark"] .att-status-btn.active.status-缺勤{background:#8c1d18;color:#fad2cf;border-color:#fad2cf}
-.att-remark{padding:6px 10px;border:1px solid var(--seat-border);border-radius:8px;background-color:var(--card-bg);color:var(--text-main);font-size:12px;font-family:inherit;outline:none;width:100%;min-width:0;box-sizing:border-box}
+.att-remark {
+  padding: 6px 10px;
+  border: 1px solid var(--seat-border);
+  border-radius: 8px;
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;   /* 关键：宽度把 padding 算进去 */
+  min-width: 0;
+}
+/* 与 .att-status-group 平级的右侧包裹层 */
+.att-month-wrapper {
+  display: flex;
+  align-items: center;      /* 垂直居中 */
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: stretch;      /* 撑满整个 .att-row 高度，配合 align-items 实现居中 */
+}
 .att-remark:focus{border-color:#3498db}
 #attSaveBtn:disabled{cursor:not-allowed}
 #attSaveBtn.saved{background:#27ae60 !important}
@@ -722,6 +960,20 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .seat-size-info{font-size:12px;padding:2px 10px}
   .card-hdr-row2 .seat-ctrl{padding:5px 12px;font-size:12px}
 
+  /* 课表 / 值日表移动端圆角略收 */
+  .schedule-table{
+    border-radius:14px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.85) inset,
+      0 10px 22px -10px rgba(18,38,63,.28),
+      0 3px 8px -2px rgba(18,38,63,.07);
+  }
+  [data-theme="dark"] .schedule-table{
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 10px 22px -10px rgba(0,0,0,.6),
+      0 3px 8px -2px rgba(0,0,0,.38);
+  }
   .schedule-table{font-size:13px}
   .schedule-table thead th{padding:10px 4px;font-size:13px}
   .schedule-table tbody td{padding:8px 3px;font-size:12px;min-width:44px}
@@ -797,10 +1049,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .report-subject-tab{padding:4px 12px;font-size:12px}
   #trendStudentSelect{max-width:130px !important;padding-right:26px !important}
 
-  .att-row{padding:8px 10px;gap:8px}
+  .att-row{padding:8px 10px;gap:6px}
   .att-avatar{width:30px;height:30px;font-size:14px}
   .att-name{font-size:14px;min-width:50px}
-  .att-status-btn{padding:4px 12px;font-size:12px}
+  .att-status-btn{padding:4px 10px;font-size:12px}
   .att-remark{padding:4px 8px}
   .today-summary-grid{grid-template-columns:repeat(3,1fr)}
 
@@ -934,29 +1186,31 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   opacity: 0.55;
 }
 
-/* ★ 新增：考勤月度查看按钮 */
+/* 考勤月度查看按钮 */
 .att-month-btn {
-  padding: 5px 10px;
-  border-radius: 20px;
-  border: 1px dashed #3498db;
+  border: none;
+  border-radius: 0;
   background-color: transparent;
   color: #3498db;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  margin-left: 4px;
 }
 .att-month-btn:hover {
   background: #eaf4fc;
-  border-style: solid;
 }
 [data-theme="dark"] .att-month-btn {
-  border-color: #5dade2;
   color: #5dade2;
 }
 [data-theme="dark"] .att-month-btn:hover {
   background: rgba(93, 173, 226, 0.15);
+}
+.att-month-wrapper {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 0px;
 }

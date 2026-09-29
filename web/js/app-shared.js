@@ -220,6 +220,45 @@ window.apiCall = async function (fn) {
   }
 };
 
+/* ========== 通用确认弹窗 ========== */
+window.showConfirm = function (message, options) {
+  options = options || {};
+  return new Promise(function (resolve) {
+    const pop = document.getElementById('confirmPop');
+    if (!pop) { console.warn('[showConfirm] #confirmPop 不存在'); resolve(false); return; }
+
+    const title     = document.getElementById('confirmPopTitle');
+    const msg       = document.getElementById('confirmPopMsg');
+    const okBtn     = document.getElementById('confirmPopOk');
+    const cancelBtn = document.getElementById('confirmPopCancel');
+
+    title.textContent     = options.title      || '确认操作';
+    msg.textContent       = message            || '';
+    okBtn.textContent     = options.okText     || '确认';
+    cancelBtn.textContent = options.cancelText || '取消';
+    okBtn.style.background = (options.danger === false) ? '#3498db' : '#e74c3c';
+
+    pop.style.display = 'flex';
+
+    const cleanup = function () {
+      pop.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      pop.onclick = null;
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = function (e) {
+      if (e.key === 'Escape') { cleanup(); resolve(false); }
+      else if (e.key === 'Enter') { cleanup(); resolve(true); }
+    };
+
+    okBtn.onclick     = function () { cleanup(); resolve(true); };
+    cancelBtn.onclick = function () { cleanup(); resolve(false); };
+    pop.onclick       = function (e) { if (e.target === pop) { cleanup(); resolve(false); } };
+    document.addEventListener('keydown', onKey);
+  });
+};
+
 window.scheduleAutoSync = function () {
   if (!window.currentUser) return;
   if (window.autoSyncTimer) clearTimeout(window.autoSyncTimer);

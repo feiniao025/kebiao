@@ -260,7 +260,10 @@ window.importRosterExcel = async function (file, targetClass, gradeHint) {
       classCol: headerMap.classCol !== undefined ? headerMap.classCol : -1,
     };
   } else {
-    const yes = confirm('未在 Excel 前 10 行中找到「姓名」表头。\n\n是否按常见列顺序解析？（默认：序号 | 姓名 | 性别 | 身份证 | 班级 | 家长电话1 | 家长电话2 | 家庭地址）');
+    const yes = await showConfirm(
+      '未在 Excel 前 10 行中找到「姓名」表头。\n\n是否按常见列顺序解析？\n（默认：序号 | 姓名 | 性别 | 身份证 | 班级 | 家长电话1 | 家长电话2 | 家庭地址）',
+      { title: '确认解析方式', okText: '按默认解析', danger: false }
+    );
     if (!yes) return;
     dataStartIdx = 0;
     colIdx = { name: 1, gender: 2, idCard: 3, classCol: 4, tel1: 5, tel2: 6, address: 7 };
@@ -355,7 +358,8 @@ window.importRosterExcel = async function (file, targetClass, gradeHint) {
   msg += '\n（同班同名学生将覆盖原记录）';
   if (skipped > 0) msg += '\n有 ' + skipped + ' 条格式错误（身份证/电话）已被清空';
   if (pending > 0) msg += '\n有 ' + pending + ' 条所在班级尚未创建，将以「待关联」状态保存';
-  if (!confirm(msg + '\n\n确认导入？')) return;
+  msg += '\n\n确认导入？';
+  if (!(await showConfirm(msg, { title: '导入花名册', okText: '确认导入', danger: false }))) return;
 
   showSaveStatus('正在导入...', false);
   let ok = 0, fail = 0;
@@ -466,15 +470,26 @@ window.fillSubjectSelect = function (sel, defaultVal) {
   });
 };
 
+/* 填充分值/预设考试名下拉：预设列表 + "自定义名称…" 选项 */
 window.fillExamNameSelect = function (sel, defaultVal) {
   if (!sel) return;
   sel.innerHTML = '';
+
+  let matched = false;
   EXAM_NAMES.forEach(n => {
     const opt = document.createElement('option');
-    opt.value = n; opt.textContent = n;
-    if (n === defaultVal) opt.selected = true;
+    opt.value = n;
+    opt.textContent = n;
+    if (n === defaultVal) { opt.selected = true; matched = true; }
     sel.appendChild(opt);
   });
+
+  // ★ 追加"自定义名称"选项
+  const customOpt = document.createElement('option');
+  customOpt.value = '__custom__';
+  customOpt.textContent = '自定义名称…';
+  if (!matched && defaultVal) customOpt.selected = true;
+  sel.appendChild(customOpt);
 };
 
 window.openExamPop = function (exam) {
@@ -484,6 +499,27 @@ window.openExamPop = function (exam) {
   fillClassSelect($('examPopClass'), exam ? exam.class_id : currentGradesClassId);
   fillSubjectSelect($('examPopSubject'), exam ? exam.subject : currentGradesSubject);
   fillExamNameSelect($('examPopName'), exam ? exam.name : EXAM_NAMES[0]);
+
+  // ★ 自定义名称行控制
+  const nameSel     = $('examPopName');
+  const customRow   = $('examPopCustomNameRow');
+  const customInput = $('examPopCustomName');
+
+  if (exam && EXAM_NAMES.indexOf(exam.name) < 0) {
+    customInput.value = exam.name;
+  } else {
+    customInput.value = '';
+  }
+
+  const syncCustomVisibility = () => {
+    const isCustom = (nameSel.value === '__custom__');
+    customRow.style.display = isCustom ? 'flex' : 'none';
+    if (isCustom && !customInput.value && exam && EXAM_NAMES.indexOf(exam.name) < 0) {
+      customInput.value = exam.name;
+    }
+  };
+  nameSel.onchange = syncCustomVisibility;
+  syncCustomVisibility();
 
   const fullInput = $('examPopFull'), passInput = $('examPopPass');
   const mediumInput = $('examPopMedium'), goodInput = $('examPopGood'), excellentInput = $('examPopExcellent');
@@ -496,19 +532,32 @@ window.openExamPop = function (exam) {
     goodInput.value = Math.round(full * RATIOS.good);
     excellentInput.value = Math.round(full * RATIOS.excellent);
   }
+
+  // ★ 优先使用已有值；只有该值确实无效（null/undefined/<=0）时才回退到默认
+  const pick = (v, dft) => (v != null && v > 0) ? v : dft;
+
   if (exam) {
-    const full = exam.full_score || 100;
-    fullInput.value = full;
-    passInput.value = exam.pass_score || Math.round(full * RATIOS.pass);
-    mediumInput.value = exam.medium_score || Math.round(full * RATIOS.medium);
-    goodInput.value = exam.good_score || Math.round(full * RATIOS.good);
-    excellentInput.value = exam.excellent_score || Math.round(full * RATIOS.excellent);
-  } else { fullInput.value = 100; applyRatios(); }
-  fullInput.oninput = applyRatios;
+    // ---- 编辑模式：保持考试自身的分值，不用默认值覆盖 ----
+    const full = pick(exam.full_score, 100);
+    fullInput.value      = full;
+    passInput.value      = pick(exam.pass_score,      Math.round(full * RATIOS.pass));
+    mediumInput.value    = pick(exam.medium_score,    Math.round(full * RATIOS.medium));
+    goodInput.value      = pick(exam.good_score,      Math.round(full * RATIOS.good));
+    excellentInput.value = pick(exam.excellent_score, Math.round(full * RATIOS.excellent));
+
+    // ★ 编辑时修改满分，其它分数线也按比例联动
+    fullInput.oninput = applyRatios;
+  } else {
+    // ---- 新建模式：满分默认 100，改满分时按比例联动其它分数线 ----
+    fullInput.value = 100;
+    applyRatios();
+    fullInput.oninput = applyRatios;
+  }
+
   $('examPopError').textContent = '';
   $('examPopClass').disabled = !isNew;
   $('examPopSubject').disabled = !isNew;
-  $('examPopName').disabled = !isNew;
+  $('examPopName').disabled = false;   // ★ 编辑时也允许修改考试名称
   $('examPop').dataset.id = isNew ? '' : exam.id;
   $('examPop').style.display = 'flex';
 };
@@ -556,7 +605,11 @@ window.importScoresFromExcel = async function (exam, onSaved) {
       let dataStartIdx, nc, sc;
       if (headerRowIdx >= 0) { dataStartIdx = headerRowIdx + 1; nc = nameCol; sc = scoreCol; }
       else {
-        if (!confirm('未找到「姓名」「分数」表头。\n\n是否按第一列姓名、第二列分数解析？')) return;
+        const yes = await showConfirm(
+          '未找到「姓名」「分数」表头。\n\n是否按第一列姓名、第二列分数解析？',
+          { title: '确认解析方式', okText: '按默认解析', danger: false }
+        );
+        if (!yes) return;
         dataStartIdx = 0; nc = 0; sc = 1;
       }
 
@@ -609,6 +662,63 @@ window.importScoresFromExcel = async function (exam, onSaved) {
 };
 
 /* ---------- 成绩走势 ---------- */
+
+/* 计算某学生在一次考试中的名次
+ * 若该考试手动排过序（sort_order > 0），按 sort_order 优先；
+ * 否则按分数降序。
+ */
+function computeExamRank(scores, studentName) {
+  const hasManualOrder = scores.some(s => (s.sort_order || 0) > 0);
+  const ranked = scores.slice().sort(
+    hasManualOrder
+      ? (a, b) => ((a.sort_order || 999999) - (b.sort_order || 999999)) ||
+                  ((b.score || 0) - (a.score || 0))
+      : (a, b) => (b.score || 0) - (a.score || 0)
+  );
+  return {
+    rank: ranked.findIndex(s => s.student_name === studentName) + 1,
+    totalCount: scores.length,
+  };
+}
+
+/* 拉取某学生某科目的历史成绩走势数据
+ * 返回 [{ examName, date, score, fullScore, average, rank, totalCount }, ...]
+ * 已按日期升序排列
+ */
+async function loadStudentTrendData(studentName, subject, fallbackFullScore) {
+  const examsResp = await API.listExams(currentGradesClassId);
+  const subjectExams = (examsResp.exams || []).filter(e => e.subject === subject);
+  const details = await Promise.all(
+    subjectExams.map(e => API.getExamDetail(e.id).catch(() => null))
+  );
+
+  const rows = [];
+  for (const d of details) {
+    if (!d || !d.exam || !d.scores) continue;
+    const { exam, scores } = d;
+
+    const stu = scores.find(s => s.student_name === studentName);
+    if (!stu) continue;
+
+    const sum = scores.reduce((acc, s) => acc + s.score, 0);
+    const average = scores.length ? sum / scores.length : 0;
+    const { rank, totalCount } = computeExamRank(scores, studentName);
+
+    rows.push({
+      examName: exam.name,
+      date: exam.created_at ? String(exam.created_at).slice(0, 10) : '',
+      score: stu.score,
+      fullScore: exam.full_score || fallbackFullScore,
+      average,
+      rank,
+      totalCount,
+    });
+  }
+
+  rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return rows;
+}
+
 window.showStudentReportInline = async function (studentName, subject, fullScore, gender) {
   const panel = document.getElementById('rankRightPanel');
   if (!panel) return;
@@ -648,25 +758,7 @@ window.renderTrendPanel = async function (panel) {
   panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">加载中...</div>';
 
   try {
-    const examsResp = await API.listExams(currentGradesClassId);
-    const allExams = examsResp.exams || [];
-    const subjectExams = allExams.filter(e => e.subject === subject);
-    const details = await Promise.all(subjectExams.map(e => API.getExamDetail(e.id).catch(() => null)));
-    const rows = [];
-    for (const d of details) {
-      if (!d || !d.exam || !d.scores) continue;
-      const exam = d.exam;
-      const scores = d.scores;
-      const stu = scores.find(s => s.student_name === studentName);
-      if (!stu) continue;
-      const sum = scores.reduce((a, b) => a + b.score, 0);
-      const avg = scores.length ? sum / scores.length : 0;
-      const sorted = scores.slice().sort((a, b) => b.score - a.score);
-      const rank = sorted.findIndex(s => s.student_name === studentName) + 1;
-      rows.push({ examName: exam.name, date: exam.created_at ? String(exam.created_at).slice(0, 10) : '', score: stu.score,
-        fullScore: exam.full_score || fullScore, average: avg, rank: rank, totalCount: scores.length });
-    }
-    rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const rows = await loadStudentTrendData(studentName, subject, fullScore);
 
     const initial = studentName ? escapeHtml(studentName.charAt(0)) : '?';
     const genderClass = gender === '女' ? 'female' : (gender === '男' ? 'male' : 'unknown');
@@ -1355,7 +1447,13 @@ window.renderAttendance = async function () {
     if (!currentAttendanceClassId) { showSaveStatus('请先选择班级', true); return; }
     const cls = classes.find(c => c.class_id === currentAttendanceClassId);
     const clsName = cls ? cls.name : currentAttendanceClassId;
-    if (!confirm('确认删除「' + clsName + '」在 ' + currentAttendanceDate + ' 的全部考勤记录？\n\n此操作不可恢复。')) return;
+
+    const ok = await showConfirm(
+      '将删除「' + clsName + '」在 ' + currentAttendanceDate + ' 的全部考勤记录。\n\n此操作不可恢复。',
+      { title: '删除考勤记录', okText: '确认删除' }
+    );
+    if (!ok) return;
+
     try {
       await apiCall(API.deleteAttendance, currentAttendanceClassId, currentAttendanceDate);
       showSaveStatus('已删除当日考勤记录', false);
@@ -1390,21 +1488,25 @@ window.loadAttendance = async function () {
       const initial = safeName ? escapeHtml(safeName.charAt(0)) : '?';
       const genderClass = stu.gender === '女' ? 'female' : 'male';
       return '<div class="att-row">' +
+        // ① 左侧：头像 + 姓名
         '<div class="att-student-info">' +
           '<div class="att-avatar ' + genderClass + '">' + initial + '</div>' +
           '<span class="att-name">' + escapeHtml(safeName) + '</span>' +
         '</div>' +
+        // ② 中间：状态按钮 + 备注
         '<div class="att-status-group">' +
           '<div class="att-status-btns">' +
             STATUSES.map(s =>
               '<button class="att-status-btn status-' + s + (cur.status === s ? ' active' : '') +
               '" data-name="' + escapeHtml(safeName) + '" data-status="' + s + '">' + s + '</button>'
             ).join('') +
-            // ★ 新增：查看月度考勤
-            '<button class="att-month-btn" data-name="' + escapeHtml(safeName) + '" title="查看月度考勤">📅 月</button>' +
           '</div>' +
           '<input type="text" class="att-remark" data-name="' + escapeHtml(safeName) +
           '" placeholder="备注" value="' + escapeHtml(cur.remark || '') + '">' +
+        '</div>' +
+        // ③ 右侧：独立的"月"按钮包裹层（垂直居中）
+        '<div class="att-month-wrapper">' +
+          '<button class="att-month-btn" data-name="' + escapeHtml(safeName) + '" title="查看月度考勤">📅</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -1416,7 +1518,7 @@ window.loadAttendance = async function () {
         updateAttSummary();
       };
     });
-    // ★ 新增：月度考勤按钮事件
+    // 月度考勤按钮事件
     el.querySelectorAll('.att-month-btn').forEach(b => {
       b.onclick = () => { openStudentMonthPop(b.dataset.name); };
     });
@@ -1424,7 +1526,7 @@ window.loadAttendance = async function () {
   } catch (err) { el.innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(err.message) + '</div>'; }
 };
 
-/* ★ 新增：打开月度考勤弹窗 */
+/* ★ 打开月度考勤弹窗 */
 window.openStudentMonthPop = function (studentName) {
   const pop = $('attendanceMonthPop');
   const picker = $('attendanceMonthPicker');
@@ -1472,7 +1574,7 @@ window.openStudentMonthPop = function (studentName) {
   pop.style.display = 'flex';
 };
 
-/* ★ 新增：绑定月度考勤弹窗关闭事件 */
+/* ★ 绑定月度考勤弹窗关闭事件 */
 (function bindMonthlyAttendancePop() {
   const closeBtn = $('attendanceMonthClose');
   const pop = $('attendanceMonthPop');
@@ -1591,32 +1693,61 @@ window.saveAttendance = async function () {
 
   const examPopClose = $('examPopClose');
   if (examPopClose) examPopClose.onclick = () => { $('examPop').style.display = 'none'; };
+
   const examPopEl = $('examPop');
-  if (examPopEl) examPopEl.addEventListener('click', e => { if (e.target === examPopEl) examPopEl.style.display = 'none'; });
+  if (examPopEl) examPopEl.addEventListener('click', e => {
+    if (e.target === examPopEl) examPopEl.style.display = 'none';
+  });
+
   const examPopSave = $('examPopSave');
   if (examPopSave) examPopSave.onclick = async () => {
     const errEl = $('examPopError');
     errEl.textContent = '';
+
     const full = parseInt($('examPopFull').value, 10) || 100;
+
+    // ★ 处理考试名称：预设 or 自定义
+    let examName = '';
+    if ($('examPopName').value === '__custom__') {
+      examName = ($('examPopCustomName').value || '').trim();
+      if (!examName) {
+        errEl.textContent = '请输入自定义考试名称';
+        return;
+      }
+      if (examName.length > 30) {
+        errEl.textContent = '考试名称不能超过 30 个字符';
+        return;
+      }
+    } else {
+      examName = $('examPopName').value;
+    }
+
     const data = {
-      class_id: $('examPopClass').value,
-      subject: $('examPopSubject').value,
-      name: $('examPopName').value,
-      full_score: full,
-      pass_score: parseInt($('examPopPass').value, 10) || Math.round(full * 0.6),
-      medium_score: parseInt($('examPopMedium').value, 10) || Math.round(full * 0.7),
-      good_score: parseInt($('examPopGood').value, 10) || Math.round(full * 0.8),
+      class_id:        $('examPopClass').value,
+      subject:         $('examPopSubject').value,
+      name:            examName,
+      full_score:      full,
+      pass_score:      parseInt($('examPopPass').value, 10)      || Math.round(full * 0.6),
+      medium_score:    parseInt($('examPopMedium').value, 10)    || Math.round(full * 0.7),
+      good_score:      parseInt($('examPopGood').value, 10)      || Math.round(full * 0.8),
       excellent_score: parseInt($('examPopExcellent').value, 10) || Math.round(full * 0.9),
     };
-    if (!data.class_id || !data.subject || !data.name) { errEl.textContent = '请填写完整'; return; }
+    if (!data.class_id || !data.subject || !data.name) {
+      errEl.textContent = '请填写完整';
+      return;
+    }
+
     try {
       const id = $('examPop').dataset.id;
       if (id) await API.updateExam(id, data);
-      else await API.createExam(data);
+      else    await API.createExam(data);
+
       showSaveStatus('已保存', false);
       $('examPop').style.display = 'none';
       await loadExams();
-    } catch (err) { errEl.textContent = err.message || '保存失败'; }
+    } catch (err) {
+      errEl.textContent = err.message || '保存失败';
+    }
   };
 
   const scoresPopClose = $('scoresPopClose');
@@ -1655,13 +1786,14 @@ window.saveAttendance = async function () {
   const rosterExportImgBtn = $('rosterExportImgBtn');
   if (rosterExportImgBtn) rosterExportImgBtn.onclick = () => exportRosterImage();
 
-  document.addEventListener('contextmenu', e => {
+  document.addEventListener('contextmenu', async e => {
     const item = e.target.closest && e.target.closest('.roster-tr');
     if (item) {
       e.preventDefault();
       if (!rosterEditOn) { showSaveStatus('已锁定，请先点击「✏️ 编辑名册」', true); return; }
       const cid = item.dataset.class, name = item.dataset.name;
-      if (confirm('删除学生「' + name + '」？')) {
+      const ok = await showConfirm('删除学生「' + name + '」？', { title: '删除学生', okText: '删除' });
+      if (ok) {
         API.deleteRoster(cid, name).then(() => loadRoster()).catch(() => {});
       }
     }
