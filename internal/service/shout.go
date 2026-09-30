@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"kebiao/internal/database"
@@ -14,11 +15,16 @@ import (
 )
 
 type ShoutService struct {
-	db *database.SQLite
+	db       *database.SQLite
+	mu       sync.Mutex
+	lastSeen map[string]time.Time
 }
 
 func NewShoutService(db *database.SQLite) *ShoutService {
-	return &ShoutService{db: db}
+	return &ShoutService{
+		db:       db,
+		lastSeen: make(map[string]time.Time),
+	}
 }
 
 const shoutCodeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -42,6 +48,29 @@ func randomShoutToken(n int) string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// ============ 大屏在线状态 ============
+
+// touchRoom 记录某教室大屏最近一次拉取消息的时间
+func (s *ShoutService) touchRoom(roomKey string) {
+	if s.lastSeen == nil {
+		s.lastSeen = make(map[string]time.Time)
+	}
+	s.mu.Lock()
+	s.lastSeen[roomKey] = time.Now()
+	s.mu.Unlock()
+}
+
+// IsRoomOnline 判断某教室大屏是否在线（10 秒内有请求即视为在线）
+func (s *ShoutService) IsRoomOnline(roomKey string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	t, ok := s.lastSeen[roomKey]
+	if !ok {
+		return false
+	}
+	return time.Since(t) < 10*time.Second
 }
 
 // ListRooms 我创建 + 我加入的所有教室
@@ -99,7 +128,6 @@ func (s *ShoutService) CreateRoom(userID int64, username, name, classID string) 
 		return nil, err
 	}
 
-	// 创建者自动成为「班主任」成员
 	_ = s.db.AddShoutMember(&model.ShoutMember{
 		RoomKey:  room.RoomKey,
 		UserID:   userID,
@@ -196,7 +224,7 @@ func (s *ShoutService) JoinRoom(userID int64, username, roomKey, subject string)
 		return room, nil
 	}
 	if _, err := s.db.GetShoutMember(roomKey, userID); err == nil {
-		return room, nil // 已在教室中
+		return room, nil
 	}
 	m := &model.ShoutMember{
 		RoomKey:  roomKey,
@@ -316,6 +344,10 @@ func (s *ShoutService) FeedByToken(token string, sinceID int64) ([]model.ShoutMe
 	if err != nil {
 		return nil, nil, errors.New("教室不存在或地址已失效")
 	}
+
+	// ★ 记录大屏活跃时间
+	s.touchRoom(room.RoomKey)
+
 	msgs, err := s.db.GetShoutMessages(room.RoomKey, sinceID, 50)
 	if err != nil {
 		return nil, nil, err
@@ -329,4 +361,9 @@ func (s *ShoutService) GetMyMessages(userID int64, limit int) ([]model.ShoutMess
 		limit = 200
 	}
 	return s.db.GetShoutMessagesBySender(userID, limit)
+}
+
+// DeleteMessage 仅允许发送者本人删除自己的消息
+func (s *ShoutService) DeleteMessage(userID, msgID int64) error {
+	return s.db.DeleteShoutMessageBySender(userID, msgID)
 }

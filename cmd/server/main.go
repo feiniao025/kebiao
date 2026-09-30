@@ -182,7 +182,9 @@ func main() {
 			shout.DELETE("/rooms/:key/members/:username", shoutHandler.RemoveMember)
 			shout.POST("/rooms/:key/send", shoutHandler.Send)
 			shout.GET("/rooms/:key/messages", shoutHandler.Poll)
+			shout.GET("/rooms/:key/status", shoutHandler.Status)      // ★ 在线状态
 			shout.GET("/messages", shoutHandler.GetMyMessages)
+			shout.DELETE("/messages/:id", shoutHandler.DeleteMessage) // ★ 删除某条消息
 		}
 
 		admin := api.Group("/admin")

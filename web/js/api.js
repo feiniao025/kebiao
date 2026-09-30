@@ -31,7 +31,6 @@ const API = (function () {
     upsertCell: function (c) { return request('PUT', '/schedule/cell', c); },
     batchUpsert: function (c) { return request('POST', '/schedule/batch', { cells: c }); },
     listClasses: function () { return request('GET', '/classes'); },
-    // 新增 customName 参数：为空字符串时表示普通班级（年级+班号）
     createClass: function (g, n, b, customName) {
       return request('POST', '/classes', {
         grade: g,
@@ -71,7 +70,6 @@ const API = (function () {
     attendanceSummary: function (c, d) { return request('GET', '/students/attendance/summary?class_id=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(d)); },
     saveAttendance: function (c, d, i) { return request('POST', '/students/attendance', { class_id: c, date: d, items: i }); },
     deleteAttendance: function (c, d) { return request('DELETE', '/students/attendance?class_id=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(d)); },
-    // ★ 新增：查询某学生某月全部考勤记录
     getStudentMonthlyAttendance: function (classId, studentName, month) {
       return request('GET', '/students/attendance/monthly?class_id=' + encodeURIComponent(classId) + '&student_name=' + encodeURIComponent(studentName) + '&month=' + encodeURIComponent(month));
     },
@@ -114,9 +112,17 @@ const API = (function () {
     pollShout: function (key, since) {
       return request('GET', '/shout/rooms/' + encodeURIComponent(key) + '/messages?since=' + (since || 0));
     },
-    // ★ 新增：我在各教室中发出的全部消息（用于「发送记录」页）
+    // ★ 查询某教室大屏在线状态
+    getShoutRoomStatus: function (key) {
+      return request('GET', '/shout/rooms/' + encodeURIComponent(key) + '/status');
+    },
+    // ★ 我在各教室中发出的全部消息（用于「发送记录」页）
     getMyShoutMessages: function (limit) {
       return request('GET', '/shout/messages?limit=' + (limit || 200));
+    },
+    // ★ 删除我发过的某条消息
+    deleteShoutMessage: function (id) {
+      return request('DELETE', '/shout/messages/' + id);
     }
   };
 })();

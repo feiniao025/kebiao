@@ -103,6 +103,22 @@ func (h *ShoutHandler) RegenerateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"display_token": token})
 }
 
+// ---------- 在线状态 ----------
+
+func (h *ShoutHandler) Status(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	roomKey := c.Param("key")
+
+	if _, err := h.svc.GetRoom(userID, roomKey); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"online": h.svc.IsRoomOnline(roomKey),
+	})
+}
+
 // ---------- 加入 / 成员 ----------
 
 type joinShoutReq struct {
@@ -200,6 +216,21 @@ func (h *ShoutHandler) GetMyMessages(c *gin.Context) {
 		msgs = []model.ShoutMessage{}
 	}
 	c.JSON(http.StatusOK, gin.H{"messages": msgs})
+}
+
+// ★ 新增：删除我发过的某条消息
+func (h *ShoutHandler) DeleteMessage(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	msgID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	if msgID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的消息ID"})
+		return
+	}
+	if err := h.svc.DeleteMessage(userID, msgID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "已删除"})
 }
 
 // ---------- 大屏端（公开，凭 token） ----------

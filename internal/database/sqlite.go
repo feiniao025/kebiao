@@ -1129,7 +1129,6 @@ func (s *SQLite) DeleteExamScore(examID int64, studentName string) error {
 // PruneExamScores 删除该考试中不在 validNames 里的成绩记录
 func (s *SQLite) PruneExamScores(examID int64, validNames []string) error {
 	if len(validNames) == 0 {
-		// 花名册为空，直接清空该考试所有成绩
 		_, err := s.db.Exec(`DELETE FROM exam_scores WHERE exam_id = ?`, examID)
 		return err
 	}
@@ -1227,7 +1226,6 @@ func (s *SQLite) DeleteAttendanceDate(userID int64, classID, date string) error 
 	return err
 }
 
-// ★ 新增：查询某个学生某个月（格式 "2023-10"）的全部考勤记录
 func (s *SQLite) GetStudentMonthlyAttendance(userID int64, classID, studentName, month string) ([]model.AttendanceRecord, error) {
 	rows, err := s.db.Query(
 		`SELECT id, user_id, class_id, date, student_name, status, remark, updated_at
@@ -1495,6 +1493,13 @@ func (s *SQLite) GetShoutMessagesBySender(senderID int64, limit int) ([]model.Sh
 		list = append(list, m)
 	}
 	return list, nil
+}
+
+// DeleteShoutMessageBySender 仅允许发送者本人删除自己的消息
+func (s *SQLite) DeleteShoutMessageBySender(userID, msgID int64) error {
+	_, err := s.db.Exec(
+		`DELETE FROM shout_messages WHERE id = ? AND sender_id = ?`, msgID, userID)
+	return err
 }
 
 func boolToInt(b bool) int {

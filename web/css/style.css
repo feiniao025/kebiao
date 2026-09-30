@@ -152,7 +152,6 @@ body{
   box-shadow:none;
 }
 
-/* ---- 表头：圆角立体 ---- */
 .schedule-table thead th{
   background-color:var(--table-head-bg);
   background-image:linear-gradient(180deg,
@@ -185,7 +184,6 @@ body{
   border-color:rgba(0,0,0,.25);
 }
 
-/* ---- 表体单元格：圆角立体小卡片 ---- */
 .schedule-table tbody td{
   padding:8px 4px;
   text-align:center;
@@ -250,7 +248,6 @@ body{
 .cell-subject{display:block}
 .cell-teacher{font-size:12px;color:var(--text-sub);display:block;margin-top:3px}
 
-/* ---- 彩色格子：保留原色 + 立体感 ---- */
 .schedule-table tbody td[data-bg-color="1"]{
   background-color:#fce4e4!important;color:#a02b2b!important;font-weight:600;
   border-color:#f5c8c8;
@@ -295,7 +292,6 @@ body{
   background-color:#7c2d12!important;color:#fed7aa!important;border-color:#9c4a1a;
 }
 
-/* ---- 午休行 ---- */
 .schedule-table tbody tr.break-row td,
 .schedule-table tbody tr.break-row td:first-child{
   background:#eef1f5;
@@ -599,12 +595,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-section h4{font-size:15px;font-weight:700;color:var(--text-main);margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed var(--legend-item-border)}
 .today-empty{text-align:center;color:var(--text-sub);font-size:13px;padding:16px 8px;line-height:1.6}
 
-/* ---- 班级分组：大卡片容器 ---- */
 .today-class-block{
   margin-bottom:16px;
 }
 
-/* ---- 班级名称 ---- */
 .today-class-name{
   font-weight:700;
   color:var(--text-main);
@@ -625,7 +619,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   flex-shrink:0;
 }
 
-/* ---- 课程列表：独立列表卡片，内部横滑线 ---- */
 .today-course-ul{
   list-style:none;
   padding:0;
@@ -637,7 +630,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   overflow:hidden;
 }
 
-/* ---- 单节课：Grid 布局还原图片 ---- */
 .today-course-ul li{
   display:grid;
   grid-template-columns:max-content 12px 1fr 20px;
@@ -655,15 +647,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background:var(--table-row-alt);
 }
 
-/* 时间（左侧两行展示，格式与课表一致，居中显示） */
 .today-course-ul .tc-time {
   grid-column: 1;
   grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center; /* 居中显示 */
-  text-align: center;  /* 居中显示 */
+  align-items: center;
+  text-align: center;
   font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
@@ -685,13 +676,11 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   display: block;
 }
 
-/* ★ 新增：“第X周”标签字体缩小至10px */
 .today-course-ul .tc-time .tc-week-tag {
   font-size: 10px;
   font-weight: 400;
 }
 
-/* 绿色小圆点 */
 .today-course-ul li::before{
   content:'';
   grid-column:2;
@@ -704,7 +693,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   flex-shrink:0;
 }
 
-/* 主科目（上方） */
 .today-course-ul .tc-subj{
   grid-column:3;
   grid-row:1;
@@ -717,7 +705,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   text-overflow:ellipsis;
 }
 
-/* 老师 / 教室（下方） */
 .today-course-ul .tc-tchr{
   grid-column:3;
   grid-row:2;
@@ -729,7 +716,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   gap:8px;
 }
 
-/* 状态标签 */
 .today-course-ul .tc-status {
   display: inline-block;
   font-size: 11px;
@@ -760,7 +746,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #fef08a;
 }
 
-/* 右侧箭头 */
 .today-course-ul li::after{
   content:'›';
   grid-column:4;
@@ -828,7 +813,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   -webkit-overflow-scrolling:touch;
 }
 
-/* PC 端：允许换行，列宽放宽，信息完整显示 */
 .roster-table{
   width:100%;
   border-collapse:collapse;
@@ -864,7 +848,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background:var(--seat-hover);
 }
 
-/* PC 端列宽（放宽关键列） */
 .roster-table th:nth-child(1),
 .roster-table td:nth-child(1){ width:50px;  text-align:center; }
 .roster-table th:nth-child(2),
@@ -1171,7 +1154,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .seat-size-info{font-size:12px;padding:2px 10px}
   .card-hdr-row2 .seat-ctrl{padding:5px 12px;font-size:12px}
 
-  /* 课表 / 值日表：移动端圆角与间距适当缩小 */
   .schedule-table{
     border-spacing:3px;
     font-size:13px;
@@ -1252,7 +1234,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .sub-nav{margin:0 0 12px;border-radius:12px;padding:6px 8px}
   .sub-tab{padding:6px 12px;font-size:13px}
 
-  /* 移动端：花名册表格收窄，禁止换行，溢出省略 */
   .roster-table{
     font-size:12px;
     min-width:760px;
@@ -1267,7 +1248,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     text-overflow:ellipsis;
   }
 
-  /* 移动端列宽（显著收窄关键列） */
   .roster-table th:nth-child(1),
   .roster-table td:nth-child(1){ width:36px;  text-align:center; }
   .roster-table th:nth-child(2),
@@ -1325,7 +1305,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .today-weekday-picker .select-wrap > select.cell-pop-input,
   .today-weekday-select{min-width:118px;max-width:150px;font-size:12px;padding:4px 10px !important}
 
-  /* 今天页面 - 移动端适配 */
   .today-course-ul li{
     grid-template-columns:max-content 10px 1fr 16px;
     padding:8px 10px;
@@ -1338,7 +1317,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     font-size: 10px;
     margin-top: 2px;
   }
-  /* ★ 新增：移动端“第X周”字号 */
   .today-course-ul .tc-time .tc-week-tag {
     font-size: 10px;
   }
@@ -1396,11 +1374,9 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 #themeAutoToggle + .tgl-slider::before { content: "自"; font-size: 9px; }
 #themeAutoToggle:checked + .tgl-slider::before { color: #27ae60; }
 
-/* 座位表设置：过道开关（开/关） */
 #seatManageAisleToggle:not(:checked) + .tgl-slider::before{content:"关";}
 #seatManageAisleToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}
 
-/* 强制覆盖：座位表设置-讲台位置开关（上/下） */
 #seatManageOrderToggle:not(:checked) + .tgl-slider::before {
   content: "上" !important;
 }
@@ -1416,7 +1392,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .admin-fold[open] > summary{background:#f5f5f5!important}
 }
 
-/* 座位表设置：班委显示开关（开/关） */
 #seatManageCommitteeToggle:not(:checked) + .tgl-slider::before{content:"关";}
 #seatManageCommitteeToggle:checked + .tgl-slider::before{content:"开";color:#27ae60;}
 
@@ -1467,7 +1442,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #fff;
 }
 
-/* 分数输入框：缺考（禁用）时更明显的灰色 */
 .score-input:disabled {
   background: var(--table-row-alt);
   border-color: var(--seat-border);
@@ -1476,7 +1450,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   opacity: 0.55;
 }
 
-/* 考勤月度查看按钮 */
 .att-month-btn {
   border: none;
   border-radius: 0;
@@ -1551,7 +1524,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 
 .shout-main-card { padding-bottom: 28px; }
 
-/* 顶部子标签 */
 .shout-subtabs {
   display: flex;
   gap: 4px;
@@ -1581,7 +1553,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 [data-theme="dark"] .shout-subtab.active { color: #5dade2; }
 
-/* ---- 班级管理：顶部 ---- */
 .shout-manage-head {
   display: flex;
   justify-content: space-between;
@@ -1614,7 +1585,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-pill-btn.ghost:hover { background: var(--table-row-alt); }
 
-/* ---- 班级卡片列表 ---- */
 .shout-room-list { display: flex; flex-direction: column; gap: 10px; }
 .shout-room-item {
   display: flex;
@@ -1671,7 +1641,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-room-more:hover { background: var(--seat-hover); color: var(--text-main); }
 
-/* ---- 教室大屏客户端区块 ---- */
 .shout-client-block {
   margin-top: 20px;
   padding: 18px 20px;
@@ -1739,7 +1708,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: var(--text-sub);
 }
 
-/* ---- 发通知：顶部班级选择 ---- */
 .shout-send-head {
   display: flex;
   align-items: center;
@@ -1749,6 +1717,34 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-send-class-wrap { flex: 0 1 auto; min-width: 0; }
 .shout-send-class-wrap > select.cell-pop-input { padding-right: 36px !important; }
+
+/* ★ 在线状态胶囊（放在班主任角色徽章右侧） */
+.shout-online-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--table-row-alt);
+  font-size: 12.5px;
+  color: var(--text-sub);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.shout-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;   /* 离线：灰点 */
+  flex-shrink: 0;
+  transition: background .2s, box-shadow .2s;
+}
+
+.shout-status-dot.online {
+  background: #22c55e;   /* 在线：绿点 */
+  box-shadow: 0 0 6px rgba(34, 197, 94, .7);
+}
 
 .shout-send-status {
   display: flex;
@@ -1761,15 +1757,9 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: var(--text-sub);
   margin-bottom: 18px;
 }
-.shout-status-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #94a3b8;
-  flex-shrink: 0;
-}
+.shout-send-status .shout-status-dot { width: 8px; height: 8px; }
 .shout-send-by { margin-left: auto; font-size: 12px; }
 
-/* ---- 模式标签 ---- */
 .shout-mode-tabs {
   display: flex;
   gap: 6px;
@@ -1805,7 +1795,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .shout-mode-tab.active { color: #5dade2; }
 .shout-mode-icon { font-size: 15px; }
 
-/* ---- 文本输入 ---- */
 .shout-input-wrap {
   background: var(--card-bg);
   border: 1px solid var(--table-border);
@@ -1837,55 +1826,156 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .shout-input-tag { font-size: 12.5px; color: var(--text-sub); }
 .shout-input-count { font-size: 12px; color: var(--text-sub); }
 
-/* ---- 选项行 ---- */
+/* ============ 选项行：左右两列 ============ */
 .shout-opt-row {
-  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px dashed var(--legend-item-border);
 }
+.shout-opt-row:last-of-type {
+  border-bottom: none;
+}
+
+.shout-opt-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .shout-opt-label {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  letter-spacing: .3px;
 }
-.shout-opt-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.shout-opt-btn {
-  padding: 8px 20px;
+
+.shout-opt-hint {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.5;
+  margin-top: 0;
+}
+
+/* 分段按钮组 */
+.shout-opt-seg {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  background: var(--table-row-alt);
   border-radius: 10px;
-  border: 1px solid var(--seat-border);
-  background: var(--card-bg);
+  flex-shrink: 0;
+}
+.shout-opt-seg .shout-opt-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
   color: var(--text-sub);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: all .2s;
+  transition: all .18s ease;
+  white-space: nowrap;
+  line-height: 1.4;
 }
-.shout-opt-btn:hover { color: var(--text-main); border-color: var(--text-sub); }
-.shout-opt-btn.active {
-  background: #e8f0fe;
-  color: #1967d2;
-  border-color: #1967d2;
-  font-weight: 700;
+.shout-opt-seg .shout-opt-btn:hover {
+  color: var(--text-main);
 }
-[data-theme="dark"] .shout-opt-btn.active {
-  background: #174ea6;
-  color: #d2e3fc;
-  border-color: #d2e3fc;
+.shout-opt-seg .shout-opt-btn.active {
+  background: var(--card-bg);
+  color: #2f6df6;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
 }
-.shout-opt-hint {
-  font-size: 12px;
-  color: var(--text-sub);
-  margin-top: 6px;
-  line-height: 1.6;
+[data-theme="dark"] .shout-opt-seg .shout-opt-btn.active {
+  background: #3a4150;
+  color: #5dade2;
 }
+
+/* 开关（蓝色） */
 .shout-opt-toggle {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.shout-opt-toggle .tgl input:checked + .tgl-slider {
+  background: #2f6df6;
+}
+.shout-opt-toggle .tgl input:checked + .tgl-slider::before {
+  content: "开";
+  color: #2f6df6;
+}
+.shout-opt-toggle .tgl input:not(:checked) + .tgl-slider::before {
+  content: "关";
 }
 
-/* ---- 发送主按钮 ---- */
+/* 定时发送面板 */
+.shout-schedule-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 4px;
+  padding: 12px 14px;
+  background: var(--table-row-alt);
+  border-radius: 12px;
+}
+.shout-schedule-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f6df6;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+[data-theme="dark"] .shout-schedule-label {
+  color: #5dade2;
+}
+.shout-schedule-input {
+  padding: 6px 10px;
+  border: 1px solid var(--seat-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .18s;
+  flex-shrink: 0;
+}
+.shout-schedule-input:focus {
+  border-color: #2f6df6;
+}
+.shout-schedule-btn {
+  margin-left: auto;
+  padding: 6px 18px;
+  border-radius: 8px;
+  border: 1px solid #2f6df6;
+  background: transparent;
+  color: #2f6df6;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.shout-schedule-btn:hover {
+  background: #2f6df6;
+  color: #fff;
+}
+[data-theme="dark"] .shout-schedule-btn {
+  color: #5dade2;
+  border-color: #5dade2;
+}
+[data-theme="dark"] .shout-schedule-btn:hover {
+  background: #5dade2;
+  color: #1a202c;
+}
+
 .shout-send-main {
   width: 100%;
   padding: 15px;
@@ -1943,60 +2033,137 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   line-height: 1.8;
 }
 
-.shout-history-ul { display: flex; flex-direction: column; gap: 10px; }
+.shout-history-ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .shout-history-item {
   padding: 14px 16px;
   background: var(--card-bg);
   border: 1px solid var(--table-border);
   border-radius: 12px;
+  transition: box-shadow .15s ease;
 }
+.shout-history-item:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,.05);
+}
+
 .shout-history-top {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   flex-wrap: wrap;
 }
+
 .shout-history-room {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-main);
 }
+
 .shout-history-type {
   font-size: 11px;
   font-weight: 600;
   padding: 2px 9px;
   border-radius: 999px;
+  line-height: 1.4;
 }
-.shout-history-type.text { background: #e8f0fe; color: #1967d2; }
+.shout-history-type.text   { background: #e8f0fe; color: #1967d2; }
 .shout-history-type.notice { background: #fef7e0; color: #b06000; }
 .shout-history-type.urgent { background: #fce8e6; color: #c5221f; }
-[data-theme="dark"] .shout-history-type.text { background: #174ea6; color: #d2e3fc; }
+[data-theme="dark"] .shout-history-type.text   { background: #174ea6; color: #d2e3fc; }
 [data-theme="dark"] .shout-history-type.notice { background: #7a3800; color: #feefc3; }
 [data-theme="dark"] .shout-history-type.urgent { background: #8c1d18; color: #fad2cf; }
-.shout-history-time {
+
+/* ★ 送达状态：紧贴右上角 */
+.shout-history-status {
   margin-left: auto;
   font-size: 12px;
-  color: var(--text-sub);
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: .3px;
 }
+.shout-history-status.ok   { color: #137333; }
+.shout-history-status.fail { color: #c5221f; }
+[data-theme="dark"] .shout-history-status.ok   { color: #6ee7a8; }
+[data-theme="dark"] .shout-history-status.fail { color: #fca5a5; }
+
+.shout-history-time {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+  letter-spacing: .3px;
+}
+
 .shout-history-content {
   font-size: 14px;
   color: var(--text-main);
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
+  margin-bottom: 10px;
 }
+
 .shout-history-foot {
-  margin-top: 8px;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
-.shout-history-status {
+
+.shout-history-btn {
+  padding: 5px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--seat-border);
+  background: transparent;
+  color: var(--text-main);
   font-size: 12px;
-  color: #137333;
   font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s ease;
+  line-height: 1.5;
 }
-[data-theme="dark"] .shout-history-status { color: #6ee7a8; }
+.shout-history-btn:hover {
+  background: var(--table-row-alt);
+}
+
+.shout-history-btn.reshare {
+  border-color: #2f6df6;
+  color: #2f6df6;
+}
+.shout-history-btn.reshare:hover {
+  background: #2f6df6;
+  color: #fff;
+}
+
+.shout-history-btn.danger {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+.shout-history-btn.danger:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+[data-theme="dark"] .shout-history-btn.reshare {
+  border-color: #5dade2;
+  color: #5dade2;
+}
+[data-theme="dark"] .shout-history-btn.reshare:hover {
+  background: #5dade2;
+  color: #1a202c;
+}
+[data-theme="dark"] .shout-history-btn.danger {
+  border-color: #f87171;
+  color: #f87171;
+}
+[data-theme="dark"] .shout-history-btn.danger:hover {
+  background: #f87171;
+  color: #1a202c;
+}
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {
@@ -2011,6 +2178,32 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .shout-send-main { font-size: 15px; letter-spacing: 2px; padding: 13px; }
   .shout-client-url-text { font-size: 11.5px; }
   .shout-history-time { margin-left: 0; width: 100%; }
+
+  .shout-opt-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .shout-opt-seg {
+    align-self: flex-start;
+  }
+  .shout-opt-toggle {
+    align-self: flex-end;
+  }
+  .shout-schedule-box {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .shout-schedule-btn {
+    margin-left: 0;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .shout-history-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
 }
 
 /* ---- 详情弹窗 ---- */
@@ -2046,7 +2239,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   margin:18px 0 10px;padding-left:8px;border-left:3px solid #16a085;
 }
 
-/* ---- 成员列表 ---- */
 .shout-member-list{
   display:flex;flex-direction:column;gap:6px;
 }
@@ -2071,30 +2263,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   text-align:center;color:var(--text-sub);font-size:13px;padding:16px;
 }
 
-/* ---- 发送区 ---- */
-.shout-send-box{
-  background:var(--table-row-alt);border-radius:12px;padding:14px;
-}
-.shout-textarea{
-  width:100%;box-sizing:border-box;resize:vertical;
-  font-family:inherit;line-height:1.6;font-size:14px;
-}
-.shout-send-opts{
-  display:flex;gap:10px;margin-top:10px;
-}
-.shout-send-opts select{
-  flex:1;padding:8px 10px;font-size:13px;
-}
-.shout-send-btn{
-  width:100%;margin-top:12px;padding:11px;border:none;border-radius:10px;
-  background:#16a085;color:#fff;font-size:15px;font-weight:600;
-  font-family:inherit;cursor:pointer;letter-spacing:1px;transition:background .2s;
-}
-.shout-send-btn:hover{background:#1abc9c;}
-.shout-send-btn:active{transform:translateY(1px);}
-.shout-send-btn:disabled{cursor:not-allowed;}
-
-/* ---- 危险区 ---- */
 .shout-danger-row{display:flex;gap:10px;}
 .shout-btn-ghost{
   flex:1;padding:10px;border-radius:10px;border:1px solid var(--seat-border);
@@ -2109,7 +2277,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-btn-danger:hover{background:#c0392b;}
 
-/* ---- 移动端 ---- */
 @media (max-width:768px){
   .shout-room-grid{grid-template-columns:1fr;}
   .shout-info-row .k{width:58px;font-size:12px;}

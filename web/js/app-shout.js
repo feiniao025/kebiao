@@ -14,6 +14,8 @@ window.shoutHistoryFilter = 'all';
 window.shoutHistoryList = [];
 
 let shoutRoomsLoaded = false;
+let shoutStatusTimer = null;
+let shoutScheduleTimer = null;
 
 /* ---------- 工具 ---------- */
 
@@ -66,6 +68,16 @@ window.renderShout = async function () {
   const container = scheduleContainer;
   if (!container) return;
   container.innerHTML = '';
+
+  // 切页时清掉旧的轮询
+  if (shoutStatusTimer) {
+    clearInterval(shoutStatusTimer);
+    shoutStatusTimer = null;
+  }
+  if (shoutScheduleTimer) {
+    clearTimeout(shoutScheduleTimer);
+    shoutScheduleTimer = null;
+  }
 
   const wrap = document.createElement('div');
   wrap.className = 'me-page';
@@ -171,7 +183,6 @@ async function renderShoutManage() {
   const cb = $('shoutCreateBtn'); if (cb) cb.onclick = openShoutCreatePop;
   const jb = $('shoutJoinBtn');   if (jb) jb.onclick = openShoutJoinPop;
 
-  // 点击卡片 → 进入「发通知」并选中该班级
   body.querySelectorAll('.shout-room-item').forEach(function (el) {
     el.onclick = function (e) {
       if (e.target.closest('.shout-room-more')) return;
@@ -181,7 +192,6 @@ async function renderShoutManage() {
     };
   });
 
-  // ⋯ → 打开详情（成员管理、大屏地址重置等）
   body.querySelectorAll('.shout-room-more').forEach(function (b) {
     b.onclick = function (e) {
       e.stopPropagation();
@@ -222,18 +232,16 @@ async function renderShoutSend() {
 
   let html = '';
 
-  // 顶部：班级选择 + 角色
+  // 顶部：班级选择 + 角色 + 在线状态（同一行）
   html += '<div class="shout-send-head">' +
     '<div class="select-wrap shout-send-class-wrap">' +
       '<select id="shoutSendClass" class="cell-pop-input">' + classOptions + '</select>' +
     '</div>' +
     '<span class="shout-role-pill ' + (room.is_owner ? 'owner' : 'teacher') + '">' + escapeHtml(roleLabel) + '</span>' +
-  '</div>';
-
-  // 状态行
-  html += '<div class="shout-send-status">' +
-    '<span class="shout-status-dot"></span>教室大屏离线' +
-    '<span class="shout-send-by">由 ' + escapeHtml(currentUser ? currentUser.username : '') + ' 老师推送</span>' +
+    '<span class="shout-online-status">' +
+      '<span class="shout-status-dot" id="shoutSendStatusDot"></span>' +
+      '<span id="shoutSendStatusText">检测中…</span>' +
+    '</span>' +
   '</div>';
 
   // 模式标签
@@ -265,37 +273,52 @@ async function renderShoutSend() {
     '</div>' +
   '</div>';
 
-  // 大屏呈现形式
+  // 选项行 1：大屏呈现形式
   html += '<div class="shout-opt-row">' +
-    '<div class="shout-opt-label">大屏呈现形式</div>' +
-    '<div class="shout-opt-btns" data-opt="display">' +
+    '<div class="shout-opt-info">' +
+      '<div class="shout-opt-label">大屏呈现形式</div>' +
+      '<div class="shout-opt-hint">居中卡片展示，醒目提醒</div>' +
+    '</div>' +
+    '<div class="shout-opt-seg" data-opt="display">' +
       '<button class="shout-opt-btn' + (shoutDisplay === 'marquee' ? ' active' : '') + '" data-display="marquee">跑马灯</button>' +
       '<button class="shout-opt-btn' + (shoutDisplay === 'card' ? ' active' : '') + '" data-display="card">完整卡片</button>' +
     '</div>' +
-    '<div class="shout-opt-hint">顶部横幅平滑滚动，不遮挡课件</div>' +
   '</div>';
 
-  // 播报次数
+  // 选项行 2：播报次数
   html += '<div class="shout-opt-row">' +
-    '<div class="shout-opt-label">播报次数</div>' +
-    '<div class="shout-opt-btns" data-opt="count">' +
+    '<div class="shout-opt-info">' +
+      '<div class="shout-opt-label">播报次数</div>' +
+      '<div class="shout-opt-hint">大屏将按所设次数连播，间隔1.2秒</div>' +
+    '</div>' +
+    '<div class="shout-opt-seg" data-opt="count">' +
       '<button class="shout-opt-btn' + (shoutBroadcastCount === 1 ? ' active' : '') + '" data-count="1">1次</button>' +
       '<button class="shout-opt-btn' + (shoutBroadcastCount === 2 ? ' active' : '') + '" data-count="2">2次</button>' +
       '<button class="shout-opt-btn' + (shoutBroadcastCount === 3 ? ' active' : '') + '" data-count="3">3次</button>' +
     '</div>' +
-    '<div class="shout-opt-hint">大屏将按所设次数连续播报，间隔 1.2 秒</div>' +
   '</div>';
 
-  // 定时发送
+  // 选项行 3：定时发送（开关）
   html += '<div class="shout-opt-row">' +
-    '<div class="shout-opt-label">定时发送</div>' +
+    '<div class="shout-opt-info">' +
+      '<div class="shout-opt-label">定时发送</div>' +
+      '<div class="shout-opt-hint">到达预设时间大屏将准时播报</div>' +
+    '</div>' +
     '<div class="shout-opt-toggle">' +
       '<label class="tgl">' +
         '<input type="checkbox" id="shoutSendSchedule">' +
         '<span class="tgl-slider"></span>' +
       '</label>' +
     '</div>' +
-    '<div class="shout-opt-hint">开启后可预约未来时间自动广播</div>' +
+  '</div>';
+
+  // 定时发送面板（开关打开后显示）
+  html += '<div class="shout-schedule-box" id="shoutScheduleBox" style="display:none;">' +
+    '<label class="shout-schedule-label">日期：</label>' +
+    '<input type="date" id="shoutScheduleDate" class="shout-schedule-input">' +
+    '<label class="shout-schedule-label">时间：</label>' +
+    '<input type="time" id="shoutScheduleTime" class="shout-schedule-input">' +
+    '<button type="button" id="shoutScheduleBtn" class="shout-schedule-btn">准时播报</button>' +
   '</div>';
 
   html += '<div class="me-error" id="shoutSendError" style="min-height:18px;"></div>';
@@ -326,32 +349,102 @@ async function renderShoutSend() {
     counter.textContent = ta.value.length + '/200';
   };
 
-  body.querySelectorAll('.shout-opt-btn[data-display]').forEach(function (b) {
+  body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutDisplay = b.dataset.display;
-      body.querySelectorAll('.shout-opt-btn[data-display]').forEach(function (x) { x.classList.remove('active'); });
+      body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn')
+        .forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
     };
   });
 
-  body.querySelectorAll('.shout-opt-btn[data-count]').forEach(function (b) {
+  body.querySelectorAll('.shout-opt-seg[data-opt="count"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutBroadcastCount = parseInt(b.dataset.count, 10) || 1;
-      body.querySelectorAll('.shout-opt-btn[data-count]').forEach(function (x) { x.classList.remove('active'); });
+      body.querySelectorAll('.shout-opt-seg[data-opt="count"] .shout-opt-btn')
+        .forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
     };
   });
 
+  // 定时发送开关
   const sch = $('shoutSendSchedule');
+  const schBox = $('shoutScheduleBox');
+  const schDate = $('shoutScheduleDate');
+  const schTime = $('shoutScheduleTime');
+
+  function updateScheduleVisibility() {
+    if (!sch || !schBox) return;
+    schBox.style.display = sch.checked ? 'flex' : 'none';
+    if (sch.checked && !schDate.value) {
+      const d = new Date(Date.now() + 5 * 60000);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      schDate.value = yyyy + '-' + mm + '-' + dd;
+      schTime.value = hh + ':' + mi;
+    }
+  }
   if (sch) {
     sch.onchange = function () {
-      if (sch.checked) {
-        showSaveStatus('定时发送功能即将上线', true);
-        sch.checked = false;
+      if (!sch.checked && shoutScheduleTimer) {
+        clearTimeout(shoutScheduleTimer);
+        shoutScheduleTimer = null;
+        showSaveStatus('已取消定时发送', false);
       }
+      updateScheduleVisibility();
     };
   }
 
+  const schBtn = $('shoutScheduleBtn');
+  if (schBtn) {
+    schBtn.onclick = function () {
+      const errEl = $('shoutSendError');
+      errEl.textContent = '';
+
+      const dateVal = schDate.value;
+      const timeVal = schTime.value;
+      if (!dateVal || !timeVal) { errEl.textContent = '请选择日期和时间'; return; }
+
+      const target = new Date(dateVal + 'T' + timeVal + ':00');
+      const delay = target.getTime() - Date.now();
+      if (isNaN(delay)) { errEl.textContent = '时间格式错误'; return; }
+      if (delay < 1000) { errEl.textContent = '时间已过，请重新选择'; return; }
+
+      const content = ta.value.trim();
+      if (!content) { errEl.textContent = '请先输入要发送的内容'; ta.focus(); return; }
+
+      let msgType = 'text';
+      if (shoutMsgMode === 'popup') msgType = 'notice';
+      else if (shoutMsgMode === 'record') msgType = 'urgent';
+      const duration = 20 * (shoutBroadcastCount || 1);
+      const targetRoomKey = currentShoutClass;
+
+      if (shoutScheduleTimer) { clearTimeout(shoutScheduleTimer); shoutScheduleTimer = null; }
+
+      showSaveStatus('已设置定时发送（' + dateVal + ' ' + timeVal + '）', false);
+
+      shoutScheduleTimer = setTimeout(async function () {
+        shoutScheduleTimer = null;
+        try {
+          await API.sendShout(targetRoomKey, content, msgType, duration);
+          showSaveStatus('定时消息已发送', false);
+          ta.value = '';
+          counter.textContent = '0/200';
+          if (sch) sch.checked = false;
+          updateScheduleVisibility();
+        } catch (e) {
+          if (errEl) errEl.textContent = '定时发送失败：' + (e.message || '');
+        }
+      }, delay);
+    };
+  }
+
+  updateScheduleVisibility();
+
+  // 发送按钮
   $('shoutSendBtn').onclick = async function () {
     const content = ta.value.trim();
     const errEl = $('shoutSendError');
@@ -372,7 +465,7 @@ async function renderShoutSend() {
       await API.sendShout(currentShoutClass, content, msgType, duration);
       ta.value = '';
       counter.textContent = '0/200';
-      shoutHistoryList = []; // 下一次进入记录页强制刷新
+      shoutHistoryList = [];
       showSaveStatus('已发送至教室大屏', false);
     } catch (e) {
       errEl.textContent = e.message || '发送失败';
@@ -381,6 +474,31 @@ async function renderShoutSend() {
       btn.style.opacity = '';
     }
   };
+
+  // ★ 在线状态轮询
+  await refreshSendStatus();
+  if (shoutStatusTimer) {
+    clearInterval(shoutStatusTimer);
+    shoutStatusTimer = null;
+  }
+  shoutStatusTimer = setInterval(refreshSendStatus, 3000);
+}
+
+// 查询当前教室大屏在线状态
+async function refreshSendStatus() {
+  const dot = $('shoutSendStatusDot');
+  const text = $('shoutSendStatusText');
+  if (!dot || !text || !currentShoutClass) return;
+
+  try {
+    const resp = await API.getShoutRoomStatus(currentShoutClass);
+    const online = !!resp.online;
+    dot.classList.toggle('online', online);
+    text.textContent = online ? '在线' : '离线';
+  } catch (e) {
+    dot.classList.remove('online');
+    text.textContent = '离线';
+  }
 }
 
 /* ---------- ③ 发送记录 ---------- */
@@ -457,18 +575,84 @@ function renderShoutHistoryList() {
     let time = m.created_at;
     try { time = new Date(m.created_at).toLocaleString('zh-CN'); } catch (e) {}
 
-    html += '<div class="shout-history-item">' +
+    // 送达状态：目前统一视为已送达（未送达可后续根据后端字段显示）
+    const delivered = m.delivered !== false;
+    const statusCls = delivered ? 'ok' : 'fail';
+    const statusText = delivered ? '✓ 已送达' : '✕ 未送达';
+
+    html += '<div class="shout-history-item" data-id="' + m.id + '">' +
+
+      // 第一行：教室名 + 类型徽章 + 送达状态（右上角）
       '<div class="shout-history-top">' +
         '<span class="shout-history-room">' + escapeHtml(roomName) + '</span>' +
         '<span class="shout-history-type ' + typeCls + '">' + typeLabel + '</span>' +
-        '<span class="shout-history-time">' + escapeHtml(time) + '</span>' +
+        '<span class="shout-history-status ' + statusCls + '">' + statusText + '</span>' +
       '</div>' +
+
+      // 时间单独一行
+      '<div class="shout-history-time">' + escapeHtml(time) + '</div>' +
+
+      // 内容
       '<div class="shout-history-content">' + escapeHtml(m.content) + '</div>' +
-      '<div class="shout-history-foot"><span class="shout-history-status">✓ 已送达</span></div>' +
+
+      // 右下角：重发 / 删除
+      '<div class="shout-history-foot">' +
+        '<button type="button" class="shout-history-btn reshare" data-act="resend" data-id="' + m.id + '">重发</button>' +
+        '<button type="button" class="shout-history-btn danger" data-act="delete" data-id="' + m.id + '">删除</button>' +
+      '</div>' +
+
     '</div>';
   });
   html += '</div>';
   el.innerHTML = html;
+
+  // 绑定按钮事件
+  el.querySelectorAll('.shout-history-btn').forEach(function (btn) {
+    btn.onclick = function (ev) {
+      ev.stopPropagation();
+      const act = btn.dataset.act;
+      const id = parseInt(btn.dataset.id, 10);
+      const msg = shoutHistoryList.find(function (m) { return m.id === id; });
+      if (!msg) return;
+
+      if (act === 'resend')      handleResendShout(msg);
+      else if (act === 'delete') handleDeleteShout(msg);
+    };
+  });
+}
+
+// 重发：把原消息重新发送一次到同一个教室
+async function handleResendShout(msg) {
+  if (!confirm('确认重发这条消息？')) return;
+  try {
+    await API.sendShout(
+      msg.room_key,
+      msg.content,
+      msg.msg_type || 'text',
+      msg.duration || 20
+    );
+    showSaveStatus('已重新发送', false);
+    try {
+      const resp = await API.getMyShoutMessages(200);
+      shoutHistoryList = resp.messages || [];
+    } catch (e) { /* 忽略 */ }
+    renderShoutHistoryList();
+  } catch (e) {
+    showSaveStatus('重发失败：' + (e.message || ''), true);
+  }
+}
+
+// 删除：调用后端删除，然后本地移除
+async function handleDeleteShout(msg) {
+  if (!confirm('确认删除这条发送记录？')) return;
+  try {
+    await API.deleteShoutMessage(msg.id);
+    shoutHistoryList = shoutHistoryList.filter(function (m) { return m.id !== msg.id; });
+    renderShoutHistoryList();
+    showSaveStatus('已删除', false);
+  } catch (e) {
+    showSaveStatus('删除失败：' + (e.message || ''), true);
+  }
 }
 
 /* ---------- 创建教室弹窗 ---------- */
