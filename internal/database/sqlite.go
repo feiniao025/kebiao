@@ -230,8 +230,23 @@ func (s *SQLite) migrate() error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
+	CREATE TABLE IF NOT EXISTS shout_scheduled (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		room_key TEXT NOT NULL,
+		content TEXT NOT NULL,
+		msg_type TEXT DEFAULT 'text',
+		duration INTEGER DEFAULT 20,
+		send_at_ms INTEGER NOT NULL,
+		status TEXT DEFAULT 'pending',
+		error_msg TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		sent_at DATETIME
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_shout_messages_room ON shout_messages(room_key, id);
 	CREATE INDEX IF NOT EXISTS idx_shout_members_room ON shout_members(room_key);
+	CREATE INDEX IF NOT EXISTS idx_shout_scheduled_pending ON shout_scheduled(status, send_at_ms);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -405,6 +420,7 @@ func (s *SQLite) DeleteUser(id int64) error {
 	for _, table := range []string{
 		"schedule_cells", "students", "seat_configs", "user_preferences",
 		"classes", "roster_students", "exam_scores", "exams", "attendance_records",
+		"shout_scheduled",
 	} {
 		if _, err := tx.Exec(fmt.Sprintf(`DELETE FROM %s WHERE user_id = ?`, table), id); err != nil {
 			return err
@@ -1361,6 +1377,7 @@ func (s *SQLite) DeleteShoutRoom(roomKey string) error {
 	for _, q := range []string{
 		`DELETE FROM shout_messages WHERE room_key = ?`,
 		`DELETE FROM shout_members WHERE room_key = ?`,
+		`DELETE FROM shout_scheduled WHERE room_key = ?`,
 		`DELETE FROM shout_rooms WHERE room_key = ?`,
 	} {
 		if _, err := tx.Exec(q, roomKey); err != nil {
@@ -1520,7 +1537,107 @@ func (s *SQLite) RegenerateShoutRoomKey(oldKey, newKey string) error {
 	if _, err := tx.Exec(`UPDATE shout_messages SET room_key = ? WHERE room_key = ?`, newKey, oldKey); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`UPDATE shout_scheduled SET room_key = ? WHERE room_key = ?`, newKey, oldKey); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+// ============ 定时喊话 ============
+
+func (s *SQLite) CreateShoutScheduled(m *model.ShoutScheduled) error {
+	res, err := s.db.Exec(
+		`INSERT INTO shout_scheduled (user_id, room_key, content, msg_type, duration, send_at_ms, status)
+		 VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+		m.UserID, m.RoomKey, m.Content, m.MsgType, m.Duration, m.SendAtMs)
+	if err != nil {
+		return err
+	}
+	m.ID, _ = res.LastInsertId()
+	return nil
+}
+
+// ListDueShoutScheduled 取所有待发送且已到期的任务（供调度器使用）
+func (s *SQLite) ListDueShoutScheduled(nowMs int64) ([]model.ShoutScheduled, error) {
+	rows, err := s.db.Query(
+		`SELECT id, user_id, room_key, content, msg_type, duration,
+		        send_at_ms, status, COALESCE(error_msg,''), created_at, sent_at
+		 FROM shout_scheduled
+		 WHERE status = 'pending' AND send_at_ms <= ?
+		 ORDER BY send_at_ms ASC`, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutScheduled
+	for rows.Next() {
+		var m model.ShoutScheduled
+		var sentAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.UserID, &m.RoomKey, &m.Content, &m.MsgType,
+			&m.Duration, &m.SendAtMs, &m.Status, &m.ErrorMsg, &m.CreatedAt, &sentAt); err != nil {
+			continue
+		}
+		if sentAt.Valid {
+			t := sentAt.Time
+			m.SentAt = &t
+		}
+		list = append(list, m)
+	}
+	return list, nil
+}
+
+// ListShoutScheduledByUser 某用户的所有定时任务（用于前端展示）
+func (s *SQLite) ListShoutScheduledByUser(userID int64, limit int) ([]model.ShoutScheduled, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.Query(
+		`SELECT id, user_id, room_key, content, msg_type, duration,
+		        send_at_ms, status, COALESCE(error_msg,''), created_at, sent_at
+		 FROM shout_scheduled
+		 WHERE user_id = ?
+		 ORDER BY id DESC LIMIT ?`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutScheduled
+	for rows.Next() {
+		var m model.ShoutScheduled
+		var sentAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.UserID, &m.RoomKey, &m.Content, &m.MsgType,
+			&m.Duration, &m.SendAtMs, &m.Status, &m.ErrorMsg, &m.CreatedAt, &sentAt); err != nil {
+			continue
+		}
+		if sentAt.Valid {
+			t := sentAt.Time
+			m.SentAt = &t
+		}
+		list = append(list, m)
+	}
+	return list, nil
+}
+
+func (s *SQLite) MarkShoutScheduledSent(id int64) error {
+	_, err := s.db.Exec(
+		`UPDATE shout_scheduled SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
+	return err
+}
+
+func (s *SQLite) MarkShoutScheduledFailed(id int64, errMsg string) error {
+	_, err := s.db.Exec(
+		`UPDATE shout_scheduled SET status = 'failed', error_msg = ? WHERE id = ?`, errMsg, id)
+	return err
+}
+
+// CancelShoutScheduled 仅允许本人取消
+func (s *SQLite) CancelShoutScheduled(userID, id int64) error {
+	_, err := s.db.Exec(
+		`DELETE FROM shout_scheduled WHERE id = ? AND user_id = ? AND status = 'pending'`,
+		id, userID)
+	return err
 }
 
 func boolToInt(b bool) int {

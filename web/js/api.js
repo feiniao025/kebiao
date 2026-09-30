@@ -97,10 +97,8 @@ const API = (function () {
     },
     deleteShoutRoom: function (key) { return request('DELETE', '/shout/rooms/' + encodeURIComponent(key)); },
     regenerateShoutToken: function (key) { return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/token'); },
-	// 重置教室码（已加入成员不受影响）
-	regenerateShoutRoomKey: function (key) {
-      return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/regenerate-key');
-	},
+    // ★ 重置教室码（已加入成员不受影响）
+    regenerateShoutRoomKey: function (key) { return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/regenerate-key'); },
     joinShoutRoom: function (roomKey, subject) {
       return request('POST', '/shout/join', { room_key: roomKey, subject: subject || '' });
     },
@@ -127,6 +125,22 @@ const API = (function () {
     // ★ 删除我发过的某条消息
     deleteShoutMessage: function (id) {
       return request('DELETE', '/shout/messages/' + id);
+    },
+
+    // ============ 定时喊话（服务端定时，关页面也会自动发送） ============
+    scheduleShout: function (key, content, msgType, duration, sendAtMs) {
+      return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/schedule', {
+        content: content,
+        msg_type: msgType || 'text',
+        duration: duration || 20,
+        send_at_ms: sendAtMs
+      });
+    },
+    listScheduledShouts: function (limit) {
+      return request('GET', '/shout/scheduled?limit=' + (limit || 50));
+    },
+    cancelScheduledShout: function (id) {
+      return request('DELETE', '/shout/scheduled/' + id);
     }
   };
 })();

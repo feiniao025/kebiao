@@ -1527,7 +1527,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .shout-subtabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
   padding: 4px;
   background: var(--table-row-alt);
   border-radius: 12px;
@@ -1712,7 +1712,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 .shout-send-class-wrap { flex: 0 1 auto; min-width: 0; }
@@ -1766,7 +1766,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   padding: 5px;
   background: var(--table-row-alt);
   border-radius: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 .shout-mode-tab {
   flex: 1;
@@ -1800,7 +1800,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border: 1px solid var(--table-border);
   border-radius: 14px;
   padding: 12px 14px 10px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 .shout-textarea {
   width: 100%;
@@ -1917,10 +1917,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .shout-schedule-box {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;            /* 关键：禁止换行 */
   margin: 6px 0 4px;
-  padding: 12px 14px;
+  padding: 8px 12px;            /* 更紧凑 */
   background: var(--table-row-alt);
   border-radius: 12px;
 }
@@ -1935,7 +1935,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #5dade2;
 }
 .shout-schedule-input {
-  padding: 6px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--seat-border);
   border-radius: 8px;
   background: var(--card-bg);
@@ -1945,13 +1945,23 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   outline: none;
   transition: border-color .18s;
   flex-shrink: 0;
+  width: auto;
+  max-width: 130px;             /* 限制宽度，避免挤压按钮 */
+  min-width: 0;
+}
+.shout-schedule-input:focus { border-color: #2f6df6; }
+
+/* 日期选择器右侧图标缩一点 */
+.shout-schedule-input::-webkit-calendar-picker-indicator {
+  margin-left: 4px;
+  cursor: pointer;
 }
 .shout-schedule-input:focus {
   border-color: #2f6df6;
 }
 .shout-schedule-btn {
-  margin-left: auto;
-  padding: 6px 18px;
+  margin-left: auto;            /* 推到最右 */
+  padding: 6px 16px;
   border-radius: 8px;
   border: 1px solid #2f6df6;
   background: transparent;
@@ -1962,6 +1972,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   cursor: pointer;
   transition: all .18s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .shout-schedule-btn:hover {
   background: #2f6df6;
@@ -2205,13 +2216,24 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     margin-left: auto;            /* 靠右 */
   }
   .shout-schedule-box {
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 8px 10px;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .shout-schedule-label {
+    font-size: 12px;
+  }
+  .shout-schedule-input {
+    padding: 4px 6px;
+    font-size: 12px;
+    max-width: 100px;
   }
   .shout-schedule-btn {
-    margin-left: 0;
-    flex: 1;
-    min-width: 100px;
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 5px 12px;
+    font-size: 12px;
+    min-width: 0;
   }
 
   .shout-history-btn {

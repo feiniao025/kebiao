@@ -223,3 +223,19 @@ type ShoutMessage struct {
 	Duration   int       `json:"duration"` // 弹屏停留秒数
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+// ============ 定时喊话 ============
+
+type ShoutScheduled struct {
+	ID        int64      `json:"id"`
+	UserID    int64      `json:"user_id"`
+	RoomKey   string     `json:"room_key"`
+	Content   string     `json:"content"`
+	MsgType   string     `json:"msg_type"`
+	Duration  int        `json:"duration"`
+	SendAtMs  int64      `json:"send_at_ms"`  // 触发时刻（Unix 毫秒）
+	Status    string     `json:"status"`      // pending / sent / failed / cancelled
+	ErrorMsg  string     `json:"error_msg"`
+	CreatedAt time.Time  `json:"created_at"`
+	SentAt    *time.Time `json:"sent_at,omitempty"`
+}

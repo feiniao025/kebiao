@@ -244,6 +244,59 @@ func (h *ShoutHandler) DeleteMessage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "已删除"})
 }
 
+// ---------- 定时喊话 ----------
+
+type scheduleShoutReq struct {
+	Content  string `json:"content" binding:"required"`
+	MsgType  string `json:"msg_type"`
+	Duration int    `json:"duration"`
+	SendAtMs int64  `json:"send_at_ms" binding:"required"`
+}
+
+func (h *ShoutHandler) ScheduleMessage(c *gin.Context) {
+	var req scheduleShoutReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
+		return
+	}
+	userID := c.GetInt64("user_id")
+	m, err := h.svc.ScheduleMessage(userID, c.Param("key"),
+		req.Content, req.MsgType, req.Duration, req.SendAtMs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "已加入定时队列", "scheduled": m})
+}
+
+func (h *ShoutHandler) ListScheduled(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	list, err := h.svc.ListScheduled(userID, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if list == nil {
+		list = []model.ShoutScheduled{}
+	}
+	c.JSON(http.StatusOK, gin.H{"scheduled": list})
+}
+
+func (h *ShoutHandler) CancelScheduled(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	if id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 ID"})
+		return
+	}
+	if err := h.svc.CancelScheduled(userID, id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "已取消"})
+}
+
 // ---------- 大屏端（公开，凭 token） ----------
 
 func (h *ShoutHandler) DisplayFeed(c *gin.Context) {

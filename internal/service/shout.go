@@ -396,3 +396,132 @@ func (s *ShoutService) GetMyMessages(userID int64, limit int) ([]model.ShoutMess
 func (s *ShoutService) DeleteMessage(userID, msgID int64) error {
 	return s.db.DeleteShoutMessageBySender(userID, msgID)
 }
+
+// ============ 定时喊话 ============
+
+// ScheduleMessage 创建服务端定时任务，即使浏览器关闭也会按时触发
+func (s *ShoutService) ScheduleMessage(userID int64, roomKey, content, msgType string, duration int, sendAtMs int64) (*model.ShoutScheduled, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil, errors.New("请输入要发送的内容")
+	}
+	if len([]rune(content)) > 500 {
+		return nil, errors.New("内容不能超过 500 个字")
+	}
+
+	room, err := s.db.GetShoutRoomByKey(roomKey)
+	if err != nil {
+		return nil, errors.New("教室不存在")
+	}
+	// 校验发送权限
+	if room.UserID != userID {
+		if _, err := s.db.GetShoutMember(roomKey, userID); err != nil {
+			return nil, errors.New("你不在该教室中，无法发送")
+		}
+	}
+
+	if msgType != "notice" && msgType != "urgent" {
+		msgType = "text"
+	}
+	if duration <= 0 {
+		duration = 20
+	}
+	if duration < 5 {
+		duration = 5
+	}
+	if duration > 600 {
+		duration = 600
+	}
+
+	nowMs := time.Now().UnixMilli()
+	if sendAtMs <= nowMs+1000 {
+		return nil, errors.New("定时时间必须晚于当前时间 1 秒以上")
+	}
+	// 最多提前 30 天
+	if sendAtMs > nowMs+30*24*3600*1000 {
+		return nil, errors.New("定时时间不能超过 30 天")
+	}
+
+	m := &model.ShoutScheduled{
+		UserID:   userID,
+		RoomKey:  roomKey,
+		Content:  content,
+		MsgType:  msgType,
+		Duration: duration,
+		SendAtMs: sendAtMs,
+		Status:   "pending",
+	}
+	if err := s.db.CreateShoutScheduled(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (s *ShoutService) ListScheduled(userID int64, limit int) ([]model.ShoutScheduled, error) {
+	return s.db.ListShoutScheduledByUser(userID, limit)
+}
+
+func (s *ShoutService) CancelScheduled(userID, id int64) error {
+	return s.db.CancelShoutScheduled(userID, id)
+}
+
+// StartScheduler 启动后台调度器：每秒扫描一次，到点自动发送
+// 服务重启后，pending 的任务会被继续执行
+func (s *ShoutService) StartScheduler() {
+	go func() {
+		// 启动时先清一次（有可能服务器宕机期间已经过期）
+		s.dispatchDueScheduled()
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.dispatchDueScheduled()
+		}
+	}()
+}
+
+func (s *ShoutService) dispatchDueScheduled() {
+	list, err := s.db.ListDueShoutScheduled(time.Now().UnixMilli())
+	if err != nil || len(list) == 0 {
+		return
+	}
+	for _, sc := range list {
+		room, err := s.db.GetShoutRoomByKey(sc.RoomKey)
+		if err != nil {
+			_ = s.db.MarkShoutScheduledFailed(sc.ID, "教室已不存在")
+			continue
+		}
+
+		// 确定发送者名字与角色（每次发送实时取，防止改名后不一致）
+		senderName := ""
+		if u, err := s.db.GetUserByID(sc.UserID); err == nil {
+			senderName = u.Username
+		} else {
+			senderName = "系统"
+		}
+
+		role := "任课老师"
+		if room.UserID == sc.UserID {
+			role = "班主任"
+		} else if m, err := s.db.GetShoutMember(sc.RoomKey, sc.UserID); err == nil {
+			if m.Role != "" {
+				role = m.Role
+			}
+		}
+
+		msg := &model.ShoutMessage{
+			RoomKey:    sc.RoomKey,
+			SenderID:   sc.UserID,
+			SenderName: senderName,
+			SenderRole: role,
+			Content:    sc.Content,
+			MsgType:    sc.MsgType,
+			Duration:   sc.Duration,
+		}
+		if err := s.db.AddShoutMessage(msg); err != nil {
+			_ = s.db.MarkShoutScheduledFailed(sc.ID, err.Error())
+			continue
+		}
+		_ = s.db.CleanupShoutMessages(sc.RoomKey)
+		_ = s.db.MarkShoutScheduledSent(sc.ID)
+	}
+}

@@ -38,7 +38,7 @@ func main() {
 	syncSvc := service.NewSyncService(db, sb)
 	studentSvc := service.NewStudentService(db)
 	shoutSvc := service.NewShoutService(db)
-
+	shoutSvc.StartScheduler()   // ★ 启动服务端定时调度器
 	authHandler := handler.NewAuthHandler(authSvc, db)
 	scheduleHandler := handler.NewScheduleHandler(scheduleSvc)
 	seatHandler := handler.NewSeatHandler(seatSvc)
@@ -184,6 +184,9 @@ func main() {
 			shout.POST("/rooms/:key/send", shoutHandler.Send)
 			shout.GET("/rooms/:key/messages", shoutHandler.Poll)
 			shout.GET("/rooms/:key/status", shoutHandler.Status)      // ★ 在线状态
+			shout.POST("/rooms/:key/schedule", shoutHandler.ScheduleMessage)
+			shout.GET("/scheduled", shoutHandler.ListScheduled)
+			shout.DELETE("/scheduled/:id", shoutHandler.CancelScheduled)
 			shout.GET("/messages", shoutHandler.GetMyMessages)
 			shout.DELETE("/messages/:id", shoutHandler.DeleteMessage) // ★ 删除某条消息
 		}
