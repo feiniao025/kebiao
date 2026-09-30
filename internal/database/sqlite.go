@@ -1469,6 +1469,34 @@ func (s *SQLite) CleanupShoutMessages(roomKey string) error {
 	return err
 }
 
+// GetShoutMessagesBySender 获取某用户发送过的全部消息，按时间倒序
+func (s *SQLite) GetShoutMessagesBySender(senderID int64, limit int) ([]model.ShoutMessage, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	rows, err := s.db.Query(
+		`SELECT m.id, m.room_key, m.sender_id, m.sender_name, m.sender_role,
+		        m.content, m.msg_type, m.duration, m.created_at
+		 FROM shout_messages m
+		 WHERE m.sender_id = ?
+		 ORDER BY m.id DESC LIMIT ?`, senderID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutMessage
+	for rows.Next() {
+		var m model.ShoutMessage
+		if err := rows.Scan(&m.ID, &m.RoomKey, &m.SenderID, &m.SenderName,
+			&m.SenderRole, &m.Content, &m.MsgType, &m.Duration, &m.CreatedAt); err != nil {
+			continue
+		}
+		list = append(list, m)
+	}
+	return list, nil
+}
+
 func boolToInt(b bool) int {
 	if b {
 		return 1

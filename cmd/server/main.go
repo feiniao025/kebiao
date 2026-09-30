@@ -182,6 +182,7 @@ func main() {
 			shout.DELETE("/rooms/:key/members/:username", shoutHandler.RemoveMember)
 			shout.POST("/rooms/:key/send", shoutHandler.Send)
 			shout.GET("/rooms/:key/messages", shoutHandler.Poll)
+			shout.GET("/messages", shoutHandler.GetMyMessages)
 		}
 
 		admin := api.Group("/admin")

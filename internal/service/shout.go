@@ -322,3 +322,11 @@ func (s *ShoutService) FeedByToken(token string, sinceID int64) ([]model.ShoutMe
 	}
 	return msgs, room, nil
 }
+
+// GetMyMessages 我在任意教室中发送过的全部消息（用于「发送记录」页）
+func (s *ShoutService) GetMyMessages(userID int64, limit int) ([]model.ShoutMessage, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	return s.db.GetShoutMessagesBySender(userID, limit)
+}

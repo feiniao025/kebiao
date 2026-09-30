@@ -187,6 +187,21 @@ func (h *ShoutHandler) Poll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": msgs})
 }
 
+// GetMyMessages 我在各教室中发出的全部消息（用于「发送记录」页）
+func (h *ShoutHandler) GetMyMessages(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "200"))
+	msgs, err := h.svc.GetMyMessages(userID, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if msgs == nil {
+		msgs = []model.ShoutMessage{}
+	}
+	c.JSON(http.StatusOK, gin.H{"messages": msgs})
+}
+
 // ---------- 大屏端（公开，凭 token） ----------
 
 func (h *ShoutHandler) DisplayFeed(c *gin.Context) {

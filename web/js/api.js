@@ -113,6 +113,10 @@ const API = (function () {
     },
     pollShout: function (key, since) {
       return request('GET', '/shout/rooms/' + encodeURIComponent(key) + '/messages?since=' + (since || 0));
+    },
+    // ★ 新增：我在各教室中发出的全部消息（用于「发送记录」页）
+    getMyShoutMessages: function (limit) {
+      return request('GET', '/shout/messages?limit=' + (limit || 200));
     }
   };
 })();
