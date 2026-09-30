@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -454,6 +456,8 @@ func (s *ShoutService) ScheduleMessage(userID int64, roomKey, content, msgType s
 	if err := s.db.CreateShoutScheduled(m); err != nil {
 		return nil, err
 	}
+	log.Printf("[shout-scheduler] task %d scheduled at %d (room=%s user=%d)",
+		m.ID, m.SendAtMs, m.RoomKey, m.UserID)
 	return m, nil
 }
 
@@ -470,42 +474,59 @@ func (s *ShoutService) CancelScheduled(userID, id int64) error {
 func (s *ShoutService) StartScheduler() {
 	go func() {
 		// 启动时先清一次（有可能服务器宕机期间已经过期）
-		s.dispatchDueScheduled()
+		s.safeDispatch()
+
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			s.dispatchDueScheduled()
+			s.safeDispatch()
 		}
 	}()
+	log.Printf("[shout-scheduler] scheduler started")
+}
+
+// safeDispatch 包一层 recover，任何 panic 都不能把调度 goroutine 搞死
+func (s *ShoutService) safeDispatch() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[shout-scheduler] panic recovered: %v\n%s", r, debug.Stack())
+		}
+	}()
+	s.dispatchDueScheduled()
 }
 
 func (s *ShoutService) dispatchDueScheduled() {
-	list, err := s.db.ListDueShoutScheduled(time.Now().UnixMilli())
-	if err != nil || len(list) == 0 {
+	now := time.Now().UnixMilli()
+
+	list, err := s.db.ListDueShoutScheduled(now)
+	if err != nil {
+		log.Printf("[shout-scheduler] ListDueShoutScheduled err: %v", err)
 		return
 	}
+	if len(list) == 0 {
+		return
+	}
+	log.Printf("[shout-scheduler] %d due task(s) found at %d", len(list), now)
+
 	for _, sc := range list {
 		room, err := s.db.GetShoutRoomByKey(sc.RoomKey)
 		if err != nil {
+			log.Printf("[shout-scheduler] room %s gone, task %d failed", sc.RoomKey, sc.ID)
 			_ = s.db.MarkShoutScheduledFailed(sc.ID, "教室已不存在")
 			continue
 		}
 
 		// 确定发送者名字与角色（每次发送实时取，防止改名后不一致）
-		senderName := ""
-		if u, err := s.db.GetUserByID(sc.UserID); err == nil {
+		senderName := "系统"
+		if u, err := s.db.GetUserByID(sc.UserID); err == nil && u.Username != "" {
 			senderName = u.Username
-		} else {
-			senderName = "系统"
 		}
 
 		role := "任课老师"
 		if room.UserID == sc.UserID {
 			role = "班主任"
-		} else if m, err := s.db.GetShoutMember(sc.RoomKey, sc.UserID); err == nil {
-			if m.Role != "" {
-				role = m.Role
-			}
+		} else if m, err := s.db.GetShoutMember(sc.RoomKey, sc.UserID); err == nil && m.Role != "" {
+			role = m.Role
 		}
 
 		msg := &model.ShoutMessage{
@@ -518,10 +539,16 @@ func (s *ShoutService) dispatchDueScheduled() {
 			Duration:   sc.Duration,
 		}
 		if err := s.db.AddShoutMessage(msg); err != nil {
+			log.Printf("[shout-scheduler] AddShoutMessage task %d failed: %v", sc.ID, err)
 			_ = s.db.MarkShoutScheduledFailed(sc.ID, err.Error())
 			continue
 		}
 		_ = s.db.CleanupShoutMessages(sc.RoomKey)
-		_ = s.db.MarkShoutScheduledSent(sc.ID)
+
+		if err := s.db.MarkShoutScheduledSent(sc.ID); err != nil {
+			log.Printf("[shout-scheduler] MarkSent task %d failed: %v", sc.ID, err)
+			continue
+		}
+		log.Printf("[shout-scheduler] task %d sent to room %s (by %s)", sc.ID, sc.RoomKey, senderName)
 	}
 }
