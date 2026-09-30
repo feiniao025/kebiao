@@ -16,6 +16,7 @@ window.shoutHistoryList = [];
 let shoutRoomsLoaded = false;
 let shoutStatusTimer = null;
 let shoutScheduleTimer = null;
+let shoutRoomStatusTimer = null;         // ★ 教室详情弹窗内的在线状态轮询
 
 /* ---------- 工具 ---------- */
 
@@ -62,6 +63,14 @@ function bindCopyButtons(root) {
   });
 }
 
+/* ---------- 清理教室详情弹窗内的轮询 ---------- */
+function stopRoomStatusPolling() {
+  if (shoutRoomStatusTimer) {
+    clearInterval(shoutRoomStatusTimer);
+    shoutRoomStatusTimer = null;
+  }
+}
+
 /* ---------- 主渲染 ---------- */
 
 window.renderShout = async function () {
@@ -78,6 +87,7 @@ window.renderShout = async function () {
     clearTimeout(shoutScheduleTimer);
     shoutScheduleTimer = null;
   }
+  stopRoomStatusPolling();
 
   const wrap = document.createElement('div');
   wrap.className = 'me-page';
@@ -698,18 +708,23 @@ window.openShoutRoomPop = async function (roomKey) {
   if (!roomKey) return;
   currentShoutRoomKey = roomKey;
 
+  // 打开新弹窗前先清理旧的在线状态轮询
+  stopRoomStatusPolling();
+
   $('shoutRoomPop').style.display = 'flex';
   $('shoutRoomTitle').textContent = '班级详情';
   $('shoutRoomBody').innerHTML = '<div class="today-empty">加载中...</div>';
 
-  let room, members;
+  let room, members, online = false;
   try {
     const results = await Promise.all([
       API.getShoutRoom(roomKey),
-      API.listShoutMembers(roomKey)
+      API.listShoutMembers(roomKey),
+      API.getShoutRoomStatus(roomKey).catch(function () { return { online: false }; })
     ]);
     room = results[0].room;
     members = results[1].members || [];
+    online = !!(results[2] && results[2].online);
   } catch (e) {
     $('shoutRoomBody').innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(e.message) + '</div>';
     return;
@@ -721,11 +736,24 @@ window.openShoutRoomPop = async function (roomKey) {
 
   let html = '';
 
+  // ---- 教室码行：教室码 + 复制 + 在线状态 + 重置教室码（仅班主任） ----
   html += '<div class="shout-info-box">';
-  html += '<div class="shout-info-row"><span class="k">教室码</span><span class="v">' +
-    '<b class="shout-code">' + escapeHtml(room.room_key) + '</b>' +
-    '<button class="shout-copy" data-copy="' + escapeHtml(room.room_key) + '" type="button">复制</button>' +
-    '</span></div>';
+  html += '<div class="shout-info-row">' +
+    '<span class="k">教室码</span>' +
+    '<span class="v">' +
+      '<b class="shout-code">' + escapeHtml(room.room_key) + '</b>' +
+      '<button class="shout-copy" data-copy="' + escapeHtml(room.room_key) + '" type="button">复制</button>' +
+      '<span class="shout-online-status" id="shoutRoomOnlineStatus">' +
+        '<span class="shout-status-dot' + (online ? ' online' : '') + '"></span>' +
+        '<span>' + (online ? '在线' : '离线') + '</span>' +
+      '</span>' +
+      (room.is_owner
+        ? '<button class="shout-copy" id="shoutResetKeyBtn" type="button" ' +
+          'style="background:#fef7e0;color:#b06000;border-color:#f0d58a;">重置</button>'
+        : '') +
+    '</span>' +
+  '</div>';
+
   html += '<div class="shout-info-row" style="align-items:flex-start;">' +
     '<span class="k" style="padding-top:8px;">大屏地址</span>' +
     '<span class="v" style="flex:1;">' +
@@ -734,6 +762,7 @@ window.openShoutRoomPop = async function (roomKey) {
     '</span></div>';
   html += '</div>';
 
+  // ---- 成员列表 ----
   html += '<div class="shout-section-title">👥 班级成员（' + members.length + '）</div>';
   html += '<div class="shout-member-list">';
   if (!members.length) {
@@ -753,6 +782,7 @@ window.openShoutRoomPop = async function (roomKey) {
   }
   html += '</div>';
 
+  // ---- 班主任专属操作 ----
   if (room.is_owner) {
     html += '<div class="shout-section-title">⚙️ 班级管理</div>';
     html += '<div class="shout-danger-row">' +
@@ -765,6 +795,7 @@ window.openShoutRoomPop = async function (roomKey) {
 
   bindCopyButtons($('shoutRoomBody'));
 
+  // ---- 移除成员 ----
   $('shoutRoomBody').querySelectorAll('.shout-member-del').forEach(function (b) {
     b.onclick = async function (ev) {
       ev.stopPropagation();
@@ -779,6 +810,7 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   });
 
+  // ---- 重置大屏地址 ----
   const resetBtn = $('shoutResetTokenBtn');
   if (resetBtn) {
     resetBtn.onclick = async function () {
@@ -791,6 +823,31 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   }
 
+  // ---- 重置教室码 ----
+  const resetKeyBtn = $('shoutResetKeyBtn');
+  if (resetKeyBtn) {
+    resetKeyBtn.onclick = async function () {
+      if (!confirm(
+        '重置后原教室码立即失效。\n\n' +
+        '已加入的老师不受影响，仍可继续向本教室发送通知；\n' +
+        '新老师需要用新的教室码加入。\n\n' +
+        '确认重置？'
+      )) return;
+      try {
+        const resp = await API.regenerateShoutRoomKey(roomKey);
+        showSaveStatus('教室码已重置为 ' + resp.room_key, false);
+        await ensureShoutRooms(true);
+        // 同步更新当前选中的教室，避免其它地方引用旧 key
+        if (currentShoutClass === roomKey) currentShoutClass = resp.room_key;
+        // 用新的 key 重新打开详情
+        openShoutRoomPop(resp.room_key);
+      } catch (e) {
+        alert(e.message || '重置失败');
+      }
+    };
+  }
+
+  // ---- 删除班级 ----
   const delBtn = $('shoutDeleteRoomBtn');
   if (delBtn) {
     delBtn.onclick = async function () {
@@ -804,6 +861,24 @@ window.openShoutRoomPop = async function (roomKey) {
       } catch (e) { alert(e.message); }
     };
   }
+
+  // ---- 在线状态轮询（弹窗打开期间每 3 秒刷新一次） ----
+  shoutRoomStatusTimer = setInterval(async function () {
+    const pop = $('shoutRoomPop');
+    if (!pop || pop.style.display === 'none') {
+      stopRoomStatusPolling();
+      return;
+    }
+    try {
+      const resp = await API.getShoutRoomStatus(roomKey);
+      const box = document.getElementById('shoutRoomOnlineStatus');
+      if (!box) return;
+      const dot = box.querySelector('.shout-status-dot');
+      const txt = box.querySelector('span:last-child');
+      if (dot) dot.classList.toggle('online', !!resp.online);
+      if (txt) txt.textContent = resp.online ? '在线' : '离线';
+    } catch (e) { /* 忽略单次失败 */ }
+  }, 3000);
 };
 
 /* ---------- 弹窗事件绑定 ---------- */
@@ -879,9 +954,15 @@ window.openShoutRoomPop = async function (roomKey) {
   }
 
   const rc = $('shoutRoomClose');
-  if (rc) rc.onclick = function () { $('shoutRoomPop').style.display = 'none'; };
+  if (rc) rc.onclick = function () {
+    stopRoomStatusPolling();
+    $('shoutRoomPop').style.display = 'none';
+  };
   const rp = $('shoutRoomPop');
   if (rp) rp.addEventListener('click', function (e) {
-    if (e.target === rp) rp.style.display = 'none';
+    if (e.target === rp) {
+      stopRoomStatusPolling();
+      rp.style.display = 'none';
+    }
   });
 })();

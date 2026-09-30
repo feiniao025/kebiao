@@ -97,6 +97,10 @@ const API = (function () {
     },
     deleteShoutRoom: function (key) { return request('DELETE', '/shout/rooms/' + encodeURIComponent(key)); },
     regenerateShoutToken: function (key) { return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/token'); },
+	// 重置教室码（已加入成员不受影响）
+	regenerateShoutRoomKey: function (key) {
+      return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/regenerate-key');
+	},
     joinShoutRoom: function (roomKey, subject) {
       return request('POST', '/shout/join', { room_key: roomKey, subject: subject || '' });
     },

@@ -103,6 +103,17 @@ func (h *ShoutHandler) RegenerateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"display_token": token})
 }
 
+// RegenerateRoomKey 重置教室码
+func (h *ShoutHandler) RegenerateRoomKey(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	newKey, err := h.svc.RegenerateRoomKey(userID, c.Param("key"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"room_key": newKey})
+}
+
 // ---------- 在线状态 ----------
 
 func (h *ShoutHandler) Status(c *gin.Context) {

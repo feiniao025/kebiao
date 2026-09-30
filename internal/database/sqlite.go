@@ -1502,6 +1502,27 @@ func (s *SQLite) DeleteShoutMessageBySender(userID, msgID int64) error {
 	return err
 }
 
+// RegenerateShoutRoomKey 更换教室码；已加入成员与历史消息一并迁移，
+// 保证已绑定老师不受影响。
+func (s *SQLite) RegenerateShoutRoomKey(oldKey, newKey string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`UPDATE shout_rooms SET room_key = ? WHERE room_key = ?`, newKey, oldKey); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE shout_members SET room_key = ? WHERE room_key = ?`, newKey, oldKey); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE shout_messages SET room_key = ? WHERE room_key = ?`, newKey, oldKey); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func boolToInt(b bool) int {
 	if b {
 		return 1

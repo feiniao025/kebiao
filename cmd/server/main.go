@@ -178,6 +178,7 @@ func main() {
 			shout.PUT("/rooms/:key", shoutHandler.UpdateRoom)
 			shout.DELETE("/rooms/:key", shoutHandler.DeleteRoom)
 			shout.POST("/rooms/:key/token", shoutHandler.RegenerateToken)
+			shout.POST("/rooms/:key/regenerate-key", shoutHandler.RegenerateRoomKey)
 			shout.GET("/rooms/:key/members", shoutHandler.ListMembers)
 			shout.DELETE("/rooms/:key/members/:username", shoutHandler.RemoveMember)
 			shout.POST("/rooms/:key/send", shoutHandler.Send)

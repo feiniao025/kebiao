@@ -211,6 +211,35 @@ func (s *ShoutService) RegenerateDisplayToken(userID int64, roomKey string) (str
 	return token, nil
 }
 
+// RegenerateRoomKey 重置教室码（仅班主任可操作）
+// 已加入的成员和历史消息会随教室一起迁移，不受影响
+func (s *ShoutService) RegenerateRoomKey(userID int64, roomKey string) (string, error) {
+	room, err := s.db.GetShoutRoomByKey(roomKey)
+	if err != nil {
+		return "", errors.New("教室不存在")
+	}
+	if room.UserID != userID {
+		return "", errors.New("只有班主任可以重置教室码")
+	}
+
+	var newKey string
+	for i := 0; i < 40; i++ {
+		k := randomShoutCode(6)
+		if _, err := s.db.GetShoutRoomByKey(k); err != nil {
+			newKey = k
+			break
+		}
+	}
+	if newKey == "" {
+		return "", errors.New("生成教室码失败，请稍后重试")
+	}
+
+	if err := s.db.RegenerateShoutRoomKey(roomKey, newKey); err != nil {
+		return "", err
+	}
+	return newKey, nil
+}
+
 func (s *ShoutService) JoinRoom(userID int64, username, roomKey, subject string) (*model.ShoutRoom, error) {
 	roomKey = strings.ToUpper(strings.TrimSpace(roomKey))
 	if roomKey == "" {
