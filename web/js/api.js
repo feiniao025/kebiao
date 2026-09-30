@@ -86,6 +86,33 @@ const API = (function () {
     testSupabase: function () { return request('POST', '/admin/supabase/test'); },
     getSchemaSQL: function () { return request('GET', '/admin/supabase/schema'); },
     adminGetSystemConfig: function () { return request('GET', '/admin/system/config'); },
-    adminUpdateSystemConfig: function (n) { return request('PUT', '/admin/system/config', { login_notice: n }); }
+    adminUpdateSystemConfig: function (n) { return request('PUT', '/admin/system/config', { login_notice: n }); },
+
+    // ============ 远程喊话 ============
+    listShoutRooms: function () { return request('GET', '/shout/rooms'); },
+    createShoutRoom: function (name, classId) {
+      return request('POST', '/shout/rooms', { name: name, class_id: classId || '' });
+    },
+    getShoutRoom: function (key) { return request('GET', '/shout/rooms/' + encodeURIComponent(key)); },
+    updateShoutRoom: function (key, name, classId) {
+      return request('PUT', '/shout/rooms/' + encodeURIComponent(key), { name: name, class_id: classId || '' });
+    },
+    deleteShoutRoom: function (key) { return request('DELETE', '/shout/rooms/' + encodeURIComponent(key)); },
+    regenerateShoutToken: function (key) { return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/token'); },
+    joinShoutRoom: function (roomKey, subject) {
+      return request('POST', '/shout/join', { room_key: roomKey, subject: subject || '' });
+    },
+    listShoutMembers: function (key) { return request('GET', '/shout/rooms/' + encodeURIComponent(key) + '/members'); },
+    removeShoutMember: function (key, username) {
+      return request('DELETE', '/shout/rooms/' + encodeURIComponent(key) + '/members/' + encodeURIComponent(username));
+    },
+    sendShout: function (key, content, msgType, duration) {
+      return request('POST', '/shout/rooms/' + encodeURIComponent(key) + '/send', {
+        content: content, msg_type: msgType || 'text', duration: duration || 20
+      });
+    },
+    pollShout: function (key, since) {
+      return request('GET', '/shout/rooms/' + encodeURIComponent(key) + '/messages?since=' + (since || 0));
+    }
   };
 })();

@@ -478,6 +478,48 @@
   </div>
 </div>
 
+<!-- ============ 远程喊话弹窗 ============ -->
+<div class="seat-pop" id="shoutRoomPop">
+  <div class="seat-pop-inner user-detail-pop-inner">
+    <button id="shoutRoomClose" class="pop-close-x">×</button>
+    <h3 id="shoutRoomTitle">教室</h3>
+    <div id="shoutRoomBody" style="max-height:74vh;overflow:auto;padding-right:6px;"></div>
+  </div>
+</div>
+
+<div class="seat-pop" id="shoutCreatePop">
+  <div class="seat-pop-inner">
+    <button id="shoutCreateClose" class="pop-close-x">×</button>
+    <h3>创建教室</h3>
+    <div class="me-warn">创建后你会成为该教室的「班主任」，可管理成员并发送通知。</div>
+    <div class="cell-pop-row"><label>教室名称：</label>
+      <input type="text" id="shoutCreateName" class="cell-pop-input" maxlength="30" placeholder="如 七.23班 教室">
+    </div>
+    <div class="cell-pop-row"><label>关联班级：</label>
+      <select id="shoutCreateClass" class="cell-pop-input"></select>
+    </div>
+    <div class="me-error" id="shoutCreateError" style="min-height:18px;"></div>
+    <button id="shoutCreateSubmit" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">创建</button>
+  </div>
+</div>
+
+<div class="seat-pop" id="shoutJoinPop">
+  <div class="seat-pop-inner">
+    <button id="shoutJoinClose" class="pop-close-x">×</button>
+    <h3>加入教室</h3>
+    <div class="me-warn">输入班主任给你的 6 位教室码即可加入。加入后你就能向该教室大屏发通知。</div>
+    <div class="cell-pop-row"><label>教室码：</label>
+      <input type="text" id="shoutJoinKey" class="cell-pop-input" maxlength="6" placeholder="如 A3K9F2"
+             style="text-transform:uppercase;letter-spacing:6px;font-weight:700;text-align:center;">
+    </div>
+    <div class="cell-pop-row"><label>任教科目：</label>
+      <input type="text" id="shoutJoinSubject" class="cell-pop-input" maxlength="20" placeholder="选填，如 数学">
+    </div>
+    <div class="me-error" id="shoutJoinError" style="min-height:18px;"></div>
+    <button id="shoutJoinSubmit" style="width:100%;background:#7d5ba6;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">加入</button>
+  </div>
+</div>
+
 <!-- ============ 通用确认弹窗 ============ -->
 <div class="seat-pop" id="confirmPop">
   <div class="seat-pop-inner" style="min-width:300px;max-width:88vw;">
@@ -503,6 +545,7 @@
 <script src="/js/app-today.js"></script>
 <script src="/js/app-students.js"></script>
 <script src="/js/app-classes.js"></script>
+<script src="/js/app-shout.js"></script>
 <script src="/js/app-me.js"></script>
 <script src="/js/app.js"></script>
 </body>

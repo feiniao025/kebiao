@@ -492,6 +492,7 @@ window.SUB_TABS = {
     { key: 'seat',      label: '座位' },
     { key: 'committee', label: '班委' },
     { key: 'duty',      label: '值日' },
+	{ key: 'shout',     label: '喊话' },
   ],
   me: [],
 };
@@ -597,6 +598,9 @@ window.renderContent = function () {
       } else if (window.activeSubTab === 'duty') {
         window.scheduleContainer.style.display = 'block';
         if (typeof renderDuty === 'function') renderDuty();
+      } else if (window.activeSubTab === 'shout') {
+        window.scheduleContainer.style.display = 'block';
+        if (typeof renderShout === 'function') renderShout();
       }
       break;
     case 'me':

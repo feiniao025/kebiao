@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings" // ★ 新增
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -196,6 +196,42 @@ func (s *SQLite) migrate() error {
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(user_id, class_id, date, student_name)
 	);
+
+	CREATE TABLE IF NOT EXISTS shout_rooms (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		room_key TEXT UNIQUE NOT NULL,
+		display_token TEXT UNIQUE NOT NULL,
+		name TEXT DEFAULT '',
+		class_id TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS shout_members (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		room_key TEXT NOT NULL,
+		user_id INTEGER NOT NULL,
+		username TEXT NOT NULL,
+		role TEXT DEFAULT '任课老师',
+		subject TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(room_key, user_id)
+	);
+
+	CREATE TABLE IF NOT EXISTS shout_messages (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		room_key TEXT NOT NULL,
+		sender_id INTEGER NOT NULL,
+		sender_name TEXT DEFAULT '',
+		sender_role TEXT DEFAULT '',
+		content TEXT DEFAULT '',
+		msg_type TEXT DEFAULT 'text',
+		duration INTEGER DEFAULT 20,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_shout_messages_room ON shout_messages(room_key, id);
+	CREATE INDEX IF NOT EXISTS idx_shout_members_room ON shout_members(room_key);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -1236,6 +1272,201 @@ func (s *SQLite) GetAllAttendance(userID int64) ([]model.AttendanceRecord, error
 		list = append(list, r)
 	}
 	return list, nil
+}
+
+// ============ 远程喊话 ============
+
+func (s *SQLite) CreateShoutRoom(r *model.ShoutRoom) error {
+	res, err := s.db.Exec(
+		`INSERT INTO shout_rooms (user_id, room_key, display_token, name, class_id)
+		 VALUES (?, ?, ?, ?, ?)`,
+		r.UserID, r.RoomKey, r.DisplayToken, r.Name, r.ClassID,
+	)
+	if err != nil {
+		return err
+	}
+	r.ID, _ = res.LastInsertId()
+	return nil
+}
+
+func (s *SQLite) scanShoutRoom(scanner interface {
+	Scan(dest ...interface{}) error
+}) (*model.ShoutRoom, error) {
+	r := &model.ShoutRoom{}
+	err := scanner.Scan(&r.ID, &r.UserID, &r.RoomKey, &r.DisplayToken,
+		&r.Name, &r.ClassID, &r.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (s *SQLite) GetShoutRoomByKey(roomKey string) (*model.ShoutRoom, error) {
+	row := s.db.QueryRow(
+		`SELECT id, user_id, room_key, display_token, name, class_id, created_at
+		 FROM shout_rooms WHERE room_key = ?`, roomKey)
+	return s.scanShoutRoom(row)
+}
+
+func (s *SQLite) GetShoutRoomByDisplayToken(token string) (*model.ShoutRoom, error) {
+	row := s.db.QueryRow(
+		`SELECT id, user_id, room_key, display_token, name, class_id, created_at
+		 FROM shout_rooms WHERE display_token = ?`, token)
+	return s.scanShoutRoom(row)
+}
+
+func (s *SQLite) GetShoutRoomsByUser(userID int64) ([]model.ShoutRoom, error) {
+	rows, err := s.db.Query(
+		`SELECT r.id, r.user_id, r.room_key, r.display_token, r.name, r.class_id, r.created_at
+		 FROM shout_rooms r
+		 LEFT JOIN shout_members m ON m.room_key = r.room_key
+		 WHERE r.user_id = ? OR m.user_id = ?
+		 GROUP BY r.id
+		 ORDER BY r.created_at DESC`, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutRoom
+	for rows.Next() {
+		var r model.ShoutRoom
+		if err := rows.Scan(&r.ID, &r.UserID, &r.RoomKey, &r.DisplayToken,
+			&r.Name, &r.ClassID, &r.CreatedAt); err != nil {
+			continue
+		}
+		list = append(list, r)
+	}
+	return list, nil
+}
+
+func (s *SQLite) UpdateShoutRoom(r *model.ShoutRoom) error {
+	_, err := s.db.Exec(
+		`UPDATE shout_rooms SET name = ?, class_id = ? WHERE room_key = ?`,
+		r.Name, r.ClassID, r.RoomKey)
+	return err
+}
+
+func (s *SQLite) UpdateShoutRoomToken(roomKey, token string) error {
+	_, err := s.db.Exec(
+		`UPDATE shout_rooms SET display_token = ? WHERE room_key = ?`, token, roomKey)
+	return err
+}
+
+func (s *SQLite) DeleteShoutRoom(roomKey string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, q := range []string{
+		`DELETE FROM shout_messages WHERE room_key = ?`,
+		`DELETE FROM shout_members WHERE room_key = ?`,
+		`DELETE FROM shout_rooms WHERE room_key = ?`,
+	} {
+		if _, err := tx.Exec(q, roomKey); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SQLite) AddShoutMember(m *model.ShoutMember) error {
+	_, err := s.db.Exec(
+		`INSERT INTO shout_members (room_key, user_id, username, role, subject)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(room_key, user_id) DO UPDATE SET
+		   username=excluded.username,
+		   role=excluded.role,
+		   subject=excluded.subject`,
+		m.RoomKey, m.UserID, m.Username, m.Role, m.Subject)
+	return err
+}
+
+func (s *SQLite) GetShoutMembers(roomKey string) ([]model.ShoutMember, error) {
+	rows, err := s.db.Query(
+		`SELECT id, room_key, user_id, username, role, subject, created_at
+		 FROM shout_members WHERE room_key = ? ORDER BY id ASC`, roomKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutMember
+	for rows.Next() {
+		var m model.ShoutMember
+		if err := rows.Scan(&m.ID, &m.RoomKey, &m.UserID, &m.Username,
+			&m.Role, &m.Subject, &m.CreatedAt); err != nil {
+			continue
+		}
+		list = append(list, m)
+	}
+	return list, nil
+}
+
+func (s *SQLite) GetShoutMember(roomKey string, userID int64) (*model.ShoutMember, error) {
+	m := &model.ShoutMember{}
+	err := s.db.QueryRow(
+		`SELECT id, room_key, user_id, username, role, subject, created_at
+		 FROM shout_members WHERE room_key = ? AND user_id = ?`, roomKey, userID,
+	).Scan(&m.ID, &m.RoomKey, &m.UserID, &m.Username, &m.Role, &m.Subject, &m.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (s *SQLite) RemoveShoutMember(roomKey string, userID int64) error {
+	_, err := s.db.Exec(
+		`DELETE FROM shout_members WHERE room_key = ? AND user_id = ?`, roomKey, userID)
+	return err
+}
+
+func (s *SQLite) AddShoutMessage(m *model.ShoutMessage) error {
+	res, err := s.db.Exec(
+		`INSERT INTO shout_messages (room_key, sender_id, sender_name, sender_role, content, msg_type, duration)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		m.RoomKey, m.SenderID, m.SenderName, m.SenderRole, m.Content, m.MsgType, m.Duration)
+	if err != nil {
+		return err
+	}
+	m.ID, _ = res.LastInsertId()
+	return nil
+}
+
+func (s *SQLite) GetShoutMessages(roomKey string, sinceID int64, limit int) ([]model.ShoutMessage, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.Query(
+		`SELECT id, room_key, sender_id, sender_name, sender_role, content, msg_type, duration, created_at
+		 FROM shout_messages WHERE room_key = ? AND id > ?
+		 ORDER BY id ASC LIMIT ?`, roomKey, sinceID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []model.ShoutMessage
+	for rows.Next() {
+		var m model.ShoutMessage
+		if err := rows.Scan(&m.ID, &m.RoomKey, &m.SenderID, &m.SenderName,
+			&m.SenderRole, &m.Content, &m.MsgType, &m.Duration, &m.CreatedAt); err != nil {
+			continue
+		}
+		list = append(list, m)
+	}
+	return list, nil
+}
+
+// CleanupShoutMessages 只保留最近 200 条，避免无限增长
+func (s *SQLite) CleanupShoutMessages(roomKey string) error {
+	_, err := s.db.Exec(
+		`DELETE FROM shout_messages WHERE room_key = ? AND id NOT IN (
+			SELECT id FROM shout_messages WHERE room_key = ? ORDER BY id DESC LIMIT 200
+		 )`, roomKey, roomKey)
+	return err
 }
 
 func boolToInt(b bool) int {

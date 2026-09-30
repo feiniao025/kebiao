@@ -184,3 +184,42 @@ type AttendanceSummary struct {
 	Late     int    `json:"late"`
 	Leave    int    `json:"leave"`
 }
+
+// ============ 远程喊话 ============
+
+type ShoutRoom struct {
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"user_id"`       // 创建者（班主任）
+	RoomKey      string    `json:"room_key"`      // 6 位加入码
+	DisplayToken string    `json:"display_token"` // 大屏接收 token
+	Name         string    `json:"name"`
+	ClassID      string    `json:"class_id"`
+	CreatedAt    time.Time `json:"created_at"`
+
+	// 运行时补充
+	Role        string `json:"role,omitempty"`
+	MemberCount int    `json:"member_count"`
+	IsOwner     bool   `json:"is_owner"`
+}
+
+type ShoutMember struct {
+	ID        int64     `json:"id"`
+	RoomKey   string    `json:"room_key"`
+	UserID    int64     `json:"user_id"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`    // 班主任 / 任课老师
+	Subject   string    `json:"subject"` // 任教科目（选填）
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ShoutMessage struct {
+	ID         int64     `json:"id"`
+	RoomKey    string    `json:"room_key"`
+	SenderID   int64     `json:"sender_id"`
+	SenderName string    `json:"sender_name"`
+	SenderRole string    `json:"sender_role"`
+	Content    string    `json:"content"`
+	MsgType    string    `json:"msg_type"` // text / notice / urgent
+	Duration   int       `json:"duration"` // 弹屏停留秒数
+	CreatedAt  time.Time `json:"created_at"`
+}

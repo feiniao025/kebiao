@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>教室大屏 · 接收端</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E%F0%9F%93%A2%3C/text%3E%3C/svg%3E" />
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;}
+  body{
+    font-family:'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;
+    background:radial-gradient(ellipse at 50% 0%,#1e293b 0%,#0f172a 55%,#020617 100%);
+    color:#e2e8f0;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;-webkit-user-select:none;
+  }
+  .bg-grid{
+    position:fixed;inset:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(56,189,248,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(56,189,248,.05) 1px,transparent 1px);
+    background-size:52px 52px;
+  }
+
+  /* ---- 顶部状态栏 ---- */
+  .hud{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:22px 40px;
+    font-size:14px;color:#64748b;letter-spacing:1px;
+  }
+  .hud .room{
+    color:#38bdf8;font-weight:700;font-size:20px;letter-spacing:2px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .hud .room::before{
+    content:'';width:10px;height:10px;border-radius:2px;background:#38bdf8;
+    box-shadow:0 0 12px #38bdf8;
+  }
+  .hud-right{display:flex;align-items:center;gap:26px;}
+  .hud .status{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .dot{
+    width:10px;height:10px;border-radius:50%;
+    background:#ef4444;box-shadow:0 0 10px #ef4444;
+    transition:background .3s,box-shadow .3s;
+  }
+  .dot.on{background:#22c55e;box-shadow:0 0 12px #22c55e;}
+  .clock{
+    font-size:19px;font-weight:700;color:#94a3b8;
+    letter-spacing:2px;font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- 空闲态 ---- */
+  .idle{text-align:center;padding:40px;}
+  .idle .icon{font-size:96px;margin-bottom:26px;opacity:.3;animation:breathe 4s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{opacity:.22;transform:scale(1);}50%{opacity:.4;transform:scale(1.06);}}
+  .idle h1{font-size:34px;font-weight:200;color:#475569;letter-spacing:16px;margin-bottom:16px;}
+  .idle p{font-size:15px;color:#334155;letter-spacing:3px;}
+
+  /* ---- 消息弹屏 ---- */
+  #popup{
+    position:fixed;inset:0;z-index:100;
+    display:none;align-items:center;justify-content:center;padding:70px;
+    background:rgba(2,6,23,.78);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  }
+  #popup.show{display:flex;animation:fadeIn .22s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  .msg-card{
+    max-width:1200px;width:100%;
+    background:linear-gradient(160deg,#1e293b 0%,#0f172a 100%);
+    border-radius:30px;
+    padding:52px 64px 44px;
+    box-shadow:
+      0 0 0 2px rgba(56,189,248,.22),
+      0 0 90px rgba(56,189,248,.10),
+      0 40px 110px rgba(0,0,0,.65);
+    animation:popIn .32s cubic-bezier(.2,1.2,.4,1);
+  }
+  @keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+
+  .msg-card.notice{box-shadow:0 0 0 2px rgba(250,204,21,.30),0 0 90px rgba(250,204,21,.10),0 40px 110px rgba(0,0,0,.65);}
+  .msg-card.urgent{box-shadow:0 0 0 3px rgba(239,68,68,.45),0 0 110px rgba(239,68,68,.18),0 40px 110px rgba(0,0,0,.7);animation:popIn .32s cubic-bezier(.2,1.2,.4,1),shake .5s ease 1;}
+
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-8px);}
+    40%{transform:translateX(8px);}
+    60%{transform:translateX(-5px);}
+    80%{transform:translateX(5px);}
+  }
+
+  .msg-head{
+    display:flex;align-items:center;gap:16px;margin-bottom:26px;
+    padding-bottom:20px;border-bottom:1px solid rgba(148,163,184,.14);
+  }
+  .msg-type{
+    font-size:15px;font-weight:700;letter-spacing:2px;
+    padding:6px 16px;border-radius:999px;
+    background:rgba(56,189,248,.14);color:#7dd3fc;
+    flex-shrink:0;
+  }
+  .msg-card.notice .msg-type{background:rgba(250,204,21,.14);color:#fde047;}
+  .msg-card.urgent .msg-type{background:rgba(239,68,68,.18);color:#fca5a5;}
+  .msg-from{
+    font-size:16px;color:#94a3b8;letter-spacing:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+
+  .msg-content{
+    font-size:44px;line-height:1.55;font-weight:600;
+    color:#f1f5f9;letter-spacing:2px;
+    word-break:break-word;
+    white-space:pre-wrap;
+    text-shadow:0 2px 18px rgba(56,189,248,.12);
+  }
+  .msg-card.notice .msg-content{color:#fef9c3;}
+  .msg-card.urgent .msg-content{color:#fee2e2;text-shadow:0 2px 18px rgba(239,68,68,.25);}
+
+  .msg-foot{
+    margin-top:30px;text-align:right;
+    font-size:13px;color:#475569;letter-spacing:2px;
+  }
+
+  .tip{
+    position:fixed;bottom:22px;left:0;right:0;text-align:center;
+    font-size:12px;color:#334155;letter-spacing:2px;z-index:5;
+  }
+
+  @media (max-width:900px){
+    .msg-content{font-size:30px;}
+    .msg-card{padding:32px 28px 26px;border-radius:22px;}
+    #popup{padding:30px;}
+    .idle h1{font-size:22px;letter-spacing:8px;}
+    .hud{padding:14px 18px;}
+    .hud .room{font-size:15px;}
+    .clock{font-size:15px;}
+  }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<div class="hud">
+  <div class="room" id="roomName">教室大屏</div>
+  <div class="hud-right">
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">连接中…</span>
+    </div>
+    <div class="clock" id="clock">--</div>
+  </div>
+</div>
+
+<div class="idle" id="idle">
+  <div class="icon">📢</div>
+  <h1>教室大屏</h1>
+  <p>等待消息…</p>
+</div>
+
+<div id="popup">
+  <div class="msg-card text" id="msgCard"></div>
+</div>
+
+<div class="tip">本页面请常驻运行 · 建议全屏（F11）· 点击屏幕任意位置可关闭弹屏</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var params   = new URLSearchParams(location.search);
+  var token    = params.get('token') || '';
+  var since    = 0;
+  var failCount = 0;
+  var popTimer = null;
+  var queue = [];
+  var showing = false;
+
+  var statusDot  = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+  var roomNameEl = document.getElementById('roomName');
+  var popup      = document.getElementById('popup');
+  var msgCard    = document.getElementById('msgCard');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  function setOnline(on) {
+    statusDot.classList.toggle('on', on);
+    statusText.textContent = on ? '已连接' : '连接中断';
+  }
+
+  function renderMessage(m) {
+    var typeLabel =
+      m.msg_type === 'urgent' ? '🚨 紧急' :
+      m.msg_type === 'notice' ? '📢 通知' : '💬 消息';
+
+    msgCard.className = 'msg-card ' + (m.msg_type || 'text');
+    msgCard.innerHTML =
+      '<div class="msg-head">' +
+        '<span class="msg-type">' + typeLabel + '</span>' +
+        '<span class="msg-from">' + esc(m.sender_name) + ' · ' + esc(m.sender_role) + '</span>' +
+      '</div>' +
+      '<div class="msg-content">' + esc(m.content) + '</div>' +
+      '<div class="msg-foot">' + new Date(m.created_at).toLocaleTimeString('zh-CN') + '</div>';
+
+    popup.classList.add('show');
+    showing = true;
+
+    if (popTimer) clearTimeout(popTimer);
+    popTimer = setTimeout(hidePopup, (m.duration || 20) * 1000);
+  }
+
+  function hidePopup() {
+    popup.classList.remove('show');
+    showing = false;
+    if (popTimer) { clearTimeout(popTimer); popTimer = null; }
+    // 队列里还有则继续
+    setTimeout(function () {
+      if (!showing && queue.length > 0) {
+        renderMessage(queue.shift());
+      }
+    }, 260);
+  }
+
+  function enqueueMessage(m) {
+    if (showing) {
+      queue.push(m);
+    } else {
+      renderMessage(m);
+    }
+  }
+
+  async function poll() {
+    if (!token) return;
+    try {
+      var resp = await fetch('/api/shout/feed?token=' +
+        encodeURIComponent(token) + '&since=' + since, { cache: 'no-store' });
+
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+      var data = await resp.json();
+
+      setOnline(true);
+      failCount = 0;
+
+      if (data.room && data.room.name) {
+        roomNameEl.textContent = data.room.name;
+      }
+      if (document.getElementById('idle')) {
+        // 首次收到 room 信息后隐藏空闲态由弹屏自然覆盖
+      }
+
+      var list = data.messages || [];
+      for (var i = 0; i < list.length; i++) {
+        var m = list[i];
+        if (m.id > since) since = m.id;
+        enqueueMessage(m);
+      }
+    } catch (e) {
+      failCount++;
+      if (failCount >= 2) setOnline(false);
+    }
+  }
+
+  function tick() {
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    document.getElementById('clock').textContent =
+      d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      '  ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  if (!token) {
+    document.body.innerHTML =
+      '<div style="text-align:center;color:#94a3b8;font-size:20px;line-height:2;padding:40px;">' +
+        '⚠️ 缺少 token 参数<br>' +
+        '<span style="font-size:14px;color:#64748b;">请在「班级 → 喊话」中打开教室详情，复制「大屏地址」后重新打开</span>' +
+      '</div>';
+    return;
+  }
+
+  // 点击弹屏关闭
+  popup.addEventListener('click', hidePopup);
+
+  tick();
+  setInterval(tick, 1000);
+
+  poll();
+  setInterval(poll, 2000);
+
+  // 页面从后台恢复时立即补拉一次
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) poll();
+  });
+})();
+</script>
+</body>
+</html>

@@ -37,6 +37,7 @@ func main() {
 	seatSvc := service.NewSeatService(db)
 	syncSvc := service.NewSyncService(db, sb)
 	studentSvc := service.NewStudentService(db)
+	shoutSvc := service.NewShoutService(db)
 
 	authHandler := handler.NewAuthHandler(authSvc, db)
 	scheduleHandler := handler.NewScheduleHandler(scheduleSvc)
@@ -44,6 +45,7 @@ func main() {
 	adminHandler := handler.NewAdminHandler(db, authSvc, sb)
 	syncHandler := handler.NewSyncHandler(syncSvc)
 	studentHandler := handler.NewStudentHandler(studentSvc)
+	shoutHandler := handler.NewShoutHandler(shoutSvc)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
@@ -72,6 +74,7 @@ func main() {
 		r.Static("/js", filepath.Join(webDir, "js"))
 		r.StaticFile("/", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/index.html", filepath.Join(webDir, "index.html"))
+		r.StaticFile("/display.html", filepath.Join(webDir, "display.html"))
 		r.StaticFile("/favicon.svg", filepath.Join(webDir, "static", "favicon.svg"))
 	} else {
 		log.Printf("warning: web directory not found at %s, frontend will not be served", webDir)
@@ -81,6 +84,9 @@ func main() {
 	{
 		api.GET("/schedule/default", scheduleHandler.GetDefault)
 		api.GET("/config", authHandler.GetPublicSystemConfig)
+
+		// ============ 大屏接收端（公开，凭 display_token） ============
+		api.GET("/shout/feed", shoutHandler.DisplayFeed)
 
 		auth := api.Group("/auth")
 		{
@@ -159,6 +165,23 @@ func main() {
 			stu.GET("/attendance/monthly", studentHandler.GetStudentMonthlyAttendance)
 			stu.POST("/attendance", studentHandler.SaveAttendance)
 			stu.DELETE("/attendance", studentHandler.DeleteAttendance)
+		}
+
+		// ============ 远程喊话（教师端，需登录） ============
+		shout := api.Group("/shout")
+		shout.Use(middleware.AuthRequired(authSvc))
+		{
+			shout.GET("/rooms", shoutHandler.ListRooms)
+			shout.POST("/rooms", shoutHandler.CreateRoom)
+			shout.POST("/join", shoutHandler.JoinRoom)
+			shout.GET("/rooms/:key", shoutHandler.GetRoom)
+			shout.PUT("/rooms/:key", shoutHandler.UpdateRoom)
+			shout.DELETE("/rooms/:key", shoutHandler.DeleteRoom)
+			shout.POST("/rooms/:key/token", shoutHandler.RegenerateToken)
+			shout.GET("/rooms/:key/members", shoutHandler.ListMembers)
+			shout.DELETE("/rooms/:key/members/:username", shoutHandler.RemoveMember)
+			shout.POST("/rooms/:key/send", shoutHandler.Send)
+			shout.GET("/rooms/:key/messages", shoutHandler.Poll)
 		}
 
 		admin := api.Group("/admin")

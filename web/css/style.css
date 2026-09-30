@@ -809,34 +809,121 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .today-att-sub{font-size:14px;font-weight:400;color:var(--text-sub);margin-left:6px}
 
 /* ============ 20. 花名册 ============ */
-.roster-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.roster-toolbar .cell-pop-input{min-width:0;font-size:13px;padding:8px 10px}
+.roster-toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-bottom:14px;
+}
+.roster-toolbar .cell-pop-input{
+  min-width:0;
+  font-size:13px;
+  padding:8px 10px;
+}
 
-.roster-list{margin-top:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.roster-table{width:100%;border-collapse:collapse;font-size:14px;min-width:900px;table-layout:fixed}
-.roster-table th,.roster-table td{padding:9px 10px;border-bottom:1px solid var(--table-border);text-align:left;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
-.roster-table th{background:var(--table-row-alt);font-size:12px;color:var(--text-sub);font-weight:600;letter-spacing:.5px}
-.roster-table tbody tr{cursor:pointer;transition:background .15s}
-.roster-table tbody tr:hover{background:var(--seat-hover)}
-.roster-table th:nth-child(1),.roster-table td:nth-child(1){width:50px;text-align:center}
-.roster-table th:nth-child(2),.roster-table td:nth-child(2){width:60px;text-align:center}
-.roster-table th:nth-child(3),.roster-table td:nth-child(3){width:50px;text-align:center}
-.roster-table th:nth-child(4),.roster-table td:nth-child(4){width:150px;text-align:center}
-.roster-table th:nth-child(5),.roster-table td:nth-child(5){width:60px;text-align:center}
-.roster-table th:nth-child(6),.roster-table td:nth-child(6){width:90px;text-align:center}
-.roster-table th:nth-child(7),.roster-table td:nth-child(7){width:90px;text-align:center}
-.roster-table th:nth-child(8),.roster-table td:nth-child(8){width:auto;white-space:normal;word-break:break-all}
-.roster-table .idx{color:var(--text-sub);font-size:12px;text-align:center}
-.roster-table .name{font-weight:600}
-.roster-table .gender-m{color:#1e40af;font-weight:600;text-align:center}
-.roster-table .gender-f{color:#be185d;font-weight:600;text-align:center}
-[data-theme="dark"] .roster-table .gender-m{color:#93c5fd}
-[data-theme="dark"] .roster-table .gender-f{color:#f9a8d4}
+.roster-list{
+  margin-top:6px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
 
-.pending-tag{display:inline-block;font-size:10px;background:#fef9c3;color:#713f12;padding:1px 6px;border-radius:6px;margin-left:4px;font-weight:500;white-space:nowrap}
-[data-theme="dark"] .pending-tag{background:#713f12;color:#fef08a}
-.roster-tr.pending-class td{background:rgba(254,249,195,0.35)}
-[data-theme="dark"] .roster-tr.pending-class td{background:rgba(113,63,18,0.2)}
+/* PC 端：允许换行，列宽放宽，信息完整显示 */
+.roster-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  min-width:960px;
+  table-layout:fixed;
+}
+
+.roster-table th,
+.roster-table td{
+  padding:9px 10px;
+  border-bottom:1px solid var(--table-border);
+  text-align:left;
+  color:var(--text-main);
+  white-space:normal;
+  word-break:break-all;
+  vertical-align:middle;
+}
+
+.roster-table th{
+  background:var(--table-row-alt);
+  font-size:12px;
+  color:var(--text-sub);
+  font-weight:600;
+  letter-spacing:.5px;
+}
+
+.roster-table tbody tr{
+  cursor:pointer;
+  transition:background .15s;
+}
+.roster-table tbody tr:hover{
+  background:var(--seat-hover);
+}
+
+/* PC 端列宽（放宽关键列） */
+.roster-table th:nth-child(1),
+.roster-table td:nth-child(1){ width:50px;  text-align:center; }
+.roster-table th:nth-child(2),
+.roster-table td:nth-child(2){ width:90px;  text-align:center; }
+.roster-table th:nth-child(3),
+.roster-table td:nth-child(3){ width:50px;  text-align:center; }
+.roster-table th:nth-child(4),
+.roster-table td:nth-child(4){ width:200px; text-align:center; }
+.roster-table th:nth-child(5),
+.roster-table td:nth-child(5){ width:110px; text-align:center; }
+.roster-table th:nth-child(6),
+.roster-table td:nth-child(6){ width:120px; text-align:center; }
+.roster-table th:nth-child(7),
+.roster-table td:nth-child(7){ width:120px; text-align:center; }
+.roster-table th:nth-child(8),
+.roster-table td:nth-child(8){ width:auto;  white-space:normal; word-break:break-all; }
+
+.roster-table .idx{
+  color:var(--text-sub);
+  font-size:12px;
+  text-align:center;
+}
+.roster-table .name{
+  font-weight:600;
+}
+.roster-table .gender-m{
+  color:#1e40af;
+  font-weight:600;
+  text-align:center;
+}
+.roster-table .gender-f{
+  color:#be185d;
+  font-weight:600;
+  text-align:center;
+}
+[data-theme="dark"] .roster-table .gender-m{ color:#93c5fd; }
+[data-theme="dark"] .roster-table .gender-f{ color:#f9a8d4; }
+
+.pending-tag{
+  display:inline-block;
+  font-size:10px;
+  background:#fef9c3;
+  color:#713f12;
+  padding:1px 6px;
+  border-radius:6px;
+  margin-left:4px;
+  font-weight:500;
+  white-space:nowrap;
+}
+[data-theme="dark"] .pending-tag{
+  background:#713f12;
+  color:#fef08a;
+}
+.roster-tr.pending-class td{
+  background:rgba(254,249,195,0.35);
+}
+[data-theme="dark"] .roster-tr.pending-class td{
+  background:rgba(113,63,18,0.2);
+}
 
 /* ============ 21. 考试成绩 ============ */
 .exams-list{margin-top:6px}
@@ -1165,8 +1252,40 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .sub-nav{margin:0 0 12px;border-radius:12px;padding:6px 8px}
   .sub-tab{padding:6px 12px;font-size:13px}
 
-  .roster-table{font-size:12px;min-width:820px}
-  .roster-table th,.roster-table td{padding:7px 8px}
+  /* 移动端：花名册表格收窄，禁止换行，溢出省略 */
+  .roster-table{
+    font-size:12px;
+    min-width:760px;
+    table-layout:fixed;
+  }
+
+  .roster-table th,
+  .roster-table td{
+    padding:7px 6px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* 移动端列宽（显著收窄关键列） */
+  .roster-table th:nth-child(1),
+  .roster-table td:nth-child(1){ width:36px;  text-align:center; }
+  .roster-table th:nth-child(2),
+  .roster-table td:nth-child(2){ width:64px;  text-align:center; }
+  .roster-table th:nth-child(3),
+  .roster-table td:nth-child(3){ width:40px;  text-align:center; }
+  .roster-table th:nth-child(4),
+  .roster-table td:nth-child(4){ width:130px; text-align:center; }
+  .roster-table th:nth-child(5),
+  .roster-table td:nth-child(5){ width:70px;  text-align:center; }
+  .roster-table th:nth-child(6),
+  .roster-table td:nth-child(6){ width:100px; text-align:center; }
+  .roster-table th:nth-child(7),
+  .roster-table td:nth-child(7){ width:100px; text-align:center; }
+  .roster-table th:nth-child(8),
+  .roster-table td:nth-child(8){ width:160px; white-space:normal; }
+
+  .roster-toolbar .cell-pop-input{ font-size:12px; padding:7px 8px; }
 
   .exam-stats,.scores-stats{grid-template-columns:repeat(2,1fr)}
   .tab-header{gap:6px;flex-wrap:wrap}
@@ -1384,4 +1503,151 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   align-items: center;
   flex-shrink: 0;
   padding-left: 0px;
+}
+
+/* ============ 27. 远程喊话 ============ */
+.shout-room-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:12px;
+}
+.shout-room-card{
+  background:var(--table-row-alt);
+  border:1px solid var(--table-border);
+  border-radius:14px;
+  padding:14px 16px;
+  cursor:pointer;
+  transition:transform .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.shout-room-card:hover{
+  background:var(--seat-hover);
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px rgba(0,0,0,.08);
+}
+.shout-room-name{
+  font-weight:700;font-size:15px;color:var(--text-main);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;
+}
+.shout-role{
+  font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px;
+  background:#e6f4ea;color:#137333;letter-spacing:.5px;
+}
+.shout-role.owner{background:#fef7e0;color:#b06000;}
+[data-theme="dark"] .shout-role{background:#0d652d;color:#ceead6;}
+[data-theme="dark"] .shout-role.owner{background:#7a3800;color:#feefc3;}
+.shout-room-meta{
+  font-size:12px;color:var(--text-sub);
+  display:flex;gap:16px;margin-bottom:12px;
+}
+.shout-room-meta b{color:#16a085;letter-spacing:2px;font-size:13px;}
+.shout-room-actions{display:flex;}
+.shout-btn-open{
+  padding:6px 16px;border-radius:8px;border:none;background:#3498db;color:#fff;
+  font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .2s;
+}
+.shout-btn-open:hover{background:#2980b9;}
+
+/* ---- 详情弹窗 ---- */
+.shout-info-box{
+  background:var(--table-row-alt);border-radius:12px;padding:12px 14px;margin-bottom:6px;
+}
+.shout-info-row{
+  display:flex;align-items:center;gap:10px;padding:6px 0;
+}
+.shout-info-row + .shout-info-row{border-top:1px dashed var(--legend-item-border);}
+.shout-info-row .k{
+  flex-shrink:0;width:70px;font-size:13px;color:var(--text-sub);
+}
+.shout-info-row .v{
+  flex:1;display:flex;align-items:center;gap:8px;min-width:0;
+}
+.shout-code{
+  font-size:18px;letter-spacing:4px;color:#16a085;font-weight:700;
+}
+.shout-url{
+  flex:1;min-width:0;font-size:12px;padding:7px 10px;
+  text-overflow:ellipsis;
+}
+.shout-copy{
+  flex-shrink:0;padding:5px 12px;border-radius:8px;border:1px solid var(--seat-border);
+  background:transparent;color:var(--text-main);font-size:12px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .2s;
+}
+.shout-copy:hover{background:#16a085;color:#fff;border-color:#16a085;}
+
+.shout-section-title{
+  font-size:13px;font-weight:700;color:var(--text-main);
+  margin:18px 0 10px;padding-left:8px;border-left:3px solid #16a085;
+}
+
+/* ---- 成员列表 ---- */
+.shout-member-list{
+  display:flex;flex-direction:column;gap:6px;
+}
+.shout-member-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;background:var(--table-row-alt);border-radius:10px;
+}
+.shout-member-name{
+  flex:1;font-size:14px;font-weight:600;color:var(--text-main);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.shout-member-role{
+  font-size:12px;color:var(--text-sub);flex-shrink:0;
+}
+.shout-member-del{
+  flex-shrink:0;padding:4px 10px;border-radius:8px;border:none;
+  background:#e74c3c;color:#fff;font-size:11px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:background .2s;
+}
+.shout-member-del:hover{background:#c0392b;}
+.shout-member-empty{
+  text-align:center;color:var(--text-sub);font-size:13px;padding:16px;
+}
+
+/* ---- 发送区 ---- */
+.shout-send-box{
+  background:var(--table-row-alt);border-radius:12px;padding:14px;
+}
+.shout-textarea{
+  width:100%;box-sizing:border-box;resize:vertical;
+  font-family:inherit;line-height:1.6;font-size:14px;
+}
+.shout-send-opts{
+  display:flex;gap:10px;margin-top:10px;
+}
+.shout-send-opts select{
+  flex:1;padding:8px 10px;font-size:13px;
+}
+.shout-send-btn{
+  width:100%;margin-top:12px;padding:11px;border:none;border-radius:10px;
+  background:#16a085;color:#fff;font-size:15px;font-weight:600;
+  font-family:inherit;cursor:pointer;letter-spacing:1px;transition:background .2s;
+}
+.shout-send-btn:hover{background:#1abc9c;}
+.shout-send-btn:active{transform:translateY(1px);}
+.shout-send-btn:disabled{cursor:not-allowed;}
+
+/* ---- 危险区 ---- */
+.shout-danger-row{display:flex;gap:10px;}
+.shout-btn-ghost{
+  flex:1;padding:10px;border-radius:10px;border:1px solid var(--seat-border);
+  background:transparent;color:var(--text-main);font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:all .2s;
+}
+.shout-btn-ghost:hover{background:var(--table-row-alt);}
+.shout-btn-danger{
+  flex:1;padding:10px;border-radius:10px;border:none;
+  background:#e74c3c;color:#fff;font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:background .2s;
+}
+.shout-btn-danger:hover{background:#c0392b;}
+
+/* ---- 移动端 ---- */
+@media (max-width:768px){
+  .shout-room-grid{grid-template-columns:1fr;}
+  .shout-info-row .k{width:58px;font-size:12px;}
+  .shout-code{font-size:16px;letter-spacing:3px;}
+  .shout-send-opts{flex-direction:column;}
+  .shout-danger-row{flex-direction:column;}
 }
