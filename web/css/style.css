@@ -1708,15 +1708,61 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: var(--text-sub);
 }
 
+/* ★ 发通知页顶栏：紧凑一行 */
 .shout-send-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: nowrap;          /* 关键：禁止换行 */
 }
-.shout-send-class-wrap { flex: 0 1 auto; min-width: 0; }
-.shout-send-class-wrap > select.cell-pop-input { padding-right: 36px !important; }
+.shout-send-class-wrap { flex: 1 1 auto; min-width: 0; }
+.shout-send-class-wrap > select.cell-pop-input {
+  padding: 6px 30px 6px 10px !important;
+  font-size: 13px;
+  height: 32px;
+  line-height: 1;
+  max-width: 100%;
+}
+
+/* 角色 / 在线 胶囊缩小 */
+.shout-send-head .shout-role-pill {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.shout-send-head .shout-online-status {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  gap: 5px;
+}
+
+/* ★ 消息类型下拉（发通知页顶部右侧） */
+.shout-send-type-wrap {
+  flex: 0 0 auto;
+  margin-left: auto;               /* 靠最右 */
+}
+.shout-send-type-wrap > select.cell-pop-input {
+  padding: 6px 28px 6px 10px !important;
+  font-size: 13px;
+  height: 32px;
+  line-height: 1;
+  width: auto;                     /* 宽度随内容 */
+  min-width: 0;
+  border-radius: 10px;
+  background-color: var(--table-row-alt);
+  border-color: transparent;
+  text-align: center;
+  text-align-last: center;
+  -moz-text-align-last: center;
+  cursor: pointer;
+}
+.shout-send-type-wrap > select.cell-pop-input:focus {
+  border-color: #2f6df6;
+}
 
 /* ★ 在线状态胶囊（放在班主任角色徽章右侧） */
 .shout-online-status {
@@ -2319,4 +2365,83 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .shout-code{font-size:16px;letter-spacing:3px;}
   .shout-send-opts{flex-direction:column;}
   .shout-danger-row{flex-direction:column;}
+}
+
+/* ============ 29. 喊话 · 图片模式 ============ */
+
+.shout-image-drop {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  border: 2px dashed var(--seat-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  overflow: hidden;
+}
+.shout-image-drop:hover {
+  border-color: #2f6df6;
+  background: rgba(47, 109, 246, .04);
+}
+.shout-image-drop.has-image {
+  border-style: solid;
+  border-color: var(--seat-border);
+  background: var(--table-row-alt);
+}
+.shout-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-sub);
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+}
+.shout-image-icon { font-size: 44px; opacity: .55; }
+.shout-image-title { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.shout-image-hint { font-size: 12px; color: var(--text-sub); }
+.shout-image-preview {
+  max-width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: 10px;
+  display: block;
+}
+.shout-image-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, .55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+.shout-image-clear:hover { background: #e74c3c; }
+
+/* 发送记录中的图片标签 */
+.shout-history-type.image { background: #e0e7ff; color: #3730a3; }
+[data-theme="dark"] .shout-history-type.image { background: #312e81; color: #c7d2fe; }
+.shout-history-image { color: var(--text-sub); font-style: italic; }
+
+/* 图片模式在移动端的适配 */
+@media (max-width: 768px) {
+  .shout-image-drop { min-height: 180px; }
+  .shout-image-preview { max-height: 240px; }
+  .shout-image-icon { font-size: 34px; }
+  .shout-image-title { font-size: 13px; }
+  .shout-image-hint { font-size: 11px; }
 }

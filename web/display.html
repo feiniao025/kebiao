@@ -83,6 +83,7 @@
 
   .msg-card.notice{box-shadow:0 0 0 2px rgba(250,204,21,.30),0 0 90px rgba(250,204,21,.10),0 40px 110px rgba(0,0,0,.65);}
   .msg-card.urgent{box-shadow:0 0 0 3px rgba(239,68,68,.45),0 0 110px rgba(239,68,68,.18),0 40px 110px rgba(0,0,0,.7);animation:popIn .32s cubic-bezier(.2,1.2,.4,1),shake .5s ease 1;}
+  .msg-card.image{box-shadow:0 0 0 2px rgba(129,140,248,.35),0 0 90px rgba(129,140,248,.15),0 40px 110px rgba(0,0,0,.65);}
 
   @keyframes shake{
     0%,100%{transform:translateX(0);}
@@ -104,6 +105,7 @@
   }
   .msg-card.notice .msg-type{background:rgba(250,204,21,.14);color:#fde047;}
   .msg-card.urgent .msg-type{background:rgba(239,68,68,.18);color:#fca5a5;}
+  .msg-card.image .msg-type{background:rgba(129,140,248,.18);color:#c7d2fe;}
   .msg-from{
     font-size:16px;color:#94a3b8;letter-spacing:1px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -119,9 +121,62 @@
   .msg-card.notice .msg-content{color:#fef9c3;}
   .msg-card.urgent .msg-content{color:#fee2e2;text-shadow:0 2px 18px rgba(239,68,68,.25);}
 
+  /* ★ 图片消息 */
+  .msg-image{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    max-height:62vh;
+    overflow:hidden;
+  }
+  .msg-image img{
+    max-width:100%;
+    max-height:62vh;
+    object-fit:contain;
+    border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    background:#0b1220;
+  }
+
   .msg-foot{
     margin-top:30px;text-align:right;
     font-size:13px;color:#475569;letter-spacing:2px;
+  }
+
+  /* ★ 弹窗底部中央倒计时（flex 严格居中） */
+  .msg-countdown{
+    margin-top:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    width:100%;
+    font-size:14px;
+    color:#64748b;
+    letter-spacing:2px;
+    font-variant-numeric:tabular-nums;
+    user-select:none;
+  }
+  .msg-countdown .cd-num{
+    display:inline-block;
+    min-width:2ch;
+    color:#38bdf8;
+    font-weight:700;
+    font-size:18px;
+    margin:0 4px;
+    text-shadow:0 0 12px rgba(56,189,248,.35);
+  }
+  .msg-card.notice .msg-countdown .cd-num{
+    color:#facc15;
+    text-shadow:0 0 12px rgba(250,204,21,.35);
+  }
+  .msg-card.urgent .msg-countdown .cd-num{
+    color:#f87171;
+    text-shadow:0 0 12px rgba(248,113,113,.35);
+  }
+  .msg-card.image .msg-countdown .cd-num{
+    color:#a5b4fc;
+    text-shadow:0 0 12px rgba(129,140,248,.35);
   }
 
   .tip{
@@ -137,6 +192,7 @@
     .hud{padding:14px 18px;}
     .hud .room{font-size:15px;}
     .clock{font-size:15px;}
+    .msg-image img{max-height:52vh;}
   }
 </style>
 </head>
@@ -170,11 +226,57 @@
 (function () {
   'use strict';
 
-  var params   = new URLSearchParams(location.search);
-  var token    = params.get('token') || '';
-  var since    = 0;
+  var params = new URLSearchParams(location.search);
+  var token  = params.get('token') || '';
+
+  /* ============================================================
+     ★ 核心：只显示一次 & 过期不补发
+     - 每个 token 用 localStorage 记录 since（已拉取到的最大消息 ID）
+     - 首次打开大屏：把当前所有消息都跳过（不显示），只记录 since
+     - 后续打开：从 localStorage 恢复 since，只拉新消息
+     - 拉到的新消息按 duration 严格过滤过期项
+     ============================================================ */
+
+  var SINCE_KEY = 'shout_since_' + token;
+
+  var since = 0;
+  var isFirstConnect = true;   // 本次是否为「首次连接」
+
+  var storageOK = (function () {
+    try {
+      localStorage.setItem('__shout_probe__', '1');
+      localStorage.removeItem('__shout_probe__');
+      return true;
+    } catch (e) { return false; }
+  })();
+
+  if (storageOK) {
+    try {
+      var saved = localStorage.getItem(SINCE_KEY);
+      if (saved !== null) {
+        since = parseInt(saved, 10) || 0;
+        isFirstConnect = false;
+      }
+    } catch (e) {}
+  }
+
+  function saveSince() {
+    if (!storageOK) return;
+    try { localStorage.setItem(SINCE_KEY, String(since)); } catch (e) {}
+  }
+
+  function isExpired(m) {
+    var t = new Date(m.created_at).getTime();
+    if (isNaN(t)) return false;
+    var dur = (m.duration && m.duration > 0 ? m.duration : 20) * 1000;
+    return Date.now() - t > dur;
+  }
+
+  /* ============================================================ */
+
   var failCount = 0;
   var popTimer = null;
+  var cdTimer = null;
   var queue = [];
   var showing = false;
 
@@ -196,31 +298,60 @@
   }
 
   function renderMessage(m) {
-    var typeLabel =
-      m.msg_type === 'urgent' ? '🚨 紧急' :
-      m.msg_type === 'notice' ? '📢 通知' : '💬 消息';
+    var isImage = (m.msg_type === 'image');
 
-    msgCard.className = 'msg-card ' + (m.msg_type || 'text');
+    var typeLabel = isImage ? '🖼️ 图片' :
+      (m.msg_type === 'urgent' ? '🚨 紧急' :
+       m.msg_type === 'notice' ? '📢 通知' : '💬 消息');
+
+    var totalSec = (m.duration && m.duration > 0) ? m.duration : 20;
+
+    // 图片直接使用 dataURL，不再 HTML 转义（避免 base64 中的字符被替换）
+    var bodyHtml = isImage
+      ? '<div class="msg-image"><img src="' + m.content + '" alt="图片" /></div>'
+      : '<div class="msg-content">' + esc(m.content) + '</div>';
+
+    var cls = 'msg-card ' + (isImage ? 'image' : (m.msg_type || 'text'));
+
+    msgCard.className = cls;
     msgCard.innerHTML =
       '<div class="msg-head">' +
         '<span class="msg-type">' + typeLabel + '</span>' +
         '<span class="msg-from">' + esc(m.sender_name) + ' · ' + esc(m.sender_role) + '</span>' +
       '</div>' +
-      '<div class="msg-content">' + esc(m.content) + '</div>' +
-      '<div class="msg-foot">' + new Date(m.created_at).toLocaleTimeString('zh-CN') + '</div>';
+      bodyHtml +
+      '<div class="msg-foot">' + new Date(m.created_at).toLocaleTimeString('zh-CN') + '</div>' +
+      '<div class="msg-countdown">' +
+        '<span>本消息将在</span>' +
+        '<span class="cd-num" id="msgCountdownNum">' + totalSec + '</span>' +
+        '<span>秒后自动关闭</span>' +
+      '</div>';
 
     popup.classList.add('show');
     showing = true;
 
     if (popTimer) clearTimeout(popTimer);
-    popTimer = setTimeout(hidePopup, (m.duration || 20) * 1000);
+    popTimer = setTimeout(hidePopup, totalSec * 1000);
+
+    if (cdTimer) clearInterval(cdTimer);
+    var remain = totalSec;
+    var numEl = document.getElementById('msgCountdownNum');
+    cdTimer = setInterval(function () {
+      remain -= 1;
+      if (remain < 0) remain = 0;
+      if (numEl) numEl.textContent = remain;
+      if (remain <= 0) {
+        clearInterval(cdTimer);
+        cdTimer = null;
+      }
+    }, 1000);
   }
 
   function hidePopup() {
     popup.classList.remove('show');
     showing = false;
     if (popTimer) { clearTimeout(popTimer); popTimer = null; }
-    // 队列里还有则继续
+    if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
     setTimeout(function () {
       if (!showing && queue.length > 0) {
         renderMessage(queue.shift());
@@ -252,15 +383,30 @@
       if (data.room && data.room.name) {
         roomNameEl.textContent = data.room.name;
       }
-      if (document.getElementById('idle')) {
-        // 首次收到 room 信息后隐藏空闲态由弹屏自然覆盖
-      }
 
       var list = data.messages || [];
+
+      var maxId = since;
       for (var i = 0; i < list.length; i++) {
-        var m = list[i];
-        if (m.id > since) since = m.id;
+        if (list[i].id > maxId) maxId = list[i].id;
+      }
+
+      if (isFirstConnect) {
+        since = maxId;
+        saveSince();
+        isFirstConnect = false;
+        return;
+      }
+
+      for (var j = 0; j < list.length; j++) {
+        var m = list[j];
+        if (isExpired(m)) continue;
         enqueueMessage(m);
+      }
+
+      if (maxId > since) {
+        since = maxId;
+        saveSince();
       }
     } catch (e) {
       failCount++;
@@ -285,7 +431,6 @@
     return;
   }
 
-  // 点击弹屏关闭
   popup.addEventListener('click', hidePopup);
 
   tick();
@@ -294,7 +439,6 @@
   poll();
   setInterval(poll, 2000);
 
-  // 页面从后台恢复时立即补拉一次
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) poll();
   });

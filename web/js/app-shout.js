@@ -2,25 +2,29 @@
    app-shout.js —— 远程喊话
    子分类：班级管理 / 发通知 / 发送记录
 
-   本版本新增：
-   - 教室详情弹窗内教室码右侧显示「在线/离线」实时状态（3 秒轮询）
-   - 教室码右侧提供「重置教室码」按钮（仅班主任可见）
-   - 定时发送改为服务端定时（关闭页面也会到点自动发送）
+   本版本：
+   - 三种模式：🖥️ 桌面弹窗 / 🔊 语音广播 / 🖼️ 发送图片
+   - 图片模式支持上传、自动压缩、预览、清除
+   - 图片以 dataURL 形式作为 content 发送，msg_type='image'
+   - 大屏端识别 msg_type='image' 直接渲染 <img>
+   - 定时发送走服务端（关闭页面也会到点自动发送）
    ============================================================ */
 
 window.shoutSubTab = 'manage';           // manage | send | history
 window.shoutRooms = [];
 window.currentShoutRoomKey = '';
 window.currentShoutClass = '';
-window.shoutMsgMode = 'voice';           // voice | popup | record
+window.shoutMsgMode = 'popup';           // ★ popup | voice | image
+window.shoutMsgType = 'text';            // text | notice | urgent
 window.shoutDisplay = 'marquee';         // marquee | card
 window.shoutBroadcastCount = 1;
 window.shoutHistoryFilter = 'all';
 window.shoutHistoryList = [];
+window.shoutImageData = '';              // ★ 当前已选图片 dataURL
 
 let shoutRoomsLoaded = false;
 let shoutStatusTimer = null;
-let shoutRoomStatusTimer = null;         // 教室详情弹窗内在线状态轮询
+let shoutListStatusTimer = null;
 
 /* ---------- 工具 ---------- */
 
@@ -67,11 +71,49 @@ function bindCopyButtons(root) {
   });
 }
 
-function stopRoomStatusPolling() {
-  if (shoutRoomStatusTimer) {
-    clearInterval(shoutRoomStatusTimer);
-    shoutRoomStatusTimer = null;
+function stopListStatusPolling() {
+  if (shoutListStatusTimer) {
+    clearInterval(shoutListStatusTimer);
+    shoutListStatusTimer = null;
   }
+}
+
+/* ---------- 图片压缩工具 ---------- */
+
+function compressShoutImage(file, maxSize, quality) {
+  return new Promise(function (resolve, reject) {
+    if (!file) { reject(new Error('未选择文件')); return; }
+    if (!/^image\//.test(file.type)) { reject(new Error('请选择图片文件')); return; }
+    if (file.size > 8 * 1024 * 1024) { reject(new Error('图片超过 8MB，请先压缩')); return; }
+
+    const reader = new FileReader();
+    reader.onload = function () {
+      const img = new Image();
+      img.onload = function () {
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          const ratio = Math.min(maxSize / w, maxSize / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const isPng = file.type === 'image/png';
+        const out = canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', quality);
+        resolve(out);
+      };
+      img.onerror = function () { reject(new Error('图片加载失败')); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { reject(new Error('图片读取失败')); };
+    reader.readAsDataURL(file);
+  });
 }
 
 /* ---------- 主渲染 ---------- */
@@ -85,7 +127,7 @@ window.renderShout = async function () {
     clearInterval(shoutStatusTimer);
     shoutStatusTimer = null;
   }
-  stopRoomStatusPolling();
+  stopListStatusPolling();
 
   const wrap = document.createElement('div');
   wrap.className = 'me-page';
@@ -164,6 +206,10 @@ async function renderShoutManage() {
           '<div class="shout-room-sub">教室码 ' + escapeHtml(r.room_key) +
             ' · ' + (r.member_count || 0) + ' 位老师</div>' +
         '</div>' +
+        '<span class="shout-online-status" data-status-key="' + escapeHtml(r.room_key) + '">' +
+          '<span class="shout-status-dot"></span>' +
+          '<span>检测中…</span>' +
+        '</span>' +
         '<button class="shout-room-more" data-more="' + escapeHtml(r.room_key) + '" title="班级设置">⋯</button>' +
       '</div>';
     });
@@ -211,9 +257,60 @@ async function renderShoutManage() {
   body.querySelectorAll('.shout-client-url').forEach(function (el) {
     el.onclick = function () { copyText(el.dataset.copy); };
   });
+
+  stopListStatusPolling();
+  refreshRoomListStatus();
+  shoutListStatusTimer = setInterval(refreshRoomListStatus, 5000);
+}
+
+async function refreshRoomListStatus() {
+  const items = document.querySelectorAll('.shout-room-item[data-key]');
+  if (!items.length) return;
+
+  await Promise.all(Array.from(items).map(async function (el) {
+    const key = el.dataset.key;
+    const box = el.querySelector('.shout-online-status');
+    if (!box) return;
+
+    const dot = box.querySelector('.shout-status-dot');
+    const txt = box.querySelector('span:last-child');
+
+    try {
+      const resp = await API.getShoutRoomStatus(key);
+      const on = !!resp.online;
+      if (dot) dot.classList.toggle('online', on);
+      if (txt) txt.textContent = on ? '在线' : '离线';
+    } catch (e) {
+      if (dot) dot.classList.remove('online');
+      if (txt) txt.textContent = '离线';
+    }
+  }));
 }
 
 /* ---------- ② 发通知 ---------- */
+
+// 取当前模式下的发送内容与类型
+function getShoutSendPayload() {
+  if (shoutMsgMode === 'image') {
+    if (!window.shoutImageData) return { error: '请先选择一张图片' };
+    return { content: window.shoutImageData, msgType: 'image' };
+  }
+  const ta = $('shoutSendContent');
+  const content = ta ? ta.value.trim() : '';
+  if (!content) return { error: shoutMsgMode === 'voice' ? '请输入要播报的内容' : '请输入要显示的内容' };
+  return { content: content, msgType: shoutMsgType || 'text' };
+}
+
+function clearShoutSendInput() {
+  if (shoutMsgMode === 'image') {
+    window.shoutImageData = '';
+    return;
+  }
+  const ta = $('shoutSendContent');
+  const counter = $('shoutSendCount');
+  if (ta) ta.value = '';
+  if (counter) counter.textContent = '0/200';
+}
 
 async function renderShoutSend() {
   const body = $('shoutSubBody');
@@ -240,7 +337,7 @@ async function renderShoutSend() {
 
   let html = '';
 
-  // 顶部：班级选择 + 角色 + 在线状态
+  /* 顶部：班级 + 角色 + 在线状态 +（图片模式下隐藏）消息类型 */
   html += '<div class="shout-send-head">' +
     '<div class="select-wrap shout-send-class-wrap">' +
       '<select id="shoutSendClass" class="cell-pop-input">' + classOptions + '</select>' +
@@ -249,14 +346,24 @@ async function renderShoutSend() {
     '<span class="shout-online-status">' +
       '<span class="shout-status-dot" id="shoutSendStatusDot"></span>' +
       '<span id="shoutSendStatusText">检测中…</span>' +
-    '</span>' +
-  '</div>';
+    '</span>';
 
-  // 模式标签
+  if (shoutMsgMode !== 'image') {
+    html += '<div class="select-wrap shout-send-type-wrap">' +
+      '<select id="shoutSendType" class="cell-pop-input" title="选择消息在大屏上的显示类型">' +
+        '<option value="text"'   + (shoutMsgType === 'text'   ? ' selected' : '') + '>💬 消息</option>' +
+        '<option value="notice"' + (shoutMsgType === 'notice' ? ' selected' : '') + '>📢 通知</option>' +
+        '<option value="urgent"' + (shoutMsgType === 'urgent' ? ' selected' : '') + '>🚨 紧急</option>' +
+      '</select>' +
+    '</div>';
+  }
+  html += '</div>';
+
+  /* 模式标签：桌面弹窗 / 语音广播 / 发送图片 */
   const modes = [
-    { key: 'voice',  icon: '🔊', label: '语音广播' },
-    { key: 'popup',  icon: '🖥️', label: '桌面弹窗' },
-    { key: 'record', icon: '🎙️', label: '录音喊话' }
+    { key: 'popup', icon: '🖥️', label: '桌面弹窗' },
+    { key: 'voice', icon: '🔊', label: '语音广播' },
+    { key: 'image', icon: '🖼️', label: '发送图片' }
   ];
   html += '<div class="shout-mode-tabs">';
   modes.forEach(function (m) {
@@ -267,21 +374,41 @@ async function renderShoutSend() {
   });
   html += '</div>';
 
-  // 输入框
-  let placeholder = '输入文字，教室音箱将以自然语音朗读播报…';
-  if (shoutMsgMode === 'popup') placeholder = '输入要显示在大屏上的文字…';
-  else if (shoutMsgMode === 'record') placeholder = '录音喊话功能即将上线，可先使用语音广播';
+  /* 输入区域 */
+  if (shoutMsgMode === 'image') {
+    const hasImg = !!window.shoutImageData;
+    html += '<div class="shout-input-wrap">' +
+      '<div class="shout-image-drop' + (hasImg ? ' has-image' : '') + '" id="shoutImageDrop">' +
+        (hasImg
+          ? '<img class="shout-image-preview" src="' + window.shoutImageData + '" alt="预览" />' +
+            '<button type="button" class="shout-image-clear" id="shoutImageClear" title="移除图片">×</button>'
+          : '<div class="shout-image-placeholder">' +
+              '<div class="shout-image-icon">🖼️</div>' +
+              '<div class="shout-image-title">点击此处选择图片</div>' +
+              '<div class="shout-image-hint">支持 JPG / PNG / GIF，建议 ≤ 2MB</div>' +
+            '</div>') +
+      '</div>' +
+      '<input type="file" id="shoutImageInput" accept="image/*" style="display:none">' +
+      '<div class="shout-input-meta">' +
+        '<span class="shout-input-tag">发送后大屏将以图片弹窗方式展示</span>' +
+        '<span class="shout-input-count">' + (hasImg ? '已选择图片' : '未选择图片') + '</span>' +
+      '</div>' +
+    '</div>';
+  } else {
+    let placeholder = '输入文字，教室音箱将以自然语音朗读播报…';
+    if (shoutMsgMode === 'popup') placeholder = '输入要显示在大屏上的文字…';
 
-  html += '<div class="shout-input-wrap">' +
-    '<textarea id="shoutSendContent" class="cell-pop-input shout-textarea" rows="6" maxlength="200" ' +
-      'placeholder="' + escapeHtml(placeholder) + '"></textarea>' +
-    '<div class="shout-input-meta">' +
-      '<span class="shout-input-tag">智能 TTS 语音朗读</span>' +
-      '<span class="shout-input-count" id="shoutSendCount">0/200</span>' +
-    '</div>' +
-  '</div>';
+    html += '<div class="shout-input-wrap">' +
+      '<textarea id="shoutSendContent" class="cell-pop-input shout-textarea" rows="6" maxlength="200" ' +
+        'placeholder="' + escapeHtml(placeholder) + '"></textarea>' +
+      '<div class="shout-input-meta">' +
+        '<span class="shout-input-tag">' + (shoutMsgMode === 'voice' ? '智能 TTS 语音朗读' : '大屏弹窗展示') + '</span>' +
+        '<span class="shout-input-count" id="shoutSendCount">0/200</span>' +
+      '</div>' +
+    '</div>';
+  }
 
-  // 选项行 1：大屏呈现形式
+  /* 大屏呈现形式 */
   html += '<div class="shout-opt-row">' +
     '<div class="shout-opt-info">' +
       '<div class="shout-opt-label">大屏呈现形式</div>' +
@@ -293,7 +420,7 @@ async function renderShoutSend() {
     '</div>' +
   '</div>';
 
-  // 选项行 2：播报次数
+  /* 播报次数 */
   html += '<div class="shout-opt-row">' +
     '<div class="shout-opt-info">' +
       '<div class="shout-opt-label">播报次数</div>' +
@@ -306,7 +433,7 @@ async function renderShoutSend() {
     '</div>' +
   '</div>';
 
-  // 选项行 3：定时发送（开关）
+  /* 定时发送开关 */
   html += '<div class="shout-opt-row">' +
     '<div class="shout-opt-info">' +
       '<div class="shout-opt-label">定时发送</div>' +
@@ -320,7 +447,6 @@ async function renderShoutSend() {
     '</div>' +
   '</div>';
 
-  // 定时发送面板（开关打开后显示）
   html += '<div class="shout-schedule-box" id="shoutScheduleBox" style="display:none;">' +
     '<label class="shout-schedule-label">日期：</label>' +
     '<input type="date" id="shoutScheduleDate" class="shout-schedule-input">' +
@@ -334,18 +460,24 @@ async function renderShoutSend() {
   html += '<button id="shoutSendBtn" class="shout-send-main">' +
     '<span class="shout-send-icon">✈</span><span>发送至教室大屏</span></button>';
 
-  // 待发送定时任务展示区
   html += '<div id="shoutScheduledBox" class="shout-client-block" style="display:none;margin-top:18px;"></div>';
 
   body.innerHTML = html;
 
-  // ---------- 绑定 ----------
+  /* ---------- 绑定 ---------- */
   const clsSel = $('shoutSendClass');
   clsSel.value = currentShoutClass;
   clsSel.onchange = function () {
     currentShoutClass = clsSel.value;
     renderShoutSend();
   };
+
+  const typeSel = $('shoutSendType');
+  if (typeSel) {
+    typeSel.onchange = function () {
+      shoutMsgType = typeSel.value || 'text';
+    };
+  }
 
   body.querySelectorAll('.shout-mode-tab').forEach(function (b) {
     b.onclick = function () {
@@ -354,12 +486,54 @@ async function renderShoutSend() {
     };
   });
 
+  // 文本输入
   const ta = $('shoutSendContent');
   const counter = $('shoutSendCount');
-  ta.oninput = function () {
-    counter.textContent = ta.value.length + '/200';
-  };
+  if (ta) {
+    ta.oninput = function () {
+      if (counter) counter.textContent = ta.value.length + '/200';
+    };
+  }
 
+  // 图片模式
+  if (shoutMsgMode === 'image') {
+    const drop = $('shoutImageDrop');
+    const fileInp = $('shoutImageInput');
+    const clearBtn = $('shoutImageClear');
+
+    if (drop && fileInp) {
+      drop.onclick = function (e) {
+        if (e.target.closest('#shoutImageClear')) return;
+        fileInp.click();
+      };
+    }
+    if (fileInp) {
+      fileInp.onchange = async function () {
+        const f = fileInp.files && fileInp.files[0];
+        if (!f) return;
+        try {
+          showSaveStatus('正在处理图片…', false);
+          const dataUrl = await compressShoutImage(f, 1280, 0.82);
+          window.shoutImageData = dataUrl;
+          renderShoutSend();
+          showSaveStatus('图片已就绪', false);
+        } catch (err) {
+          alert('图片处理失败：' + (err.message || err));
+        } finally {
+          fileInp.value = '';
+        }
+      };
+    }
+    if (clearBtn) {
+      clearBtn.onclick = function (e) {
+        e.stopPropagation();
+        window.shoutImageData = '';
+        renderShoutSend();
+      };
+    }
+  }
+
+  // 大屏呈现形式
   body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutDisplay = b.dataset.display;
@@ -369,6 +543,7 @@ async function renderShoutSend() {
     };
   });
 
+  // 播报次数
   body.querySelectorAll('.shout-opt-seg[data-opt="count"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutBroadcastCount = parseInt(b.dataset.count, 10) || 1;
@@ -378,7 +553,7 @@ async function renderShoutSend() {
     };
   });
 
-  // 定时发送开关
+  // 定时发送
   const sch = $('shoutSendSchedule');
   const schBox = $('shoutScheduleBox');
   const schDate = $('shoutScheduleDate');
@@ -400,7 +575,6 @@ async function renderShoutSend() {
   }
   if (sch) sch.onchange = updateScheduleVisibility;
 
-  // 定时发送按钮 —— 交给服务端调度器
   const schBtn = $('shoutScheduleBtn');
   if (schBtn) {
     schBtn.onclick = async function () {
@@ -416,23 +590,19 @@ async function renderShoutSend() {
       if (isNaN(sendAtMs)) { errEl.textContent = '时间格式错误'; return; }
       if (sendAtMs - Date.now() < 1000) { errEl.textContent = '时间已过，请重新选择'; return; }
 
-      const content = ta.value.trim();
-      if (!content) { errEl.textContent = '请先输入要发送的内容'; ta.focus(); return; }
+      const payload = getShoutSendPayload();
+      if (payload.error) { errEl.textContent = payload.error; return; }
 
-      let msgType = 'text';
-      if (shoutMsgMode === 'popup') msgType = 'notice';
-      else if (shoutMsgMode === 'record') msgType = 'urgent';
       const duration = 20 * (shoutBroadcastCount || 1);
 
       schBtn.disabled = true; schBtn.style.opacity = '.7';
       try {
-        await API.scheduleShout(currentShoutClass, content, msgType, duration, sendAtMs);
+        await API.scheduleShout(currentShoutClass, payload.content, payload.msgType, duration, sendAtMs);
         showSaveStatus('已加入服务端定时队列，到点自动发送', false);
-        ta.value = '';
-        counter.textContent = '0/200';
+        clearShoutSendInput();
         if (sch) sch.checked = false;
         updateScheduleVisibility();
-        await renderScheduledList();
+        renderShoutSend();
       } catch (e) {
         errEl.textContent = e.message || '设置定时失败';
       } finally {
@@ -443,29 +613,25 @@ async function renderShoutSend() {
 
   updateScheduleVisibility();
 
-  // 发送按钮
+  // 立即发送
   $('shoutSendBtn').onclick = async function () {
-    const content = ta.value.trim();
     const errEl = $('shoutSendError');
     errEl.textContent = '';
-    if (!content) { errEl.textContent = '请输入要发送的内容'; ta.focus(); return; }
 
-    let msgType = 'text';
-    if (shoutMsgMode === 'popup') msgType = 'notice';
-    else if (shoutMsgMode === 'record') msgType = 'urgent';
+    const payload = getShoutSendPayload();
+    if (payload.error) { errEl.textContent = payload.error; return; }
 
     const duration = 20 * (shoutBroadcastCount || 1);
-
     const btn = $('shoutSendBtn');
     btn.disabled = true;
     btn.style.opacity = '.7';
 
     try {
-      await API.sendShout(currentShoutClass, content, msgType, duration);
-      ta.value = '';
-      counter.textContent = '0/200';
+      await API.sendShout(currentShoutClass, payload.content, payload.msgType, duration);
+      clearShoutSendInput();
       shoutHistoryList = [];
       showSaveStatus('已发送至教室大屏', false);
+      renderShoutSend();
     } catch (e) {
       errEl.textContent = e.message || '发送失败';
     } finally {
@@ -474,16 +640,13 @@ async function renderShoutSend() {
     }
   };
 
-  // 在线状态轮询
   await refreshSendStatus();
   if (shoutStatusTimer) { clearInterval(shoutStatusTimer); shoutStatusTimer = null; }
   shoutStatusTimer = setInterval(refreshSendStatus, 3000);
 
-  // 加载待发送定时任务列表
   renderScheduledList();
 }
 
-// 显示当前用户在服务端的定时任务（可取消）
 async function renderScheduledList() {
   const box = document.getElementById('shoutScheduledBox');
   if (!box) return;
@@ -515,11 +678,15 @@ async function renderScheduledList() {
     const timeStr = yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + mi;
     const room = shoutRooms.find(function (r) { return r.room_key === s.room_key; });
     const roomName = room ? room.name : s.room_key;
+
+    const isImage = s.msg_type === 'image';
+    const contentPreview = isImage ? '🖼️ [图片]' : escapeHtml(s.content);
+
     html += '<div class="shout-member-row">' +
       '<span class="shout-member-name" style="flex:1;min-width:0;">' +
         escapeHtml(timeStr) + ' · ' + escapeHtml(roomName) +
         '<div style="font-size:12px;color:var(--text-sub);margin-top:4px;white-space:pre-wrap;word-break:break-word;font-weight:400;">' +
-          escapeHtml(s.content) +
+          contentPreview +
         '</div>' +
       '</span>' +
       '<button class="shout-member-del" type="button" data-sid="' + s.id + '">取消</button>' +
@@ -540,7 +707,6 @@ async function renderScheduledList() {
   });
 }
 
-// 查询当前教室大屏在线状态
 async function refreshSendStatus() {
   const dot = $('shoutSendStatusDot');
   const text = $('shoutSendStatusText');
@@ -627,6 +793,7 @@ function renderShoutHistoryList() {
     let typeLabel = '消息', typeCls = 'text';
     if (m.msg_type === 'urgent') { typeLabel = '紧急'; typeCls = 'urgent'; }
     else if (m.msg_type === 'notice') { typeLabel = '通知'; typeCls = 'notice'; }
+    else if (m.msg_type === 'image') { typeLabel = '图片'; typeCls = 'image'; }
 
     let time = m.created_at;
     try { time = new Date(m.created_at).toLocaleString('zh-CN'); } catch (e) {}
@@ -635,23 +802,22 @@ function renderShoutHistoryList() {
     const statusCls = delivered ? 'ok' : 'fail';
     const statusText = delivered ? '✓ 已送达' : '✕ 未送达';
 
-    html += '<div class="shout-history-item" data-id="' + m.id + '">' +
+    const contentHtml = (m.msg_type === 'image')
+      ? '<div class="shout-history-content shout-history-image">🖼️ [图片]</div>'
+      : '<div class="shout-history-content">' + escapeHtml(m.content) + '</div>';
 
+    html += '<div class="shout-history-item" data-id="' + m.id + '">' +
       '<div class="shout-history-top">' +
         '<span class="shout-history-room">' + escapeHtml(roomName) + '</span>' +
         '<span class="shout-history-type ' + typeCls + '">' + typeLabel + '</span>' +
         '<span class="shout-history-status ' + statusCls + '">' + statusText + '</span>' +
       '</div>' +
-
       '<div class="shout-history-time">' + escapeHtml(time) + '</div>' +
-
-      '<div class="shout-history-content">' + escapeHtml(m.content) + '</div>' +
-
+      contentHtml +
       '<div class="shout-history-foot">' +
         '<button type="button" class="shout-history-btn reshare" data-act="resend" data-id="' + m.id + '">重发</button>' +
         '<button type="button" class="shout-history-btn danger" data-act="delete" data-id="' + m.id + '">删除</button>' +
       '</div>' +
-
     '</div>';
   });
   html += '</div>';
@@ -746,22 +912,18 @@ window.openShoutRoomPop = async function (roomKey) {
   if (!roomKey) return;
   currentShoutRoomKey = roomKey;
 
-  stopRoomStatusPolling();
-
   $('shoutRoomPop').style.display = 'flex';
   $('shoutRoomTitle').textContent = '班级详情';
   $('shoutRoomBody').innerHTML = '<div class="today-empty">加载中...</div>';
 
-  let room, members, online = false;
+  let room, members;
   try {
     const results = await Promise.all([
       API.getShoutRoom(roomKey),
-      API.listShoutMembers(roomKey),
-      API.getShoutRoomStatus(roomKey).catch(function () { return { online: false }; })
+      API.listShoutMembers(roomKey)
     ]);
     room = results[0].room;
     members = results[1].members || [];
-    online = !!(results[2] && results[2].online);
   } catch (e) {
     $('shoutRoomBody').innerHTML = '<div class="today-empty">加载失败：' + escapeHtml(e.message) + '</div>';
     return;
@@ -773,17 +935,12 @@ window.openShoutRoomPop = async function (roomKey) {
 
   let html = '';
 
-  // ---- 教室码行：教室码 + 复制 + 在线状态 + 重置（仅班主任） ----
   html += '<div class="shout-info-box">';
   html += '<div class="shout-info-row">' +
     '<span class="k">教室码</span>' +
     '<span class="v">' +
       '<b class="shout-code">' + escapeHtml(room.room_key) + '</b>' +
       '<button class="shout-copy" data-copy="' + escapeHtml(room.room_key) + '" type="button">复制</button>' +
-      '<span class="shout-online-status" id="shoutRoomOnlineStatus">' +
-        '<span class="shout-status-dot' + (online ? ' online' : '') + '"></span>' +
-        '<span>' + (online ? '在线' : '离线') + '</span>' +
-      '</span>' +
       (room.is_owner
         ? '<button class="shout-copy" id="shoutResetKeyBtn" type="button" ' +
           'style="background:#fef7e0;color:#b06000;border-color:#f0d58a;">重置</button>'
@@ -799,7 +956,6 @@ window.openShoutRoomPop = async function (roomKey) {
     '</span></div>';
   html += '</div>';
 
-  // ---- 成员列表 ----
   html += '<div class="shout-section-title">👥 班级成员（' + members.length + '）</div>';
   html += '<div class="shout-member-list">';
   if (!members.length) {
@@ -819,7 +975,6 @@ window.openShoutRoomPop = async function (roomKey) {
   }
   html += '</div>';
 
-  // ---- 班主任专属操作 ----
   if (room.is_owner) {
     html += '<div class="shout-section-title">⚙️ 班级管理</div>';
     html += '<div class="shout-danger-row">' +
@@ -832,7 +987,6 @@ window.openShoutRoomPop = async function (roomKey) {
 
   bindCopyButtons($('shoutRoomBody'));
 
-  // ---- 移除成员 ----
   $('shoutRoomBody').querySelectorAll('.shout-member-del').forEach(function (b) {
     b.onclick = async function (ev) {
       ev.stopPropagation();
@@ -847,7 +1001,6 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   });
 
-  // ---- 重置大屏地址 ----
   const resetBtn = $('shoutResetTokenBtn');
   if (resetBtn) {
     resetBtn.onclick = async function () {
@@ -860,7 +1013,6 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   }
 
-  // ---- 重置教室码 ----
   const resetKeyBtn = $('shoutResetKeyBtn');
   if (resetKeyBtn) {
     resetKeyBtn.onclick = async function () {
@@ -882,7 +1034,6 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   }
 
-  // ---- 删除班级 ----
   const delBtn = $('shoutDeleteRoomBtn');
   if (delBtn) {
     delBtn.onclick = async function () {
@@ -896,24 +1047,6 @@ window.openShoutRoomPop = async function (roomKey) {
       } catch (e) { alert(e.message); }
     };
   }
-
-  // ---- 在线状态轮询 ----
-  shoutRoomStatusTimer = setInterval(async function () {
-    const pop = $('shoutRoomPop');
-    if (!pop || pop.style.display === 'none') {
-      stopRoomStatusPolling();
-      return;
-    }
-    try {
-      const resp = await API.getShoutRoomStatus(roomKey);
-      const box = document.getElementById('shoutRoomOnlineStatus');
-      if (!box) return;
-      const dot = box.querySelector('.shout-status-dot');
-      const txt = box.querySelector('span:last-child');
-      if (dot) dot.classList.toggle('online', !!resp.online);
-      if (txt) txt.textContent = resp.online ? '在线' : '离线';
-    } catch (e) { /* 忽略单次失败 */ }
-  }, 3000);
 };
 
 /* ---------- 弹窗事件绑定 ---------- */
@@ -990,13 +1123,11 @@ window.openShoutRoomPop = async function (roomKey) {
 
   const rc = $('shoutRoomClose');
   if (rc) rc.onclick = function () {
-    stopRoomStatusPolling();
     $('shoutRoomPop').style.display = 'none';
   };
   const rp = $('shoutRoomPop');
   if (rp) rp.addEventListener('click', function (e) {
     if (e.target === rp) {
-      stopRoomStatusPolling();
       rp.style.display = 'none';
     }
   });

@@ -54,7 +54,6 @@ func randomShoutToken(n int) string {
 
 // ============ 大屏在线状态 ============
 
-// touchRoom 记录某教室大屏最近一次拉取消息的时间
 func (s *ShoutService) touchRoom(roomKey string) {
 	if s.lastSeen == nil {
 		s.lastSeen = make(map[string]time.Time)
@@ -64,7 +63,6 @@ func (s *ShoutService) touchRoom(roomKey string) {
 	s.mu.Unlock()
 }
 
-// IsRoomOnline 判断某教室大屏是否在线（10 秒内有请求即视为在线）
 func (s *ShoutService) IsRoomOnline(roomKey string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -197,7 +195,6 @@ func (s *ShoutService) DeleteRoom(userID int64, roomKey string) error {
 	return s.db.DeleteShoutRoom(roomKey)
 }
 
-// RegenerateDisplayToken 换发大屏 token（旧地址立即失效）
 func (s *ShoutService) RegenerateDisplayToken(userID int64, roomKey string) (string, error) {
 	room, err := s.db.GetShoutRoomByKey(roomKey)
 	if err != nil {
@@ -213,8 +210,6 @@ func (s *ShoutService) RegenerateDisplayToken(userID int64, roomKey string) (str
 	return token, nil
 }
 
-// RegenerateRoomKey 重置教室码（仅班主任可操作）
-// 已加入的成员和历史消息会随教室一起迁移，不受影响
 func (s *ShoutService) RegenerateRoomKey(userID int64, roomKey string) (string, error) {
 	room, err := s.db.GetShoutRoomByKey(roomKey)
 	if err != nil {
@@ -300,13 +295,42 @@ func (s *ShoutService) RemoveMember(userID int64, roomKey, username string) erro
 	return errors.New("成员不存在")
 }
 
+// ============ 发送消息 ============
+
+// normalizeMsgType 统一校验消息类型，非法值回落到 text
+func normalizeMsgType(msgType string) string {
+	switch msgType {
+	case "notice", "urgent", "image":
+		return msgType
+	default:
+		return "text"
+	}
+}
+
+// validateShoutContent 内容长度 / 图片大小校验
+func validateShoutContent(content, msgType string) error {
+	if msgType == "image" {
+		// dataURL 上限约 3MB，客户端已压缩到 1280px/0.82 质量，通常远小于此
+		if len(content) > 3*1024*1024 {
+			return errors.New("图片过大，请压缩后重试")
+		}
+		return nil
+	}
+	if len([]rune(content)) > 500 {
+		return errors.New("内容不能超过 500 个字")
+	}
+	return nil
+}
+
 func (s *ShoutService) SendMessage(userID int64, username, roomKey, content, msgType string, duration int) (*model.ShoutMessage, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("请输入要发送的内容")
 	}
-	if len([]rune(content)) > 500 {
-		return nil, errors.New("内容不能超过 500 个字")
+
+	msgType = normalizeMsgType(msgType)
+	if err := validateShoutContent(content, msgType); err != nil {
+		return nil, err
 	}
 
 	room, err := s.db.GetShoutRoomByKey(roomKey)
@@ -328,9 +352,6 @@ func (s *ShoutService) SendMessage(userID int64, username, roomKey, content, msg
 		}
 	}
 
-	if msgType != "notice" && msgType != "urgent" {
-		msgType = "text"
-	}
 	if duration <= 0 {
 		duration = 20
 	}
@@ -357,7 +378,6 @@ func (s *ShoutService) SendMessage(userID int64, username, roomKey, content, msg
 	return m, nil
 }
 
-// PollMessages 登录用户轮询（教师端查看历史）
 func (s *ShoutService) PollMessages(userID int64, roomKey string, sinceID int64) ([]model.ShoutMessage, error) {
 	if _, err := s.GetRoom(userID, roomKey); err != nil {
 		return nil, err
@@ -365,7 +385,6 @@ func (s *ShoutService) PollMessages(userID int64, roomKey string, sinceID int64)
 	return s.db.GetShoutMessages(roomKey, sinceID, 50)
 }
 
-// FeedByToken 大屏端公开轮询（凭 display_token，无需登录）
 func (s *ShoutService) FeedByToken(token string, sinceID int64) ([]model.ShoutMessage, *model.ShoutRoom, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
@@ -376,7 +395,6 @@ func (s *ShoutService) FeedByToken(token string, sinceID int64) ([]model.ShoutMe
 		return nil, nil, errors.New("教室不存在或地址已失效")
 	}
 
-	// ★ 记录大屏活跃时间
 	s.touchRoom(room.RoomKey)
 
 	msgs, err := s.db.GetShoutMessages(room.RoomKey, sinceID, 50)
@@ -386,7 +404,6 @@ func (s *ShoutService) FeedByToken(token string, sinceID int64) ([]model.ShoutMe
 	return msgs, room, nil
 }
 
-// GetMyMessages 我在任意教室中发送过的全部消息（用于「发送记录」页）
 func (s *ShoutService) GetMyMessages(userID int64, limit int) ([]model.ShoutMessage, error) {
 	if limit <= 0 {
 		limit = 200
@@ -394,37 +411,33 @@ func (s *ShoutService) GetMyMessages(userID int64, limit int) ([]model.ShoutMess
 	return s.db.GetShoutMessagesBySender(userID, limit)
 }
 
-// DeleteMessage 仅允许发送者本人删除自己的消息
 func (s *ShoutService) DeleteMessage(userID, msgID int64) error {
 	return s.db.DeleteShoutMessageBySender(userID, msgID)
 }
 
 // ============ 定时喊话 ============
 
-// ScheduleMessage 创建服务端定时任务，即使浏览器关闭也会按时触发
 func (s *ShoutService) ScheduleMessage(userID int64, roomKey, content, msgType string, duration int, sendAtMs int64) (*model.ShoutScheduled, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("请输入要发送的内容")
 	}
-	if len([]rune(content)) > 500 {
-		return nil, errors.New("内容不能超过 500 个字")
+
+	msgType = normalizeMsgType(msgType)
+	if err := validateShoutContent(content, msgType); err != nil {
+		return nil, err
 	}
 
 	room, err := s.db.GetShoutRoomByKey(roomKey)
 	if err != nil {
 		return nil, errors.New("教室不存在")
 	}
-	// 校验发送权限
 	if room.UserID != userID {
 		if _, err := s.db.GetShoutMember(roomKey, userID); err != nil {
 			return nil, errors.New("你不在该教室中，无法发送")
 		}
 	}
 
-	if msgType != "notice" && msgType != "urgent" {
-		msgType = "text"
-	}
 	if duration <= 0 {
 		duration = 20
 	}
@@ -439,7 +452,6 @@ func (s *ShoutService) ScheduleMessage(userID int64, roomKey, content, msgType s
 	if sendAtMs <= nowMs+1000 {
 		return nil, errors.New("定时时间必须晚于当前时间 1 秒以上")
 	}
-	// 最多提前 30 天
 	if sendAtMs > nowMs+30*24*3600*1000 {
 		return nil, errors.New("定时时间不能超过 30 天")
 	}
@@ -470,10 +482,8 @@ func (s *ShoutService) CancelScheduled(userID, id int64) error {
 }
 
 // StartScheduler 启动后台调度器：每秒扫描一次，到点自动发送
-// 服务重启后，pending 的任务会被继续执行
 func (s *ShoutService) StartScheduler() {
 	go func() {
-		// 启动时先清一次（有可能服务器宕机期间已经过期）
 		s.safeDispatch()
 
 		ticker := time.NewTicker(1 * time.Second)
@@ -485,7 +495,6 @@ func (s *ShoutService) StartScheduler() {
 	log.Printf("[shout-scheduler] scheduler started")
 }
 
-// safeDispatch 包一层 recover，任何 panic 都不能把调度 goroutine 搞死
 func (s *ShoutService) safeDispatch() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -516,7 +525,6 @@ func (s *ShoutService) dispatchDueScheduled() {
 			continue
 		}
 
-		// 确定发送者名字与角色（每次发送实时取，防止改名后不一致）
 		senderName := "系统"
 		if u, err := s.db.GetUserByID(sc.UserID); err == nil && u.Username != "" {
 			senderName = u.Username
