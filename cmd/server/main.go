@@ -122,6 +122,7 @@ func main() {
 	if _, err := os.Stat(webDir); err == nil {
 		r.Static("/static", filepath.Join(webDir, "css"))
 		r.Static("/js", filepath.Join(webDir, "js"))
+		r.Static("/audio", filepath.Join(webDir, "audio"))
 		r.StaticFile("/", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/index.html", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/display.html", filepath.Join(webDir, "display.html"))

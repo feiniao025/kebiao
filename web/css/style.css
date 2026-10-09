@@ -141,7 +141,7 @@ body{
 [data-theme="dark"] .legend-item .abbr.special{background:#423554;color:#e2d4f2}
 .legend-item .full{color:var(--text-sub);font-weight:400;font-size:14px;word-break:break-word}
 
-/* ============ 8. 课表 / 值日表（独立格子 + 小圆角立体） ============ */
+/* ============ 8. 课表 / 值日表 ============ */
 .schedule-table{
   width:100%;
   font-size:15px;
@@ -1708,7 +1708,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: var(--text-sub);
 }
 
-/* ★ 发通知页顶栏：紧凑一行 */
 .shout-send-head {
   display: flex;
   align-items: center;
@@ -1739,7 +1738,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   gap: 5px;
 }
 
-/* ★ 消息类型下拉（发通知页顶部右侧） */
 .shout-send-type-wrap {
   flex: 0 0 auto;
   margin-left: auto;
@@ -1763,7 +1761,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border-color: #2f6df6;
 }
 
-/* ★ 在线状态胶囊 */
 .shout-online-status {
   display: inline-flex;
   align-items: center;
@@ -1907,7 +1904,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   margin-top: 0;
 }
 
-/* 分段按钮组 */
 .shout-opt-seg {
   display: inline-flex;
   align-items: stretch;
@@ -1944,7 +1940,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #5dade2;
 }
 
-/* 开关（蓝色） */
 .shout-opt-toggle {
   display: flex;
   align-items: center;
@@ -1961,7 +1956,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   content: "关";
 }
 
-/* 定时发送面板 */
 .shout-schedule-box {
   display: flex;
   align-items: center;
@@ -2104,7 +2098,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   box-shadow: 0 4px 14px rgba(0,0,0,.05);
 }
 
-/* ★ 顶部整行不换行；左侧标签组内部自由换行；右侧状态固定 */
 .shout-history-top {
   display: flex;
   align-items: flex-start;
@@ -2141,11 +2134,14 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .shout-history-type.urgent { background: #fce8e6; color: #c5221f; }
 .shout-history-type.image  { background: #e0e7ff; color: #3730a3; }
 .shout-history-type.file   { background: #e0e7ff; color: #3730a3; }
+/* ★ 新增：语音广播主类型标签 */
+.shout-history-type.voice  { background: #e0e7ff; color: #3730a3; }
 [data-theme="dark"] .shout-history-type.text   { background: #174ea6; color: #d2e3fc; }
 [data-theme="dark"] .shout-history-type.notice { background: #7a3800; color: #feefc3; }
 [data-theme="dark"] .shout-history-type.urgent { background: #8c1d18; color: #fad2cf; }
 [data-theme="dark"] .shout-history-type.image  { background: #312e81; color: #c7d2fe; }
 [data-theme="dark"] .shout-history-type.file   { background: #312e81; color: #c7d2fe; }
+[data-theme="dark"] .shout-history-type.voice  { background: #312e81; color: #c7d2fe; }
 
 .shout-history-status {
   flex-shrink: 0;
@@ -2216,6 +2212,24 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 .shout-history-btn.danger:hover {
   background: #e74c3c;
   color: #fff;
+}
+
+/* ★ 新增：编辑按钮 */
+.shout-history-btn.edit {
+  border-color: #f39c12;
+  color: #f39c12;
+}
+.shout-history-btn.edit:hover {
+  background: #f39c12;
+  color: #fff;
+}
+[data-theme="dark"] .shout-history-btn.edit {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+[data-theme="dark"] .shout-history-btn.edit:hover {
+  background: #fbbf24;
+  color: #1a202c;
 }
 
 [data-theme="dark"] .shout-history-btn.reshare {
@@ -2445,7 +2459,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-image-clear:hover { background: #e74c3c; }
 
-/* 视频预览 */
 .shout-file-video {
   max-width: 100%;
   max-height: 340px;
@@ -2454,7 +2467,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background: #0b1220;
 }
 
-/* 普通文件卡片 */
 .shout-file-doc {
   display: flex;
   flex-direction: column;
@@ -2469,7 +2481,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-file-doc .shout-file-size { font-size: 12px; color: var(--text-sub); }
 
-/* 图片模式在移动端的适配 */
 @media (max-width: 768px) {
   .shout-image-drop { min-height: 180px; }
   .shout-image-preview { max-height: 240px; }
@@ -2480,8 +2491,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   .shout-image-hint { font-size: 11px; }
 }
 
-/* ============ 30. 发送记录：卡片 / 跑马灯标签 ============ */
-/* ★ 注意：类名使用 display-card / display-marquee，避免与全局 .card 冲突 */
+/* ============ 30. 发送记录：卡片 / 跑马灯 / 语音 标签 ============ */
 .shout-history-display-tag {
   font-size: 11px;
   font-weight: 600;
@@ -2500,6 +2510,11 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background: #fef7e0;
   color: #b06000;
 }
+/* ★ 新增：🔊 语音 小胶囊（弹窗+语音播报时显示） */
+.shout-history-display-tag.display-voice {
+  background: #e6f4ea;
+  color: #137333;
+}
 [data-theme="dark"] .shout-history-display-tag.display-card {
   background: #174ea6;
   color: #d2e3fc;
@@ -2507,6 +2522,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 [data-theme="dark"] .shout-history-display-tag.display-marquee {
   background: #7a3800;
   color: #feefc3;
+}
+[data-theme="dark"] .shout-history-display-tag.display-voice {
+  background: #0d652d;
+  color: #ceead6;
 }
 
 /* ============ 31. 喊话 · 播报次数/播报时间 左右分栏 ============ */
@@ -2527,7 +2546,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   padding: 4px 0;
 }
 
-/* 左侧加右边框做分割线 */
 .shout-opt-half:first-child {
   padding-right: 14px;
   border-right: 1px solid var(--table-border);
@@ -2536,7 +2554,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   padding-left: 14px;
 }
 
-/* 关键修复：覆盖全局 .shout-opt-info 的 flex:1 */
 .shout-opt-half .shout-opt-info {
   flex: 0 1 auto;
   min-width: 0;
@@ -2568,7 +2585,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   flex-shrink: 0;
 }
 
-/* 两栏内的按钮更紧凑 */
 .shout-opt-row-split .shout-opt-seg {
   padding: 2px;
 }
@@ -2578,7 +2594,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   min-width: 38px;
 }
 
-/* ★ 播报时间步进器：水平排列，与播报次数分段控件视觉完全一致 */
 .shout-opt-row-split .shout-duration-stepper {
   display: inline-flex;
   flex-direction: row;
@@ -2623,7 +2638,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background: rgba(255,255,255,.18);
 }
 
-/* 中间数字：白色胶囊高亮，与「1次/2次/3次」的选中态一致 */
 .shout-opt-row-split .shout-dur-val {
   min-width: 46px;
   padding: 5px 10px;
@@ -2646,7 +2660,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #5dade2;
 }
 
-/* 数字后跟 "秒" 单位 */
 .shout-opt-row-split .shout-dur-val .shout-dur-unit {
   font-size: 11px;
   font-weight: 500;
@@ -2657,7 +2670,6 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   color: #a2a8b5;
 }
 
-/* 移动端：左右分栏改为上下堆叠，去掉竖分割线，加横分割线 */
 @media (max-width: 768px) {
   .shout-opt-row.shout-opt-row-split {
     flex-wrap: wrap;
@@ -2680,4 +2692,3 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     flex: 1 1 auto;
   }
 }
-

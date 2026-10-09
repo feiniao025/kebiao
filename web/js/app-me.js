@@ -5,6 +5,8 @@
    - 个人资料 + 深色/自动 主题开关
    - 修改密码、管理员用户管理、Supabase 配置、登录提示、TTS 接口配置
    - 个人资料中显示「上次同步」时间
+   修复：
+   - 移除原文件末尾重复的 TTS 配置代码段（会在模块加载时立即执行并报错）
    ============================================================ */
 
 window.renderMePage = function () {
@@ -197,6 +199,44 @@ window.renderTTSConfig = async function () {
     return;
   }
 
+  const VOICE_OPTIONS = [
+    { value: 'zh-CN-XiaoxiaoNeural',   label: '晓晓 (女声·温柔)' },
+    { value: 'zh-CN-YunxiNeural',      label: '云希 (男声·清朗)' },
+    { value: 'zh-CN-YunyangNeural',    label: '云扬 (男声·阳光)' },
+    { value: 'zh-CN-XiaoyiNeural',     label: '晓伊 (女声·甜美)' },
+    { value: 'zh-CN-YunjianNeural',    label: '云健 (男声·稳重)' },
+    { value: 'zh-CN-XiaochenNeural',   label: '晓辰 (女声·知性)' },
+    { value: 'zh-CN-XiaohanNeural',    label: '晓涵 (女声·优雅)' },
+    { value: 'zh-CN-XiaomengNeural',   label: '晓梦 (女声·梦幻)' },
+    { value: 'zh-CN-XiaomoNeural',     label: '晓墨 (女声·文艺)' },
+    { value: 'zh-CN-XiaoqiuNeural',    label: '晓秋 (女声·成熟)' },
+    { value: 'zh-CN-XiaoruiNeural',    label: '晓睿 (女声·智慧)' },
+    { value: 'zh-CN-XiaoshuangNeural', label: '晓双 (女声·活泼)' },
+    { value: 'zh-CN-XiaoxuanNeural',   label: '晓萱 (女声·清新)' },
+    { value: 'zh-CN-XiaoyanNeural',    label: '晓颜 (女声·柔美)' },
+    { value: 'zh-CN-XiaoyouNeural',    label: '晓悠 (女声·悠扬)' },
+    { value: 'zh-CN-XiaozhenNeural',   label: '晓甄 (女声·端庄)' },
+    { value: 'zh-CN-YunfengNeural',    label: '云枫 (男声·磁性)' },
+    { value: 'zh-CN-YunhaoNeural',     label: '云皓 (男声·豪迈)' },
+    { value: 'zh-CN-YunxiaNeural',     label: '云夏 (男声·热情)' },
+    { value: 'zh-CN-YunyeNeural',      label: '云野 (男声·野性)' },
+    { value: 'zh-CN-YunzeNeural',      label: '云泽 (男声·深沉)' },
+  ];
+
+  const currentVoice = (cfg.tts_voice || 'zh-CN-XiaochenNeural').trim();
+
+  let voiceOptionsHtml = '';
+  let matched = false;
+  VOICE_OPTIONS.forEach(function (v) {
+    if (v.value === currentVoice) matched = true;
+    voiceOptionsHtml += '<option value="' + escapeHtml(v.value) + '"' +
+      (v.value === currentVoice ? ' selected' : '') + '>' + escapeHtml(v.label) + '</option>';
+  });
+  if (!matched && currentVoice) {
+    voiceOptionsHtml = '<option value="' + escapeHtml(currentVoice) + '" selected>' +
+      escapeHtml(currentVoice) + '（当前配置）</option>' + voiceOptionsHtml;
+  }
+
   meCard.innerHTML =
     '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
     '<div class="me-warn">' +
@@ -211,24 +251,52 @@ window.renderTTSConfig = async function () {
       'placeholder="https://tts.wangwangit.com/v1/audio/speech&#10;# https://备用接口/v1/audio/speech|API_KEY"></textarea>' +
     '</div>' +
     '<div class="me-field"><label>默认语音 voice</label>' +
-    '<input type="text" id="ttsVoice" class="cell-pop-input" placeholder="zh-CN-XiaochenNeural">' +
+    '<select id="ttsVoice" class="cell-pop-input" style="width:100%;padding:10px 36px 10px 12px;font-size:14px;box-sizing:border-box;">' +
+      voiceOptionsHtml +
+    '</select>' +
     '</div>' +
     '<button class="me-submit" id="ttsSave" style="background:#8e44ad;">💾 保存</button>' +
     '<div class="me-error" id="ttsError"></div>';
 
   $('ttsUpstreams').value = cfg.tts_upstreams || '';
-  $('ttsVoice').value = cfg.tts_voice || 'zh-CN-XiaochenNeural';
+  $('ttsVoice').value = currentVoice || 'zh-CN-XiaochenNeural';
   $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
 
   $('ttsSave').onclick = async () => {
     const errEl = $('ttsError');
     errEl.textContent = '';
+
+    const voiceVal = ($('ttsVoice').value || '').trim();
+    const upstreamVal = $('ttsUpstreams').value;
+
+    console.log('[TTS] 准备保存 →', {
+      tts_voice: voiceVal,
+      tts_upstreams: upstreamVal
+    });
+
+    if (!voiceVal) {
+      errEl.textContent = '请选择默认语音 voice';
+      return;
+    }
+
     try {
       await API.adminUpdateSystemConfig({
-        tts_upstreams: $('ttsUpstreams').value,
-        tts_voice: ($('ttsVoice').value || '').trim() || 'zh-CN-XiaochenNeural'
+        tts_upstreams: upstreamVal,
+        tts_voice: voiceVal,
       });
-      showSaveStatus('TTS 配置已保存', false);
+
+      // ★ 保存后重新拉取，确认写入成功
+      const check = await API.adminGetSystemConfig();
+      console.log('[TTS] 保存后服务器返回 →', check);
+
+      if ((check.tts_voice || '').trim() !== voiceVal) {
+        errEl.textContent = '保存异常：服务器返回 voice = ' + (check.tts_voice || '(空)');
+        return;
+      }
+
+      showSaveStatus('TTS 配置已保存：' + voiceVal, false);
+      // 重新渲染一次，确保 select 显示的与服务器一致
+      renderTTSConfig();
     } catch (err) {
       errEl.textContent = err.message || '保存失败';
     }

@@ -345,29 +345,53 @@
 (function () {
   'use strict';
 
-  console.log('[shout-display] loaded @', new Date().toISOString(), 'BUILD=xiaochen-tts-v8-proxy');
+  console.log('[shout-display] loaded @', new Date().toISOString(), 'BUILD=prebuilt-tts-v3-parallel-ding');
 
   /* ============================================================
      ★ 在线 TTS 配置（走后端反代 /api/tts，同源、绕过 CSP / CORS）
-     voice 会异步从 /api/config 读取（管理员后台可配置）
+     仅作为「兼容老消息」或「发送端未成功合成」时的降级方案
+     ★ 超时从 8s 压缩到 700ms：与 ding.wav 时长同量级，
+       铃声还没响完就知道 TTS 到底通不通，避免用户等待。
      ============================================================ */
   var ONLINE_TTS_URL = '/api/tts';
   var ONLINE_TTS_VOICE = 'zh-CN-XiaochenNeural';
-  var ONLINE_TTS_TIMEOUT = 8000;
+  var ONLINE_TTS_TIMEOUT = 700;   // ★ 8s → 700ms
   var onlineTTSAvailable = true;
 
-  // 异步获取管理员配置的 voice
-  try {
-    fetch('/api/config', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (cfg) {
-        if (cfg && cfg.tts_voice) {
+  /* ============================================================
+     ★ 动态刷新 TTS 配置（管理员后台修改 voice 无需手动刷新大屏）
+     ============================================================ */
+  var TTS_CFG_TTL_MS = 30 * 1000;
+  var _ttsCfgLastFetch = 0;
+  var _ttsCfgFetching = null;
+
+  async function refreshTTSConfig(force) {
+    var now = Date.now();
+    if (!force && now - _ttsCfgLastFetch < TTS_CFG_TTL_MS) return;
+    if (_ttsCfgFetching) return _ttsCfgFetching;
+
+    _ttsCfgFetching = (async function () {
+      try {
+        var r = await fetch('/api/config', { cache: 'no-store' });
+        var cfg = await r.json();
+        if (cfg && cfg.tts_voice && cfg.tts_voice !== ONLINE_TTS_VOICE) {
+          console.log('[shout-display] voice 已更新:',
+            ONLINE_TTS_VOICE, '→', cfg.tts_voice);
           ONLINE_TTS_VOICE = cfg.tts_voice;
-          console.log('[shout-display] 使用管理员配置的 voice:', ONLINE_TTS_VOICE);
         }
-      })
-      .catch(function () { /* 忽略 */ });
-  } catch (e) { /* 忽略 */ }
+        _ttsCfgLastFetch = Date.now();
+      } catch (e) {
+        /* 网络失败不影响播放，用旧 voice 兜底 */
+      } finally {
+        _ttsCfgFetching = null;
+      }
+    })();
+
+    return _ttsCfgFetching;
+  }
+
+  refreshTTSConfig(true);
+  setInterval(function () { refreshTTSConfig(true); }, TTS_CFG_TTL_MS);
 
   var params = new URLSearchParams(location.search);
   var token  = params.get('token') || '';
@@ -487,6 +511,142 @@
   }
 
   /* ============================================================
+     ★ 提示铃声：朗读之前先播放 ding.wav
+     放置位置：web/audio/ding.wav（后端 /audio 静态目录提供）
+
+     设计要点（关键）：
+       - startDing()：启动铃声，不阻塞，立即返回
+       - waitDing()：等铃声播完；没在响就立即 resolve
+       - playVoice() 内部先 startDing()，同时并行去准备 TTS 音频
+       - 真正 audio.play() 前才 await waitDing()
+         → 铃声与 TTS 请求并行，铃声一停就接上语音，中间不留静默
+     ============================================================ */
+  var DING_URL = '/audio/ding.wav';
+  var dingAudio = null;
+  var dingBroken = false;     // 文件不可用，改用合成音
+  var dingPlaying = false;    // 铃声正在响
+  var dingCtx = null;         // WebAudio 兜底上下文
+  var dingDonePromise = null; // 当前铃声的播放 Promise
+
+  // 兜底：合成一个两声「叮——咚」的提示音
+  function synthDing() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!dingCtx) dingCtx = new AC();
+      if (dingCtx.state === 'suspended') dingCtx.resume();
+
+      var t0 = dingCtx.currentTime;
+      var notes = [[1318.5, 0, 0.22], [987.8, 0.16, 0.34]]; // E6 → B5
+      for (var i = 0; i < notes.length; i++) {
+        var freq = notes[i][0], at = notes[i][1], dur = notes[i][2];
+        var osc = dingCtx.createOscillator();
+        var gain = dingCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0 + at);
+        gain.gain.exponentialRampToValueAtTime(0.32, t0 + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+        osc.connect(gain);
+        gain.connect(dingCtx.destination);
+        osc.start(t0 + at);
+        osc.stop(t0 + at + dur + 0.02);
+      }
+    } catch (e) {}
+  }
+
+  // 启动铃声（不阻塞）；返回 Promise，供 waitDing 使用
+  function startDing() {
+    if (!audioUnlocked) return Promise.resolve(false);
+    if (dingPlaying) return dingDonePromise || Promise.resolve(false);
+
+    dingPlaying = true;
+    dingDonePromise = new Promise(function (resolve) {
+      var finished = false;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        dingPlaying = false;
+        resolve(true);
+      }
+      // 兜底：最多等 900ms，铃声异常绝不阻塞播报
+      setTimeout(finish, 900);
+
+      if (dingBroken) {
+        synthDing();
+        setTimeout(finish, 420);
+        return;
+      }
+
+      try {
+        if (!dingAudio) {
+          dingAudio = new Audio(DING_URL);
+          dingAudio.preload = 'auto';
+          dingAudio.volume = 0.85;
+        }
+        dingAudio.currentTime = 0;
+        dingAudio.onended = finish;
+        dingAudio.onerror = function () {
+          dingBroken = true;
+          console.warn('[shout] ding.wav 加载失败，改用合成提示音');
+          synthDing();
+          setTimeout(finish, 420);
+        };
+        var p = dingAudio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(function () {
+            dingBroken = true;
+            synthDing();
+            setTimeout(finish, 420);
+          });
+        }
+      } catch (e) {
+        dingBroken = true;
+        synthDing();
+        setTimeout(finish, 420);
+      }
+    });
+    return dingDonePromise;
+  }
+
+  // 等待铃声播完；没在响就立即 resolve
+  function waitDing() {
+    return dingDonePromise || Promise.resolve();
+  }
+
+  /* ============================================================
+     ★ 播放发送端下发的 base64 音频（与弹窗同步）
+     ============================================================ */
+  async function playPrebuiltAudio(dataUrl) {
+    if (!dataUrl) return false;
+    await waitDing();          // ★ 铃声没播完就等
+    return new Promise(function (resolve) {
+      try {
+        if (currentAudio) {
+          try { currentAudio.pause(); } catch (e) {}
+          currentAudio = null;
+        }
+        var audio = new Audio(dataUrl);
+        currentAudio = audio;
+        audio.onended = function () {
+          if (currentAudio === audio) currentAudio = null;
+        };
+        audio.onerror = function () {
+          if (currentAudio === audio) currentAudio = null;
+        };
+        var p = audio.play();
+        if (p && typeof p.then === 'function') {
+          p.then(function () { resolve(true); }).catch(function () { resolve(false); });
+        } else {
+          resolve(true);
+        }
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  }
+
+  /* ============================================================
      ★ 浏览器内置 TTS —— 降级方案
      ============================================================ */
   function pickBestChineseVoice(synth) {
@@ -514,36 +674,58 @@
     return zhVoices[0];
   }
 
-  function fallbackSpeak(text) {
-    if (!text) return;
-    if (!('speechSynthesis' in window)) return;
-    try {
-      var synth = window.speechSynthesis;
-      if (synth.paused) synth.resume();
-      synth.cancel();
-      var u = new SpeechSynthesisUtterance(String(text));
-      u.lang = 'zh-CN';
-      u.rate = 0.9;
-      u.pitch = 1.0;
-      u.volume = 1.0;
-      var voice = pickBestChineseVoice(synth);
-      if (voice) { u.voice = voice; u.lang = voice.lang || 'zh-CN'; }
-      u.onstart = function () { console.log('[shout] ▶️ 降级播报（浏览器内置）:', text); };
-      u.onerror = function (e) { console.error('[shout] ❌ 降级播报失败:', e.error); };
-      synth.speak(u);
-    } catch (e) {
-      console.error('[shout] fallbackSpeak 异常:', e);
-    }
+  async function fallbackSpeak(text) {
+    if (!text) return false;
+    if (!('speechSynthesis' in window)) return false;
+
+    await waitDing();          // ★ 铃声没播完就等
+
+    return new Promise(function (resolve) {
+      try {
+        var synth = window.speechSynthesis;
+        if (synth.paused) synth.resume();
+        synth.cancel();
+
+        var u = new SpeechSynthesisUtterance(String(text));
+        u.lang = 'zh-CN';
+        u.rate = 0.9;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+
+        var voice = pickBestChineseVoice(synth);
+        if (voice) {
+          u.voice = voice;
+          u.lang = voice.lang || 'zh-CN';
+        }
+
+        u.onstart = function () {
+          console.log('[shout] ▶️ 降级播报（浏览器内置）:', text);
+          resolve(true);
+        };
+        u.onerror = function (e) {
+          console.error('[shout] ❌ 降级播报失败:', e.error);
+          resolve(false);
+        };
+
+        synth.speak(u);
+      } catch (e) {
+        console.error('[shout] fallbackSpeak 异常:', e);
+        resolve(false);
+      }
+    });
   }
 
   /* ============================================================
-     ★ 在线 TTS（走后端反代 /api/tts）
+     ★ 在线 TTS（走后端反代 /api/tts）—— 仅作老消息兼容
+     ★ 超时 700ms；一次失败即熔断，避免整班等 3 次
      ============================================================ */
   var onlineTTSErrCount = 0;
 
   async function onlineSpeak(text) {
     if (!onlineTTSAvailable) return false;
     if (!text) return false;
+
+    await refreshTTSConfig();
 
     var controller = new AbortController();
     var timeoutId = setTimeout(function () { controller.abort(); }, ONLINE_TTS_TIMEOUT);
@@ -603,7 +785,7 @@
       audio.onended = function () {
         URL.revokeObjectURL(audioUrl);
         if (currentAudio === audio) currentAudio = null;
-        console.log('[shout] ⏹️ 晓辰播报结束');
+        console.log('[shout] ⏹️ 在线播报结束');
       };
       audio.onerror = function (e) {
         URL.revokeObjectURL(audioUrl);
@@ -611,26 +793,48 @@
         console.error('[shout] ❌ audio 元素播放失败:', e);
       };
 
+      await waitDing();       // ★ 铃声没播完就等，播完立即出声
       await audio.play();
-      console.log('[shout] ▶️ 晓辰播报成功:', text);
+      console.log('[shout] ▶️ 在线播报成功:', text);
       onlineTTSErrCount = 0;
       return true;
     } catch (e) {
       clearTimeout(timeoutId);
       onlineTTSErrCount++;
       console.warn('[shout] ⚠️ 在线TTS 第 ' + onlineTTSErrCount + ' 次失败:', e.message || e);
-      if (onlineTTSErrCount >= 3) {
+
+      // ★ 一次不通就熔断，本会话全部走浏览器内置语音
+      if (onlineTTSErrCount >= 1) {
         onlineTTSAvailable = false;
-        console.warn('[shout] ⚠️ 连续失败 3 次，本会话改用浏览器内置语音');
+        console.warn('[shout] ⚠️ 本会话改用浏览器内置语音');
       }
       return false;
     }
   }
 
-  async function speakText(text) {
-    if (!text) return;
+  /* ============================================================
+     speakText：优先使用发送端下发的 base64，否则在线合成，最后浏览器内置
+     ============================================================ */
+  async function speakText(text, prebuiltAudio) {
+    if (prebuiltAudio) {
+      var okPre = await playPrebuiltAudio(prebuiltAudio);
+      if (okPre) return true;
+      console.warn('[shout] 预置音频播放失败，降级到在线合成');
+    }
+    if (!text) return false;
     var ok = await onlineSpeak(text);
-    if (!ok) fallbackSpeak(text);
+    if (!ok) return await fallbackSpeak(text);
+    return true;
+  }
+
+  /* ============================================================
+     ★ 统一播报入口
+     响铃和语音并行：startDing() 立即返回，speakText() 同时进行；
+     speakText 内部真正出声前会 await waitDing()，保证不重叠。
+     ============================================================ */
+  async function playVoice(text, prebuiltAudio) {
+    startDing();                            // ★ 立即响铃，不等待
+    return speakText(text, prebuiltAudio);  // ★ 并行准备语音
   }
 
   function stopSpeak() {
@@ -638,14 +842,19 @@
       try { currentAudio.pause(); } catch (e) {}
       currentAudio = null;
     }
+    if (dingAudio) {
+      try { dingAudio.pause(); dingAudio.currentTime = 0; } catch (e) {}
+    }
+    dingPlaying = false;
+    dingDonePromise = null;                 // ★ 重置铃声 Promise
     try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
   }
 
   /* ============================================================
-     从任意形态的 content 里抽出 { text, voice, display }
+     从任意形态的 content 里抽出 { text, voice, display, audio }
      ============================================================ */
   function extractInfo(m) {
-    var info = { text: '', voice: false, display: 'card' };
+    var info = { text: '', voice: false, display: 'card', audio: '' };
     if (!m) return info;
     if (m.msg_type === 'file' || m.msg_type === 'image') {
       info.text = String(m.content == null ? '' : m.content);
@@ -661,8 +870,10 @@
     try {
       var p1 = JSON.parse(raw);
       if (p1 && typeof p1.text === 'string') {
-        info.text = p1.text; info.voice = !!p1.voice;
+        info.text = p1.text;
+        info.voice = !!p1.voice;
         info.display = p1.display || 'card';
+        info.audio = p1.audio || '';
         return info;
       }
     } catch (e1) { console.warn('[shout] JSON.parse fail:', e1.message); }
@@ -672,8 +883,10 @@
       if (unescaped.charAt(0) === '{') {
         var p2 = JSON.parse(unescaped);
         if (p2 && typeof p2.text === 'string') {
-          info.text = p2.text; info.voice = !!p2.voice;
+          info.text = p2.text;
+          info.voice = !!p2.voice;
           info.display = p2.display || 'card';
+          info.audio = p2.audio || '';
           console.warn('[shout] recovered: double-escaped');
           return info;
         }
@@ -689,6 +902,10 @@
       if (md) info.display = md[1];
       var mv = raw.match(/"voice"\s*:\s*(true|false)/);
       if (mv) info.voice = (mv[1] === 'true');
+      var ma = raw.match(/"audio"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (ma) {
+        try { info.audio = JSON.parse('"' + ma[1] + '"'); } catch (e4) { info.audio = ''; }
+      }
       console.warn('[shout] recovered: regex');
       return info;
     }
@@ -705,6 +922,8 @@
     console.log('[shout] 收到消息', {
       id: m.id, msg_type: m.msg_type,
       display: info.display, voice: info.voice,
+      hasAudio: !!info.audio,
+      audioLen: info.audio ? info.audio.length : 0,
       audioUnlocked: audioUnlocked,
       text: info.text ? info.text.slice(0, 40) : ''
     });
@@ -718,7 +937,10 @@
           audioHintEl.textContent = '点击此处开启语音播报';
         }
       }
-      if (info.voice) setTimeout(function () { speakText(info.text); }, 100);
+      // ★ 语音广播：先响提示铃，再播报（有 base64 就用 base64）
+      if (info.audio || info.voice) {
+        playVoice(info.text, info.audio);
+      }
       return;
     }
     if (info.display === 'marquee') { showMarquee(m, info); return; }
@@ -750,13 +972,16 @@
     var displayText = prefix + sender + text;
     contentEl.textContent = displayText;
 
+    // ★ 先响提示铃，再播报；跑马灯同时开始滚动
+    if (info.voice) {
+      playVoice(text, info.audio);
+    }
+
     var scrollSec = Math.max(10, Math.min(40, displayText.length * 0.5 + 10));
     contentEl.style.animation = 'none';
     void contentEl.offsetWidth;
     contentEl.style.animation = 'marquee-scroll ' + scrollSec + 's linear infinite';
     bar.style.display = 'flex';
-
-    if (info.voice) setTimeout(function () { speakText(text); }, 200);
 
     if (marqueeTimer) { clearTimeout(marqueeTimer); marqueeTimer = null; }
     var durSec = (m.duration && m.duration > 0) ? m.duration : 20;
@@ -795,6 +1020,7 @@
     var bodyHtml = '';
     var needAutoOpen = false;
     var voiceTagHtml = '';
+    var finalTextForVoice = '';
 
     if (isFile && fileMeta) {
       var ft3 = fileMeta.type || '';
@@ -840,8 +1066,8 @@
       bodyHtml = '<div class="msg-content">' + esc(finalText) + '</div>';
       if (info.voice) {
         voiceTagHtml = '<span class="msg-voice-tag">🔊 语音播报中</span>';
-        setTimeout(function () { speakText(finalText); }, 300);
       }
+      finalTextForVoice = finalText;
     }
 
     var totalSec = (m.duration && m.duration > 0) ? m.duration : 20;
@@ -861,6 +1087,11 @@
 
     popup.classList.add('show');
     showing = true;
+
+    // ★ 先响提示铃，再播报（弹窗先画出来，铃声与语音并行准备）
+    if (info.voice && finalTextForVoice) {
+      playVoice(finalTextForVoice, info.audio);
+    }
 
     if (needAutoOpen) {
       setTimeout(function () {

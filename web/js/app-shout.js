@@ -13,7 +13,8 @@
    - ★ 大屏呈现形式 / 播报次数 / 播报时间：仅「桌面弹窗」模式显示
    - ★ 播报次数与播报时间左右分栏；播报时间默认20秒，步长5秒
    - ★ 大屏呈现形式提示文字跟随选择动态变化
-   - ★ 发送记录里标注「卡片」/「跑马灯」
+   - ★ 发送记录里标注「卡片」/「跑马灯」/「🔊 语音」/「广播」
+   - ★ 发送记录支持「编辑」按钮，一键回填至发通知页
    ============================================================ */
 
 window.shoutSubTab = 'manage';           // manage | send | history
@@ -24,12 +25,13 @@ window.shoutMsgMode = 'popup';           // popup | voice | file
 window.shoutMsgType = 'text';            // text | notice | urgent
 window.shoutDisplay = 'card';            // card | marquee（默认完整卡片）
 window.shoutBroadcastCount = 1;
-window.shoutBroadcastDuration = 20;      // ★ 大屏显示时长（秒），默认20
+window.shoutBroadcastDuration = 30;      // 大屏显示时长（秒），默认30
 window.shoutHistoryFilter = 'all';
 window.shoutHistoryList = [];
 window.shoutFileInfo = null;             // { name, type, size, data }
 window.shoutFileAutoOpen = true;         // 传输完成后是否在一体机打开
-window.shoutPopupVoice = false;          // ★ 桌面弹窗 + 语音播报开关
+window.shoutPopupVoice = false;          // 桌面弹窗 + 语音播报开关
+window.shoutEditDraftText = '';          // 编辑回填草稿文本
 
 let shoutRoomsLoaded = false;
 let shoutStatusTimer = null;
@@ -125,7 +127,7 @@ function compressShoutImage(file, maxSize, quality) {
   });
 }
 
-/* ---------- 通用文件读取（图片压缩；其他 dataURL） ---------- */
+/* ---------- 通用文件读取 ---------- */
 
 function readShoutFile(file) {
   return new Promise(function (resolve, reject) {
@@ -351,7 +353,6 @@ async function refreshRoomListStatus() {
 
 /* ---------- ② 发通知 ---------- */
 
-// 取当前模式下的发送内容与类型
 function getShoutSendPayload() {
   if (shoutMsgMode === 'file') {
     if (!window.shoutFileInfo) return { error: '请先选择一个文件' };
@@ -376,7 +377,6 @@ function getShoutSendPayload() {
 
   const isVoiceMode = (shoutMsgMode === 'voice');
   const voiceFlag = isVoiceMode || (shoutMsgMode === 'popup' && !!window.shoutPopupVoice);
-  /* 传输文件走文件卡片，语音走纯语音，只有桌面弹窗才用用户选择的呈现形式 */
   const display = shoutMsgMode === 'popup'
     ? shoutDisplay
     : (isVoiceMode ? 'voice' : 'card');
@@ -427,7 +427,7 @@ async function renderShoutSend() {
 
   let html = '';
 
-  /* 顶部：班级 + 角色 + 在线状态 +（仅弹窗模式下）消息类型 */
+  /* 顶部 */
   html += '<div class="shout-send-head">' +
     '<div class="select-wrap shout-send-class-wrap">' +
       '<select id="shoutSendClass" class="cell-pop-input">' + classOptions + '</select>' +
@@ -438,7 +438,6 @@ async function renderShoutSend() {
       '<span id="shoutSendStatusText">检测中…</span>' +
     '</span>';
 
-  /* ★ 只有「桌面弹窗」模式才显示消息类型下拉 */
   if (shoutMsgMode === 'popup') {
     html += '<div class="select-wrap shout-send-type-wrap">' +
       '<select id="shoutSendType" class="cell-pop-input" title="选择消息在大屏上的显示类型">' +
@@ -450,7 +449,7 @@ async function renderShoutSend() {
   }
   html += '</div>';
 
-  /* 模式标签：桌面弹窗 / 语音广播 / 传输文件 */
+  /* 模式标签 */
   const modes = [
     { key: 'popup', icon: '🖥️', label: '桌面弹窗' },
     { key: 'voice', icon: '🔊', label: '语音广播' },
@@ -486,7 +485,6 @@ async function renderShoutSend() {
       '</div>' +
     '</div>';
 
-    /* 是否在一体机打开开关 */
     html += '<div class="shout-opt-row">' +
       '<div class="shout-opt-info">' +
         '<div class="shout-opt-label">传输完成后在一体机打开</div>' +
@@ -513,7 +511,6 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* ★ 桌面弹窗独有：语音播报开关 */
   if (shoutMsgMode === 'popup') {
     html += '<div class="shout-opt-row">' +
       '<div class="shout-opt-info">' +
@@ -529,9 +526,7 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* ★ 大屏呈现形式 + 播报次数/时间：仅「桌面弹窗」模式显示 */
   if (shoutMsgMode === 'popup') {
-    /* 大屏呈现形式（完整卡片在前，跑马灯在后） */
     var displayHint = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
 
     html += '<div class="shout-opt-row">' +
@@ -545,7 +540,6 @@ async function renderShoutSend() {
       '</div>' +
     '</div>';
 
-    /* ★ 播报次数 & 播报时间（左右分栏） */
     html += '<div class="shout-opt-row shout-opt-row-split">' +
       '<div class="shout-opt-half">' +
         '<div class="shout-opt-info">' +
@@ -572,7 +566,6 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* 定时发送开关 */
   html += '<div class="shout-opt-row">' +
     '<div class="shout-opt-info">' +
       '<div class="shout-opt-label">定时发送</div>' +
@@ -603,6 +596,22 @@ async function renderShoutSend() {
 
   body.innerHTML = html;
 
+  /* ★ 应用编辑草稿 */
+  if (window.shoutEditDraftText) {
+    const ta = $('shoutSendContent');
+    if (ta) {
+      ta.value = window.shoutEditDraftText;
+      const counter = $('shoutSendCount');
+      if (counter) counter.textContent = ta.value.length + '/200';
+      ta.focus();
+    }
+    const popupVoiceCb = $('shoutPopupVoiceToggle');
+    if (popupVoiceCb && window.shoutPopupVoice) {
+      popupVoiceCb.checked = true;
+    }
+    window.shoutEditDraftText = '';
+  }
+
   /* ---------- 绑定 ---------- */
   const clsSel = $('shoutSendClass');
   clsSel.value = currentShoutClass;
@@ -621,7 +630,6 @@ async function renderShoutSend() {
   body.querySelectorAll('.shout-mode-tab').forEach(function (b) {
     b.onclick = function () {
       shoutMsgMode = b.dataset.mode;
-      // 切到非弹窗模式时，重置消息类型 & 语音开关
       if (shoutMsgMode !== 'popup') {
         shoutMsgType = 'text';
         window.shoutPopupVoice = false;
@@ -630,7 +638,6 @@ async function renderShoutSend() {
     };
   });
 
-  /* 文本输入 */
   const ta = $('shoutSendContent');
   const counter = $('shoutSendCount');
   if (ta) {
@@ -639,7 +646,6 @@ async function renderShoutSend() {
     };
   }
 
-  /* 文件模式 */
   if (shoutMsgMode === 'file') {
     const drop = $('shoutFileDrop');
     const fileInp = $('shoutFileInput');
@@ -676,7 +682,6 @@ async function renderShoutSend() {
       };
     }
 
-    /* 开关绑定 */
     const autoOpenCb = $('shoutFileAutoOpen');
     if (autoOpenCb) {
       autoOpenCb.onchange = function () {
@@ -685,7 +690,6 @@ async function renderShoutSend() {
     }
   }
 
-  /* ★ 桌面弹窗语音播报开关 */
   const popupVoiceCb = $('shoutPopupVoiceToggle');
   if (popupVoiceCb) {
     popupVoiceCb.onchange = function () {
@@ -693,7 +697,6 @@ async function renderShoutSend() {
     };
   }
 
-  /* 大屏呈现形式 */
   body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutDisplay = b.dataset.display;
@@ -701,7 +704,6 @@ async function renderShoutSend() {
         .forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
 
-      // ★ 联动更新下方提示文字
       var hintEl = $('shoutDisplayHint');
       if (hintEl) {
         hintEl.textContent = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
@@ -709,7 +711,6 @@ async function renderShoutSend() {
     };
   });
 
-  /* 播报次数 */
   body.querySelectorAll('.shout-opt-seg[data-opt="count"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutBroadcastCount = parseInt(b.dataset.count, 10) || 1;
@@ -719,7 +720,6 @@ async function renderShoutSend() {
     };
   });
 
-  /* ★ 播报时间加减（步长5秒，最小5秒，最大300秒） */
   const durValEl = $('shoutDurationVal');
   if (durValEl) {
     body.querySelectorAll('.shout-dur-btn').forEach(function (btn) {
@@ -739,7 +739,6 @@ async function renderShoutSend() {
     });
   }
 
-  /* 定时发送 */
   const sch = $('shoutSendSchedule');
   const schBox = $('shoutScheduleBox');
   const schDate = $('shoutScheduleDate');
@@ -799,7 +798,6 @@ async function renderShoutSend() {
 
   updateScheduleVisibility();
 
-  /* 立即发送 */
   $('shoutSendBtn').onclick = async function () {
     const errEl = $('shoutSendError');
     errEl.textContent = '';
@@ -1010,9 +1008,10 @@ function renderShoutHistoryList() {
       } catch (e) { typeLabel = '文件'; }
     }
 
-    /* ★ 解析 display：卡片 / 跑马灯（仅文本类消息显示）
-       ★ 注意：类名使用 display-card / display-marquee，避免与全局 .card 冲突 */
+    /* ★ 解析 display：卡片 / 跑马灯 / 语音广播 */
     let displayLabel = '';
+    let voiceTag = '';
+
     if (m.msg_type === 'text' || m.msg_type === 'notice' || m.msg_type === 'urgent') {
       try {
         const parsed = JSON.parse(m.content);
@@ -1020,6 +1019,14 @@ function renderShoutHistoryList() {
           displayLabel = '<span class="shout-history-display-tag display-marquee">跑马灯</span>';
         } else if (parsed && parsed.display === 'card') {
           displayLabel = '<span class="shout-history-display-tag display-card">卡片</span>';
+        } else if (parsed && parsed.display === 'voice') {
+          // 语音广播：主类型标签显示为「广播」
+          typeLabel = '广播';
+          typeCls = 'voice';
+        }
+        // 弹窗 + 语音播报的场景：追加一个绿色的「🔊 语音」小标签
+        if (parsed && parsed.voice && parsed.display !== 'voice') {
+          voiceTag = '<span class="shout-history-display-tag display-voice">语音</span>';
         }
       } catch (e) {}
     }
@@ -1050,32 +1057,32 @@ function renderShoutHistoryList() {
       }
     } else {
       let plainText = m.content;
-      let voiceTag = '';
       if (m.content && m.content.charAt(0) === '{') {
         try {
           const parsed = JSON.parse(m.content);
           if (parsed && typeof parsed.text === 'string') {
             plainText = parsed.text;
-            if (parsed.voice) voiceTag = ' <span style="color:#16a085;font-size:12px;">[🔊 语音]</span>';
           }
         } catch (e) {}
       }
-      contentHtml = '<div class="shout-history-content">' + escapeHtml(plainText) + voiceTag + '</div>';
+      contentHtml = '<div class="shout-history-content">' + escapeHtml(plainText) + '</div>';
     }
 
-    /* ★ 顶部：左侧标签组 + 右侧状态（防止串行） */
+    /* 顶部：房间 + 类型标签 + 卡片/跑马灯 + 语音标签 + 右侧状态 */
     html += '<div class="shout-history-item" data-id="' + m.id + '">' +
       '<div class="shout-history-top">' +
         '<div class="shout-history-top-left">' +
           '<span class="shout-history-room">' + escapeHtml(roomName) + '</span>' +
           '<span class="shout-history-type ' + typeCls + '">' + typeLabel + '</span>' +
           displayLabel +
+          voiceTag +
         '</div>' +
         '<span class="shout-history-status ' + statusCls + '">' + statusText + '</span>' +
       '</div>' +
       '<div class="shout-history-time">' + escapeHtml(time) + '</div>' +
       contentHtml +
       '<div class="shout-history-foot">' +
+        '<button type="button" class="shout-history-btn edit" data-act="edit" data-id="' + m.id + '">编辑</button>' +
         '<button type="button" class="shout-history-btn reshare" data-act="resend" data-id="' + m.id + '">重发</button>' +
         '<button type="button" class="shout-history-btn danger" data-act="delete" data-id="' + m.id + '">删除</button>' +
       '</div>' +
@@ -1094,6 +1101,7 @@ function renderShoutHistoryList() {
 
       if (act === 'resend')      handleResendShout(msg);
       else if (act === 'delete') handleDeleteShout(msg);
+      else if (act === 'edit')   handleEditShout(msg);
     };
   });
 }
@@ -1128,6 +1136,54 @@ async function handleDeleteShout(msg) {
   } catch (e) {
     showSaveStatus('删除失败：' + (e.message || ''), true);
   }
+}
+
+/* ★ 新增：编辑 —— 跳转到发通知页，自动回填原内容/模式 */
+async function handleEditShout(msg) {
+  // 1. 重置编辑状态
+  window.shoutMsgMode = 'popup';
+  window.shoutDisplay = 'card';
+  window.shoutPopupVoice = false;
+  window.shoutFileInfo = null;
+  window.shoutEditDraftText = '';
+
+  // 2. 解析原消息内容
+  if (msg.msg_type === 'file') {
+    window.shoutMsgMode = 'file';
+    try {
+      const meta = JSON.parse(msg.content);
+      if (meta && meta.data) {
+        window.shoutFileInfo = meta;
+        window.shoutFileAutoOpen = !!meta.open;
+      }
+    } catch (e) {}
+  } else if (msg.content && msg.content.charAt(0) === '{') {
+    try {
+      const p = JSON.parse(msg.content);
+      if (p && typeof p.text === 'string') {
+        window.shoutEditDraftText = p.text;
+        window.shoutDisplay = p.display || 'card';
+        if (p.display === 'voice') {
+          window.shoutMsgMode = 'voice';
+        } else {
+          window.shoutMsgMode = 'popup';
+          if (p.voice) window.shoutPopupVoice = true;
+        }
+      }
+    } catch (e) {
+      window.shoutEditDraftText = msg.content;
+    }
+  } else {
+    window.shoutEditDraftText = msg.content;
+  }
+
+  // 3. 设置目标班级和消息类型
+  window.currentShoutClass = msg.room_key;
+  window.shoutMsgType = msg.msg_type === 'file' ? 'text' : (msg.msg_type || 'text');
+  window.shoutSubTab = 'send';
+
+  // 4. 跳转并重新渲染
+  await renderShout();
 }
 
 /* ---------- 创建教室弹窗 ---------- */
