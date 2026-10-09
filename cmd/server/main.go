@@ -37,9 +37,6 @@ type ttsEndpoint struct {
 	Key string
 }
 
-var defaultTTSEndpoints = []ttsEndpoint{
-	{URL: "https://tts.wangwangit.com/v1/audio/speech"},
-}
 
 var ttsCounter uint64
 
@@ -279,7 +276,97 @@ func main() {
 // ============================================================
 // ★ TTS 反向代理（多接口轮询 + 失败自动切换）
 // ============================================================
+// ============================================================
+// ★ TTS 反向代理（多接口轮询 + 失败自动切换）
+// 无默认接口：管理员未配置时直接返回 502，
+// 大屏会立刻降级到浏览器内置语音，不产生额外网络等待。
+// ============================================================
 func ttsProxyHandler(db *database.SQLite) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "读取请求体失败"})
+			return
+		}
+
+		// 只从数据库读取管理员配置的接口列表，无兜底
+		var endpoints []ttsEndpoint
+		if cfg, err := db.GetSystemConfig(); err == nil {
+			endpoints = parseTTSEndpoints(cfg.TTSUpstreams)
+		}
+
+		// ★ 未配置任何接口：直接 502，大屏收到后立刻降级
+		if len(endpoints) == 0 {
+			log.Printf("[tts-proxy] 未配置 TTS 接口，拒绝请求")
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error": "管理员尚未配置 TTS 接口",
+			})
+			return
+		}
+
+		// 轮询：原子自增取模，起点依次递推
+		start := int(atomic.AddUint64(&ttsCounter, 1)-1) % len(endpoints)
+		client := &http.Client{Timeout: 15 * time.Second}
+
+		var lastErr error
+
+		for i := 0; i < len(endpoints); i++ {
+			ep := endpoints[(start+i)%len(endpoints)]
+
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+			req, err := http.NewRequestWithContext(ctx, "POST", ep.URL, bytes.NewReader(body))
+			if err != nil {
+				cancel()
+				lastErr = err
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "audio/*,application/json")
+			if ep.Key != "" {
+				req.Header.Set("Authorization", "Bearer "+ep.Key)
+				req.Header.Set("X-API-Key", ep.Key)
+			}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				cancel()
+				lastErr = err
+				continue
+			}
+
+			ct := resp.Header.Get("Content-Type")
+			ctLower := strings.ToLower(ct)
+
+			// 成功：返回音频（非 JSON）
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 &&
+				!strings.Contains(ctLower, "application/json") {
+				if ct == "" {
+					ct = "application/octet-stream"
+				}
+				c.Header("Content-Type", ct)
+				c.Header("Cache-Control", "no-store")
+				c.Status(resp.StatusCode)
+				_, _ = io.Copy(c.Writer, resp.Body)
+				resp.Body.Close()
+				cancel()
+				return
+			}
+
+			// 失败：记录错误，尝试下一个
+			errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			resp.Body.Close()
+			cancel()
+			lastErr = fmt.Errorf("endpoint %s: HTTP %d %s", ep.URL, resp.StatusCode, string(errBody))
+		}
+
+		msg := "所有 TTS 接口均不可用"
+		if lastErr != nil {
+			msg += ": " + lastErr.Error()
+		}
+		log.Printf("[tts-proxy] %s", msg)
+		c.JSON(http.StatusBadGateway, gin.H{"error": msg})
+	}
+}
 	return func(c *gin.Context) {
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
