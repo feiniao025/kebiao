@@ -128,14 +128,30 @@ func (h *AuthHandler) UpdatePreferences(c *gin.Context) {
 	}
 	current.UserID = userID
 
-	if prefs.Theme != nil { current.Theme = *prefs.Theme }
-	if prefs.ScheduleFilter != nil { current.ScheduleFilter = *prefs.ScheduleFilter }
-	if prefs.WeekHighlight != nil { current.WeekHighlight = *prefs.WeekHighlight }
-	if prefs.SeatDragOn != nil { current.SeatDragOn = *prefs.SeatDragOn }
-	if prefs.SeatPersonOn != nil { current.SeatPersonOn = *prefs.SeatPersonOn }
-	if prefs.ActiveTab != nil { current.ActiveTab = *prefs.ActiveTab }
-	if prefs.EditOn23 != nil { current.EditOn23 = *prefs.EditOn23 }
-	if prefs.EditOn22 != nil { current.EditOn22 = *prefs.EditOn22 }
+	if prefs.Theme != nil {
+		current.Theme = *prefs.Theme
+	}
+	if prefs.ScheduleFilter != nil {
+		current.ScheduleFilter = *prefs.ScheduleFilter
+	}
+	if prefs.WeekHighlight != nil {
+		current.WeekHighlight = *prefs.WeekHighlight
+	}
+	if prefs.SeatDragOn != nil {
+		current.SeatDragOn = *prefs.SeatDragOn
+	}
+	if prefs.SeatPersonOn != nil {
+		current.SeatPersonOn = *prefs.SeatPersonOn
+	}
+	if prefs.ActiveTab != nil {
+		current.ActiveTab = *prefs.ActiveTab
+	}
+	if prefs.EditOn23 != nil {
+		current.EditOn23 = *prefs.EditOn23
+	}
+	if prefs.EditOn22 != nil {
+		current.EditOn22 = *prefs.EditOn22
+	}
 
 	if err := h.db.UpsertPreferences(current); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存偏好失败"})
@@ -144,13 +160,19 @@ func (h *AuthHandler) UpdatePreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "已保存"})
 }
 
-// ============ 公开的站点配置（登录页读取） ============
+// ============ 公开的站点配置（登录页 / 大屏读取） ============
 
 func (h *AuthHandler) GetPublicSystemConfig(c *gin.Context) {
 	cfg, err := h.db.GetSystemConfig()
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"login_notice": ""})
+		c.JSON(http.StatusOK, gin.H{
+			"login_notice": "",
+			"tts_voice":    "zh-CN-XiaochenNeural",
+		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"login_notice": cfg.LoginNotice})
+	c.JSON(http.StatusOK, gin.H{
+		"login_notice": cfg.LoginNotice,
+		"tts_voice":    cfg.TTSVoice,
+	})
 }

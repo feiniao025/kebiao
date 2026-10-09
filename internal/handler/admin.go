@@ -99,18 +99,34 @@ func (h *AdminHandler) GetUserDetail(c *gin.Context) {
 	// 考勤（全部）
 	attendance, _ := h.db.GetAllAttendance(user.ID)
 
-	if classes == nil { classes = []model.Class{} }
-	if students == nil { students = []model.Student{} }
-	if cells == nil { cells = []model.ScheduleCell{} }
-	if roster == nil { roster = []model.RosterStudent{} }
-	if exams == nil { exams = []model.Exam{} }
-	if attendance == nil { attendance = []model.AttendanceRecord{} }
+	if classes == nil {
+		classes = []model.Class{}
+	}
+	if students == nil {
+		students = []model.Student{}
+	}
+	if cells == nil {
+		cells = []model.ScheduleCell{}
+	}
+	if roster == nil {
+		roster = []model.RosterStudent{}
+	}
+	if exams == nil {
+		exams = []model.Exam{}
+	}
+	if attendance == nil {
+		attendance = []model.AttendanceRecord{}
+	}
 
 	seatCount, maleCount, femaleCount := 0, 0, 0
 	for _, s := range students {
 		if s.Name != "" {
 			seatCount++
-			if s.Gender == "男" { maleCount++ } else if s.Gender == "女" { femaleCount++ }
+			if s.Gender == "男" {
+				maleCount++
+			} else if s.Gender == "女" {
+				femaleCount++
+			}
 		}
 	}
 
@@ -248,6 +264,8 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "用户已删除"})
 }
 
+// ============ Supabase 配置 ============
+
 func (h *AdminHandler) GetSupabaseConfig(c *gin.Context) {
 	cfg, err := h.db.GetSupabaseConfig()
 	if err != nil {
@@ -263,13 +281,47 @@ func (h *AdminHandler) GetSupabaseConfig(c *gin.Context) {
 	})
 }
 
+// updateSupabaseReq 使用指针区分「未传字段」与「传了零值」，
+// 避免前端只改部分字段时把其他字段重置。
+type updateSupabaseReq struct {
+	Enabled            *bool   `json:"enabled"`
+	URL                *string `json:"url"`
+	APIKey             *string `json:"api_key"`
+	SyncInterval       *int    `json:"sync_interval"`
+	RegistrationLocked *bool   `json:"registration_locked"`
+}
+
 func (h *AdminHandler) UpdateSupabaseConfig(c *gin.Context) {
-	var req model.SupabaseConfig
+	var req updateSupabaseReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
 		return
 	}
-	if err := h.db.UpdateSupabaseConfig(&req); err != nil {
+
+	// 先读取当前配置，再做「部分更新」
+	current, err := h.db.GetSupabaseConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取当前配置失败"})
+		return
+	}
+
+	if req.Enabled != nil {
+		current.Enabled = *req.Enabled
+	}
+	if req.URL != nil {
+		current.URL = *req.URL
+	}
+	if req.APIKey != nil {
+		current.APIKey = *req.APIKey
+	}
+	if req.SyncInterval != nil {
+		current.SyncInterval = *req.SyncInterval
+	}
+	if req.RegistrationLocked != nil {
+		current.RegistrationLocked = *req.RegistrationLocked
+	}
+
+	if err := h.db.UpdateSupabaseConfig(current); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败"})
 		return
 	}
@@ -296,7 +348,7 @@ func (h *AdminHandler) GetSchemaSQL(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sql": database.SupabaseSchemaSQL()})
 }
 
-// ============ 系统配置（登录提示等） ============
+// ============ 系统配置（登录提示 / TTS 多接口） ============
 
 func (h *AdminHandler) GetSystemConfig(c *gin.Context) {
 	cfg, err := h.db.GetSystemConfig()
@@ -305,12 +357,16 @@ func (h *AdminHandler) GetSystemConfig(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"login_notice": cfg.LoginNotice,
+		"login_notice":  cfg.LoginNotice,
+		"tts_upstreams": cfg.TTSUpstreams,
+		"tts_voice":     cfg.TTSVoice,
 	})
 }
 
 type updateSystemConfigReq struct {
-	LoginNotice string `json:"login_notice"`
+	LoginNotice  *string `json:"login_notice"`
+	TTSUpstreams *string `json:"tts_upstreams"`
+	TTSVoice     *string `json:"tts_voice"`
 }
 
 func (h *AdminHandler) UpdateSystemConfig(c *gin.Context) {
@@ -319,7 +375,23 @@ func (h *AdminHandler) UpdateSystemConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
 		return
 	}
-	cfg := &model.SystemConfig{LoginNotice: req.LoginNotice}
+
+	cfg, err := h.db.GetSystemConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取配置失败"})
+		return
+	}
+
+	if req.LoginNotice != nil {
+		cfg.LoginNotice = *req.LoginNotice
+	}
+	if req.TTSUpstreams != nil {
+		cfg.TTSUpstreams = *req.TTSUpstreams
+	}
+	if req.TTSVoice != nil {
+		cfg.TTSVoice = *req.TTSVoice
+	}
+
 	if err := h.db.UpdateSystemConfig(cfg); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
 		return

@@ -22,8 +22,6 @@
       linear-gradient(90deg,rgba(56,189,248,.05) 1px,transparent 1px);
     background-size:52px 52px;
   }
-
-  /* ---- 顶部状态栏 ---- */
   .hud{
     position:fixed;top:0;left:0;right:0;z-index:10;
     display:flex;justify-content:space-between;align-items:center;
@@ -50,15 +48,11 @@
     font-size:19px;font-weight:700;color:#94a3b8;
     letter-spacing:2px;font-variant-numeric:tabular-nums;
   }
-
-  /* ---- 空闲态 ---- */
   .idle{text-align:center;padding:40px;}
   .idle .icon{font-size:96px;margin-bottom:26px;opacity:.3;animation:breathe 4s ease-in-out infinite;}
   @keyframes breathe{0%,100%{opacity:.22;transform:scale(1);}50%{opacity:.4;transform:scale(1.06);}}
   .idle h1{font-size:34px;font-weight:200;color:#475569;letter-spacing:16px;margin-bottom:16px;}
   .idle p{font-size:15px;color:#334155;letter-spacing:3px;}
-
-  /* ---- 消息弹屏 ---- */
   #popup{
     position:fixed;inset:0;z-index:100;
     display:none;align-items:center;justify-content:center;padding:70px;
@@ -67,7 +61,6 @@
   }
   #popup.show{display:flex;animation:fadeIn .22s ease;}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
   .msg-card{
     max-width:1200px;width:100%;
     background:linear-gradient(160deg,#1e293b 0%,#0f172a 100%);
@@ -80,11 +73,11 @@
     animation:popIn .32s cubic-bezier(.2,1.2,.4,1);
   }
   @keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
-
   .msg-card.notice{box-shadow:0 0 0 2px rgba(250,204,21,.30),0 0 90px rgba(250,204,21,.10),0 40px 110px rgba(0,0,0,.65);}
   .msg-card.urgent{box-shadow:0 0 0 3px rgba(239,68,68,.45),0 0 110px rgba(239,68,68,.18),0 40px 110px rgba(0,0,0,.7);animation:popIn .32s cubic-bezier(.2,1.2,.4,1),shake .5s ease 1;}
   .msg-card.image{box-shadow:0 0 0 2px rgba(129,140,248,.35),0 0 90px rgba(129,140,248,.15),0 40px 110px rgba(0,0,0,.65);}
-
+  .msg-card.video{box-shadow:0 0 0 2px rgba(34,197,94,.30),0 0 90px rgba(34,197,94,.10),0 40px 110px rgba(0,0,0,.65);}
+  .msg-card.file{box-shadow:0 0 0 2px rgba(129,140,248,.35),0 0 90px rgba(129,140,248,.15),0 40px 110px rgba(0,0,0,.65);}
   @keyframes shake{
     0%,100%{transform:translateX(0);}
     20%{transform:translateX(-8px);}
@@ -92,7 +85,6 @@
     60%{transform:translateX(-5px);}
     80%{transform:translateX(5px);}
   }
-
   .msg-head{
     display:flex;align-items:center;gap:16px;margin-bottom:26px;
     padding-bottom:20px;border-bottom:1px solid rgba(148,163,184,.14);
@@ -106,11 +98,12 @@
   .msg-card.notice .msg-type{background:rgba(250,204,21,.14);color:#fde047;}
   .msg-card.urgent .msg-type{background:rgba(239,68,68,.18);color:#fca5a5;}
   .msg-card.image .msg-type{background:rgba(129,140,248,.18);color:#c7d2fe;}
+  .msg-card.video .msg-type{background:rgba(34,197,94,.14);color:#86efac;}
+  .msg-card.file .msg-type{background:rgba(129,140,248,.18);color:#c7d2fe;}
   .msg-from{
     font-size:16px;color:#94a3b8;letter-spacing:1px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
-
   .msg-content{
     font-size:44px;line-height:1.55;font-weight:600;
     color:#f1f5f9;letter-spacing:2px;
@@ -120,8 +113,18 @@
   }
   .msg-card.notice .msg-content{color:#fef9c3;}
   .msg-card.urgent .msg-content{color:#fee2e2;text-shadow:0 2px 18px rgba(239,68,68,.25);}
-
-  /* ★ 图片消息 */
+  .msg-voice-tag{
+    display:inline-block;
+    font-size:13px;
+    font-weight:600;
+    color:#4dd0b1;
+    background:rgba(22,160,133,.15);
+    padding:2px 10px;
+    border-radius:999px;
+    margin-left:10px;
+    letter-spacing:1px;
+    vertical-align:middle;
+  }
   .msg-image{
     display:flex;
     justify-content:center;
@@ -137,13 +140,39 @@
     box-shadow:0 12px 40px rgba(0,0,0,.5);
     background:#0b1220;
   }
-
+  .msg-image video{
+    max-width:100%;
+    max-height:62vh;
+    border-radius:14px;
+    background:#0b1220;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    display:block;
+  }
+  .msg-file{
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+    padding:30px 20px;
+    background:rgba(148,163,184,.06);
+    border:1px dashed rgba(148,163,184,.25);
+    border-radius:16px;
+  }
+  .msg-file-icon{font-size:84px;opacity:.75;line-height:1;}
+  .msg-file-name{
+    font-size:26px;font-weight:600;color:#e2e8f0;
+    letter-spacing:1px;word-break:break-all;text-align:center;max-width:100%;
+  }
+  .msg-file-hint{font-size:14px;color:#94a3b8;letter-spacing:2px;}
+  .msg-file-btn{
+    display:inline-block;margin-top:6px;padding:12px 32px;border-radius:12px;
+    background:linear-gradient(135deg,#2f6df6 0%,#1e5ae0 100%);
+    color:#fff;font-size:16px;font-weight:700;letter-spacing:2px;
+    text-decoration:none;box-shadow:0 8px 24px rgba(47,109,246,.35);
+    transition:transform .15s,box-shadow .15s;
+  }
+  .msg-file-btn:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(47,109,246,.45);}
   .msg-foot{
     margin-top:30px;text-align:right;
     font-size:13px;color:#475569;letter-spacing:2px;
   }
-
-  /* ★ 弹窗底部中央倒计时（flex 严格居中） */
   .msg-countdown{
     margin-top:18px;
     display:flex;
@@ -178,12 +207,89 @@
     color:#a5b4fc;
     text-shadow:0 0 12px rgba(129,140,248,.35);
   }
-
+  .msg-card.video .msg-countdown .cd-num{
+    color:#4ade80;
+    text-shadow:0 0 12px rgba(74,222,128,.35);
+  }
+  .msg-card.file .msg-countdown .cd-num{
+    color:#a5b4fc;
+    text-shadow:0 0 12px rgba(129,140,248,.35);
+  }
+  .marquee-bar {
+    position: fixed;
+    left: 0; right: 0; top: 0;
+    height: 62px;
+    display: none;
+    align-items: center;
+    overflow: hidden;
+    z-index: 300;
+    pointer-events: none;
+    background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+    color: #f1f5f9;
+    border-bottom: 2px solid rgba(56,189,248,.45);
+    box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  .marquee-bar.notice {
+    background: linear-gradient(90deg, #78350f 0%, #451a03 100%);
+    color: #fef9c3;
+    border-bottom-color: rgba(250,204,21,.55);
+  }
+  .marquee-bar.urgent {
+    background: linear-gradient(90deg, #7f1d1d 0%, #450a0a 100%);
+    color: #fee2e2;
+    border-bottom-color: rgba(239,68,68,.65);
+  }
+  .marquee-content {
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding-left: 100%;
+    will-change: transform;
+    animation: marquee-scroll 20s linear infinite;
+  }
+  @keyframes marquee-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
   .tip{
     position:fixed;bottom:22px;left:0;right:0;text-align:center;
     font-size:12px;color:#334155;letter-spacing:2px;z-index:5;
   }
 
+  @keyframes audioHintPulse {
+    0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 30px rgba(245,158,11,.45); }
+    50%     { transform: translateX(-50%) scale(1.06); box-shadow: 0 12px 40px rgba(245,158,11,.75); }
+  }
+  #audioHint{
+    position:fixed; left:50%; bottom:80px; transform:translateX(-50%);
+    background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);
+    color:#fff; padding:16px 32px; border-radius:14px;
+    font-size:20px; font-weight:700; letter-spacing:3px;
+    z-index:9999;
+    cursor:pointer;
+    display:flex; align-items:center; gap:10px;
+    animation: audioHintPulse 1.8s ease-in-out infinite;
+    transition: background .25s, color .25s, box-shadow .25s;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    border:2px solid rgba(255,255,255,.35);
+  }
+  #audioHint::before{
+    content:'🔊';
+    font-size:22px;
+    animation: audioHintPulse 1.8s ease-in-out infinite;
+  }
+  #audioHint.ok{
+    background:linear-gradient(135deg,#16a085 0%,#0e7a63 100%);
+    animation: none;
+    box-shadow: 0 8px 30px rgba(22,160,133,.55);
+  }
+  #audioHint.ok::before{
+    content:'✅';
+    animation: none;
+  }
   @media (max-width:900px){
     .msg-content{font-size:30px;}
     .msg-card{padding:32px 28px 26px;border-radius:22px;}
@@ -193,6 +299,12 @@
     .hud .room{font-size:15px;}
     .clock{font-size:15px;}
     .msg-image img{max-height:52vh;}
+    .msg-image video{max-height:52vh;}
+    .msg-file-icon{font-size:60px;}
+    .msg-file-name{font-size:20px;}
+    .marquee-bar { height: 48px; }
+    .marquee-content { font-size: 20px; letter-spacing: 2px; }
+    #audioHint{ font-size:16px; padding:12px 22px; letter-spacing:2px; bottom:60px; }
   }
 </style>
 </head>
@@ -220,27 +332,49 @@
   <div class="msg-card text" id="msgCard"></div>
 </div>
 
+<div class="marquee-bar" id="marqueeBar" style="display:none;">
+  <div class="marquee-content" id="marqueeContent"></div>
+</div>
+
 <div class="tip">本页面请常驻运行 · 建议全屏（F11）· 点击屏幕任意位置可关闭弹屏</div>
+
+<!-- ★ 语音解锁提示层 -->
+<div id="audioHint">点击此处开启语音播报</div>
 
 <script>
 (function () {
   'use strict';
 
+  console.log('[shout-display] loaded @', new Date().toISOString(), 'BUILD=xiaochen-tts-v8-proxy');
+
+  /* ============================================================
+     ★ 在线 TTS 配置（走后端反代 /api/tts，同源、绕过 CSP / CORS）
+     voice 会异步从 /api/config 读取（管理员后台可配置）
+     ============================================================ */
+  var ONLINE_TTS_URL = '/api/tts';
+  var ONLINE_TTS_VOICE = 'zh-CN-XiaochenNeural';
+  var ONLINE_TTS_TIMEOUT = 8000;
+  var onlineTTSAvailable = true;
+
+  // 异步获取管理员配置的 voice
+  try {
+    fetch('/api/config', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        if (cfg && cfg.tts_voice) {
+          ONLINE_TTS_VOICE = cfg.tts_voice;
+          console.log('[shout-display] 使用管理员配置的 voice:', ONLINE_TTS_VOICE);
+        }
+      })
+      .catch(function () { /* 忽略 */ });
+  } catch (e) { /* 忽略 */ }
+
   var params = new URLSearchParams(location.search);
   var token  = params.get('token') || '';
 
-  /* ============================================================
-     ★ 核心：只显示一次 & 过期不补发
-     - 每个 token 用 localStorage 记录 since（已拉取到的最大消息 ID）
-     - 首次打开大屏：把当前所有消息都跳过（不显示），只记录 since
-     - 后续打开：从 localStorage 恢复 since，只拉新消息
-     - 拉到的新消息按 duration 严格过滤过期项
-     ============================================================ */
-
   var SINCE_KEY = 'shout_since_' + token;
-
   var since = 0;
-  var isFirstConnect = true;   // 本次是否为「首次连接」
+  var isFirstConnect = true;
 
   var storageOK = (function () {
     try {
@@ -272,19 +406,20 @@
     return Date.now() - t > dur;
   }
 
-  /* ============================================================ */
-
   var failCount = 0;
   var popTimer = null;
   var cdTimer = null;
   var queue = [];
   var showing = false;
+  var marqueeTimer = null;
+  var currentAudio = null;
 
   var statusDot  = document.getElementById('statusDot');
   var statusText = document.getElementById('statusText');
   var roomNameEl = document.getElementById('roomName');
   var popup      = document.getElementById('popup');
   var msgCard    = document.getElementById('msgCard');
+  var audioHintEl = document.getElementById('audioHint');
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -297,29 +432,426 @@
     statusText.textContent = on ? '在线' : '离线';
   }
 
-  function renderMessage(m) {
-    var isImage = (m.msg_type === 'image');
+  /* ============================================================
+     语音解锁（浏览器要求用户手势后才能播音频）
+     ============================================================ */
+  var audioUnlocked = false;
 
-    var typeLabel = isImage ? '🖼️ 图片' :
-      (m.msg_type === 'urgent' ? '🚨 紧急' :
-       m.msg_type === 'notice' ? '📢 通知' : '💬 消息');
+  function hideAudioHint() {
+    if (!audioHintEl) return;
+    audioHintEl.classList.add('ok');
+    audioHintEl.textContent = '语音已开启';
+    setTimeout(function () {
+      if (audioHintEl) audioHintEl.style.display = 'none';
+    }, 1500);
+  }
+
+  function unlockAudio() {
+    if (audioUnlocked) return;
+
+    if ('speechSynthesis' in window) {
+      try {
+        var synth = window.speechSynthesis;
+        var u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        u.lang = 'zh-CN';
+        synth.speak(u);
+        synth.cancel();
+        synth.getVoices();
+      } catch (e) {}
+    }
+
+    audioUnlocked = true;
+    console.log('[shout] ✅ 音频已解锁');
+    hideAudioHint();
+  }
+
+  ['click', 'touchstart', 'pointerdown', 'keydown'].forEach(function (evt) {
+    document.addEventListener(evt, unlockAudio, { capture: true });
+  });
+
+  if (audioHintEl) {
+    audioHintEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      unlockAudio();
+    });
+  }
+
+  if ('speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.onvoiceschanged = function () {
+        var list = window.speechSynthesis.getVoices() || [];
+        console.log('[shout] 浏览器内置 voices loaded:', list.length);
+      };
+    } catch (e) {}
+  }
+
+  /* ============================================================
+     ★ 浏览器内置 TTS —— 降级方案
+     ============================================================ */
+  function pickBestChineseVoice(synth) {
+    var voices = [];
+    try { voices = synth.getVoices() || []; } catch (e) { return null; }
+    if (!voices.length) return null;
+
+    var zhVoices = voices.filter(function (v) {
+      return /^zh/i.test(v.lang) || /Chinese|中文|普通话/i.test(v.name);
+    });
+    if (!zhVoices.length) return voices[0] || null;
+
+    var priority = ['Xiaoxiao','Xiaoyi','Yunxi','Yunyang','Yunjian','Yunxia'];
+    for (var p = 0; p < priority.length; p++) {
+      for (var i = 0; i < zhVoices.length; i++) {
+        if ((zhVoices[i].name || '').indexOf(priority[p]) >= 0) return zhVoices[i];
+      }
+    }
+    for (var j = 0; j < zhVoices.length; j++) {
+      if (/Neural|Natural|Online/i.test(zhVoices[j].name || '')) return zhVoices[j];
+    }
+    for (var k = 0; k < zhVoices.length; k++) {
+      if (/^zh[-_]?CN/i.test(zhVoices[k].lang)) return zhVoices[k];
+    }
+    return zhVoices[0];
+  }
+
+  function fallbackSpeak(text) {
+    if (!text) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      var synth = window.speechSynthesis;
+      if (synth.paused) synth.resume();
+      synth.cancel();
+      var u = new SpeechSynthesisUtterance(String(text));
+      u.lang = 'zh-CN';
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      var voice = pickBestChineseVoice(synth);
+      if (voice) { u.voice = voice; u.lang = voice.lang || 'zh-CN'; }
+      u.onstart = function () { console.log('[shout] ▶️ 降级播报（浏览器内置）:', text); };
+      u.onerror = function (e) { console.error('[shout] ❌ 降级播报失败:', e.error); };
+      synth.speak(u);
+    } catch (e) {
+      console.error('[shout] fallbackSpeak 异常:', e);
+    }
+  }
+
+  /* ============================================================
+     ★ 在线 TTS（走后端反代 /api/tts）
+     ============================================================ */
+  var onlineTTSErrCount = 0;
+
+  async function onlineSpeak(text) {
+    if (!onlineTTSAvailable) return false;
+    if (!text) return false;
+
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, ONLINE_TTS_TIMEOUT);
+    var t0 = Date.now();
+
+    try {
+      console.log('[shout] 📡 请求在线TTS:', ONLINE_TTS_URL, '| voice:', ONLINE_TTS_VOICE);
+
+      var resp = await fetch(ONLINE_TTS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: text,
+          voice: ONLINE_TTS_VOICE,
+          speed: 1.0,
+          pitch: '0',
+          style: 'general'
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      var ct = resp.headers.get('content-type') || '';
+      var costMs = Date.now() - t0;
+      console.log('[shout] 📡 响应:', resp.status, ct, costMs + 'ms');
+
+      if (!resp.ok) {
+        var errText = '';
+        try { errText = await resp.text(); } catch (e) {}
+        console.error('[shout] ❌ 在线TTS HTTP', resp.status, '| body:', errText.slice(0, 300));
+        throw new Error('HTTP ' + resp.status);
+      }
+
+      if (/application\/json/i.test(ct)) {
+        var jtext = '';
+        try { jtext = await resp.text(); } catch (e) {}
+        console.error('[shout] ❌ 在线TTS 返回了 JSON（不是音频）:', jtext.slice(0, 300));
+        throw new Error('返回JSON而非音频');
+      }
+
+      var audioBlob = await resp.blob();
+      console.log('[shout] 📡 音频大小:', audioBlob.size, 'bytes, type:', audioBlob.type);
+
+      if (!audioBlob || audioBlob.size < 100) {
+        throw new Error('音频数据异常 (size=' + (audioBlob ? audioBlob.size : 0) + ')');
+      }
+
+      if (currentAudio) {
+        try { currentAudio.pause(); } catch (e) {}
+        currentAudio = null;
+      }
+
+      var audioUrl = URL.createObjectURL(audioBlob);
+      var audio = new Audio(audioUrl);
+      currentAudio = audio;
+
+      audio.onended = function () {
+        URL.revokeObjectURL(audioUrl);
+        if (currentAudio === audio) currentAudio = null;
+        console.log('[shout] ⏹️ 晓辰播报结束');
+      };
+      audio.onerror = function (e) {
+        URL.revokeObjectURL(audioUrl);
+        if (currentAudio === audio) currentAudio = null;
+        console.error('[shout] ❌ audio 元素播放失败:', e);
+      };
+
+      await audio.play();
+      console.log('[shout] ▶️ 晓辰播报成功:', text);
+      onlineTTSErrCount = 0;
+      return true;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      onlineTTSErrCount++;
+      console.warn('[shout] ⚠️ 在线TTS 第 ' + onlineTTSErrCount + ' 次失败:', e.message || e);
+      if (onlineTTSErrCount >= 3) {
+        onlineTTSAvailable = false;
+        console.warn('[shout] ⚠️ 连续失败 3 次，本会话改用浏览器内置语音');
+      }
+      return false;
+    }
+  }
+
+  async function speakText(text) {
+    if (!text) return;
+    var ok = await onlineSpeak(text);
+    if (!ok) fallbackSpeak(text);
+  }
+
+  function stopSpeak() {
+    if (currentAudio) {
+      try { currentAudio.pause(); } catch (e) {}
+      currentAudio = null;
+    }
+    try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) {}
+  }
+
+  /* ============================================================
+     从任意形态的 content 里抽出 { text, voice, display }
+     ============================================================ */
+  function extractInfo(m) {
+    var info = { text: '', voice: false, display: 'card' };
+    if (!m) return info;
+    if (m.msg_type === 'file' || m.msg_type === 'image') {
+      info.text = String(m.content == null ? '' : m.content);
+      return info;
+    }
+    var raw = String(m.content == null ? '' : m.content);
+
+    raw = raw.replace(/^[\uFEFF\u200B\u200C\u200D\u00A0\s]+/, '');
+    raw = raw.replace(/[\uFEFF\u200B\u200C\u200D\u00A0\s]+$/, '');
+
+    if (raw.charAt(0) !== '{') { info.text = raw; return info; }
+
+    try {
+      var p1 = JSON.parse(raw);
+      if (p1 && typeof p1.text === 'string') {
+        info.text = p1.text; info.voice = !!p1.voice;
+        info.display = p1.display || 'card';
+        return info;
+      }
+    } catch (e1) { console.warn('[shout] JSON.parse fail:', e1.message); }
+
+    try {
+      var unescaped = raw.replace(/^"|"$/g, '').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      if (unescaped.charAt(0) === '{') {
+        var p2 = JSON.parse(unescaped);
+        if (p2 && typeof p2.text === 'string') {
+          info.text = p2.text; info.voice = !!p2.voice;
+          info.display = p2.display || 'card';
+          console.warn('[shout] recovered: double-escaped');
+          return info;
+        }
+      }
+    } catch (e2) {}
+
+    var mt = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (mt) {
+      var val = mt[1];
+      try { val = JSON.parse('"' + val + '"'); } catch (e3) {}
+      info.text = val;
+      var md = raw.match(/"display"\s*:\s*"([^"]*)"/);
+      if (md) info.display = md[1];
+      var mv = raw.match(/"voice"\s*:\s*(true|false)/);
+      if (mv) info.voice = (mv[1] === 'true');
+      console.warn('[shout] recovered: regex');
+      return info;
+    }
+
+    console.warn('[shout] cannot extract, using raw');
+    info.text = raw;
+    return info;
+  }
+
+  /* ---------- 分流 ---------- */
+  function renderMessage(m) {
+    if (!m) return;
+    var info = extractInfo(m);
+    console.log('[shout] 收到消息', {
+      id: m.id, msg_type: m.msg_type,
+      display: info.display, voice: info.voice,
+      audioUnlocked: audioUnlocked,
+      text: info.text ? info.text.slice(0, 40) : ''
+    });
+
+    if (info.display === 'voice') {
+      if (!audioUnlocked) {
+        console.warn('[shout] ⚠️ 音频未解锁，等待用户点击屏幕');
+        if (audioHintEl) {
+          audioHintEl.style.display = 'flex';
+          audioHintEl.classList.remove('ok');
+          audioHintEl.textContent = '点击此处开启语音播报';
+        }
+      }
+      if (info.voice) setTimeout(function () { speakText(info.text); }, 100);
+      return;
+    }
+    if (info.display === 'marquee') { showMarquee(m, info); return; }
+    showCardMessage(m, info);
+  }
+
+  /* ---------- 跑马灯 ---------- */
+  function showMarquee(m, info) {
+    var bar = document.getElementById('marqueeBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'marqueeBar';
+      bar.className = 'marquee-bar';
+      bar.innerHTML = '<div class="marquee-content" id="marqueeContent"></div>';
+      document.body.appendChild(bar);
+    }
+    var contentEl = document.getElementById('marqueeContent');
+    if (!contentEl) return;
+
+    var text = info.text || '';
+    if (!text) return;
+
+    var typeCls = 'text'; var prefix = '💬 ';
+    if (m.msg_type === 'urgent')      { typeCls = 'urgent'; prefix = '🚨 '; }
+    else if (m.msg_type === 'notice') { typeCls = 'notice'; prefix = '📢 '; }
+    bar.className = 'marquee-bar ' + typeCls;
+
+    var sender = m.sender_name ? m.sender_name + '：' : '';
+    var displayText = prefix + sender + text;
+    contentEl.textContent = displayText;
+
+    var scrollSec = Math.max(10, Math.min(40, displayText.length * 0.5 + 10));
+    contentEl.style.animation = 'none';
+    void contentEl.offsetWidth;
+    contentEl.style.animation = 'marquee-scroll ' + scrollSec + 's linear infinite';
+    bar.style.display = 'flex';
+
+    if (info.voice) setTimeout(function () { speakText(text); }, 200);
+
+    if (marqueeTimer) { clearTimeout(marqueeTimer); marqueeTimer = null; }
+    var durSec = (m.duration && m.duration > 0) ? m.duration : 20;
+    marqueeTimer = setTimeout(function () {
+      bar.style.display = 'none';
+      contentEl.style.animation = 'none';
+      marqueeTimer = null;
+    }, durSec * 1000);
+  }
+
+  /* ---------- 完整卡片 ---------- */
+  function showCardMessage(m, info) {
+    var isFile = (m.msg_type === 'file');
+    var fileMeta = null;
+    if (isFile) { try { fileMeta = JSON.parse(m.content); } catch (e) { fileMeta = null; } }
+
+    var typeLabel = '💬 消息';
+    if (isFile && fileMeta) {
+      var ft = fileMeta.type || '';
+      if (/^image\//.test(ft))      typeLabel = '🖼️ 图片';
+      else if (/^video\//.test(ft)) typeLabel = '🎬 视频';
+      else                          typeLabel = '📁 文件';
+    } else if (m.msg_type === 'image') { typeLabel = '🖼️ 图片'; }
+    else if (m.msg_type === 'urgent')  { typeLabel = '🚨 紧急'; }
+    else if (m.msg_type === 'notice')  { typeLabel = '📢 通知'; }
+
+    var cls = 'msg-card ';
+    if (isFile && fileMeta) {
+      var ft2 = fileMeta.type || '';
+      if (/^image\//.test(ft2))      cls += 'image';
+      else if (/^video\//.test(ft2)) cls += 'video';
+      else                           cls += 'file';
+    } else if (m.msg_type === 'image') { cls += 'image'; }
+    else { cls += (m.msg_type || 'text'); }
+
+    var bodyHtml = '';
+    var needAutoOpen = false;
+    var voiceTagHtml = '';
+
+    if (isFile && fileMeta) {
+      var ft3 = fileMeta.type || '';
+      var autoOpen = !!fileMeta.open;
+      if (/^image\//.test(ft3)) {
+        bodyHtml = '<div class="msg-image"><img src="' + fileMeta.data + '" alt="图片" /></div>';
+      } else if (/^video\//.test(ft3)) {
+        bodyHtml = '<div class="msg-image"><video id="msgVideoEl" src="' + fileMeta.data + '" ' +
+          (autoOpen ? 'autoplay ' : '') + 'controls playsinline preload="auto"></video></div>';
+        if (autoOpen) {
+          setTimeout(function () {
+            var v = document.getElementById('msgVideoEl');
+            if (v && v.paused) {
+              var hint = document.createElement('div');
+              hint.style.cssText = 'text-align:center;color:#94a3b8;font-size:13px;margin-top:10px;letter-spacing:2px;';
+              hint.textContent = '（如未自动播放，请点击视频播放按钮）';
+              v.parentNode.appendChild(hint);
+            }
+          }, 1200);
+        }
+      } else {
+        bodyHtml = '<div class="msg-file">' +
+            '<div class="msg-file-icon">📄</div>' +
+            '<div class="msg-file-name">' + esc(fileMeta.name || '文件') + '</div>' +
+            '<div class="msg-file-hint">' + (autoOpen ? '正在打开…' : '点击下方按钮在一体机打开') + '</div>' +
+            '<a class="msg-file-btn" id="msgFileOpenBtn" download="' + esc(fileMeta.name || 'file') + '" href="' + fileMeta.data + '">📥 打开 / 下载</a>' +
+          '</div>';
+        needAutoOpen = autoOpen;
+      }
+    } else if (m.msg_type === 'image') {
+      bodyHtml = '<div class="msg-image"><img src="' + m.content + '" alt="图片" /></div>';
+    } else {
+      var finalText = info.text || '';
+      if (finalText.charAt(0) === '{' && finalText.indexOf('"text"') >= 0) {
+        try {
+          var pj = JSON.parse(finalText);
+          if (pj && typeof pj.text === 'string') finalText = pj.text;
+        } catch (e4) {
+          var mj = finalText.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+          if (mj) { try { finalText = JSON.parse('"' + mj[1] + '"'); } catch (e5) { finalText = mj[1]; } }
+        }
+      }
+      bodyHtml = '<div class="msg-content">' + esc(finalText) + '</div>';
+      if (info.voice) {
+        voiceTagHtml = '<span class="msg-voice-tag">🔊 语音播报中</span>';
+        setTimeout(function () { speakText(finalText); }, 300);
+      }
+    }
 
     var totalSec = (m.duration && m.duration > 0) ? m.duration : 20;
-
-    // 图片直接使用 dataURL，不再 HTML 转义（避免 base64 中的字符被替换）
-    var bodyHtml = isImage
-      ? '<div class="msg-image"><img src="' + m.content + '" alt="图片" /></div>'
-      : '<div class="msg-content">' + esc(m.content) + '</div>';
-
-    var cls = 'msg-card ' + (isImage ? 'image' : (m.msg_type || 'text'));
 
     msgCard.className = cls;
     msgCard.innerHTML =
       '<div class="msg-head">' +
         '<span class="msg-type">' + typeLabel + '</span>' +
-        '<span class="msg-from">' + esc(m.sender_name) + ' · ' + esc(m.sender_role) + '</span>' +
-      '</div>' +
-      bodyHtml +
+        '<span class="msg-from">' + esc(m.sender_name) + ' · ' + esc(m.sender_role) + voiceTagHtml + '</span>' +
+      '</div>' + bodyHtml +
       '<div class="msg-foot">' + new Date(m.created_at).toLocaleTimeString('zh-CN') + '</div>' +
       '<div class="msg-countdown">' +
         '<span>本消息将在</span>' +
@@ -329,6 +861,13 @@
 
     popup.classList.add('show');
     showing = true;
+
+    if (needAutoOpen) {
+      setTimeout(function () {
+        var a = document.getElementById('msgFileOpenBtn');
+        if (a) a.click();
+      }, 150);
+    }
 
     if (popTimer) clearTimeout(popTimer);
     popTimer = setTimeout(hidePopup, totalSec * 1000);
@@ -340,31 +879,31 @@
       remain -= 1;
       if (remain < 0) remain = 0;
       if (numEl) numEl.textContent = remain;
-      if (remain <= 0) {
-        clearInterval(cdTimer);
-        cdTimer = null;
-      }
+      if (remain <= 0) { clearInterval(cdTimer); cdTimer = null; }
     }, 1000);
   }
 
   function hidePopup() {
+    try {
+      var v = document.getElementById('msgVideoEl');
+      if (v) { v.pause(); v.currentTime = 0; }
+    } catch (e) {}
+    stopSpeak();
     popup.classList.remove('show');
     showing = false;
     if (popTimer) { clearTimeout(popTimer); popTimer = null; }
     if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
     setTimeout(function () {
-      if (!showing && queue.length > 0) {
-        renderMessage(queue.shift());
-      }
+      if (!showing && queue.length > 0) renderMessage(queue.shift());
     }, 260);
   }
 
   function enqueueMessage(m) {
-    if (showing) {
-      queue.push(m);
-    } else {
-      renderMessage(m);
+    var info = extractInfo(m);
+    if (info.display === 'marquee' || info.display === 'voice') {
+      renderMessage(m); return;
     }
+    if (showing) { queue.push(m); } else { renderMessage(m); }
   }
 
   async function poll() {
@@ -372,42 +911,29 @@
     try {
       var resp = await fetch('/api/shout/feed?token=' +
         encodeURIComponent(token) + '&since=' + since, { cache: 'no-store' });
-
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
-
       var data = await resp.json();
-
       setOnline(true);
       failCount = 0;
-
-      if (data.room && data.room.name) {
-        roomNameEl.textContent = data.room.name;
-      }
+      if (data.room && data.room.name) roomNameEl.textContent = data.room.name;
 
       var list = data.messages || [];
-
       var maxId = since;
       for (var i = 0; i < list.length; i++) {
         if (list[i].id > maxId) maxId = list[i].id;
       }
 
       if (isFirstConnect) {
-        since = maxId;
-        saveSince();
-        isFirstConnect = false;
-        return;
+        since = maxId; saveSince(); isFirstConnect = false; return;
       }
 
       for (var j = 0; j < list.length; j++) {
-        var m = list[j];
-        if (isExpired(m)) continue;
-        enqueueMessage(m);
+        var msg = list[j];
+        if (isExpired(msg)) continue;
+        enqueueMessage(msg);
       }
 
-      if (maxId > since) {
-        since = maxId;
-        saveSince();
-      }
+      if (maxId > since) { since = maxId; saveSince(); }
     } catch (e) {
       failCount++;
       if (failCount >= 2) setOnline(false);
@@ -432,13 +958,10 @@
   }
 
   popup.addEventListener('click', hidePopup);
-
   tick();
   setInterval(tick, 1000);
-
   poll();
   setInterval(poll, 2000);
-
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) poll();
   });

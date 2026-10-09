@@ -132,6 +132,8 @@ func (s *SQLite) migrate() error {
 	CREATE TABLE IF NOT EXISTS system_config (
 		id INTEGER PRIMARY KEY CHECK (id = 1),
 		login_notice TEXT DEFAULT '',
+		tts_upstreams TEXT DEFAULT '',
+		tts_voice TEXT DEFAULT 'zh-CN-XiaochenNeural',
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -259,6 +261,9 @@ func (s *SQLite) migrate() error {
 	_, _ = s.db.Exec(`ALTER TABLE supabase_config ADD COLUMN registration_locked INTEGER DEFAULT 0`)
 	_, _ = s.db.Exec(`ALTER TABLE users ADD COLUMN last_login_at DATETIME`)
 	_, _ = s.db.Exec(`ALTER TABLE system_config ADD COLUMN login_notice TEXT DEFAULT ''`)
+	// ★ TTS 多接口 + 默认 voice
+	_, _ = s.db.Exec(`ALTER TABLE system_config ADD COLUMN tts_upstreams TEXT DEFAULT ''`)
+	_, _ = s.db.Exec(`ALTER TABLE system_config ADD COLUMN tts_voice TEXT DEFAULT 'zh-CN-XiaochenNeural'`)
 	_, _ = s.db.Exec(`ALTER TABLE seat_configs ADD COLUMN aisle TEXT DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE roster_students ADD COLUMN id_card TEXT DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE roster_students ADD COLUMN tel1 TEXT DEFAULT ''`)
@@ -307,10 +312,10 @@ func (s *SQLite) migrate() error {
 		VALUES (1, 0, '', '', 300, 0)
 	`)
 
-	// 保证 system_config 有一行初始记录
+	// 保证 system_config 有一行初始记录（含 TTS 默认值）
 	_, _ = s.db.Exec(`
-		INSERT OR IGNORE INTO system_config (id, login_notice)
-		VALUES (1, '数据存储在服务端 SQLite，管理员可启用 Supabase 云同步实现多端数据同步。')
+		INSERT OR IGNORE INTO system_config (id, login_notice, tts_upstreams, tts_voice)
+		VALUES (1, '数据存储在服务端 SQLite，管理员可启用 Supabase 云同步实现多端数据同步。', '', 'zh-CN-XiaochenNeural')
 	`)
 
 	return nil
@@ -782,8 +787,13 @@ func (s *SQLite) UpdateSupabaseConfig(sc *model.SupabaseConfig) error {
 func (s *SQLite) GetSystemConfig() (*model.SystemConfig, error) {
 	sc := &model.SystemConfig{}
 	err := s.db.QueryRow(
-		`SELECT login_notice, updated_at FROM system_config WHERE id = 1`,
-	).Scan(&sc.LoginNotice, &sc.UpdatedAt)
+		`SELECT
+            COALESCE(login_notice,''),
+            COALESCE(tts_upstreams,''),
+            COALESCE(tts_voice,'zh-CN-XiaochenNeural'),
+            updated_at
+         FROM system_config WHERE id = 1`,
+	).Scan(&sc.LoginNotice, &sc.TTSUpstreams, &sc.TTSVoice, &sc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -791,9 +801,14 @@ func (s *SQLite) GetSystemConfig() (*model.SystemConfig, error) {
 }
 
 func (s *SQLite) UpdateSystemConfig(sc *model.SystemConfig) error {
+	if sc.TTSVoice == "" {
+		sc.TTSVoice = "zh-CN-XiaochenNeural"
+	}
 	_, err := s.db.Exec(
-		`UPDATE system_config SET login_notice = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
-		sc.LoginNotice,
+		`UPDATE system_config
+         SET login_notice = ?, tts_upstreams = ?, tts_voice = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = 1`,
+		sc.LoginNotice, sc.TTSUpstreams, sc.TTSVoice,
 	)
 	return err
 }

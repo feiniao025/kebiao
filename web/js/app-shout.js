@@ -3,24 +3,33 @@
    子分类：班级管理 / 发通知 / 发送记录
 
    本版本：
-   - 三种模式：🖥️ 桌面弹窗 / 🔊 语音广播 / 🖼️ 发送图片
-   - 图片模式支持上传、自动压缩、预览、清除
-   - 图片以 dataURL 形式作为 content 发送，msg_type='image'
-   - 大屏端识别 msg_type='image' 直接渲染 <img>
-   - 定时发送走服务端（关闭页面也会到点自动发送）
+   - 三种模式：🖥️ 桌面弹窗 / 🔊 语音广播 / 📁 传输文件
+   - 桌面弹窗支持「语音播报」开关（弹窗 + TTS 同时进行）
+   - 语音广播模式不显示右上角消息类型下拉
+   - 传输文件支持：图片 / 视频 / 任意文件，可选择「在一体机打开」
+   - 图片自动压缩；视频/文件走 dataURL 直传
+   - 大屏端按类型渲染：图片 / 视频 / 文件卡片
+   - ★ 大屏呈现形式：默认「完整卡片」，可切换「跑马灯」
+   - ★ 大屏呈现形式 / 播报次数 / 播报时间：仅「桌面弹窗」模式显示
+   - ★ 播报次数与播报时间左右分栏；播报时间默认20秒，步长5秒
+   - ★ 大屏呈现形式提示文字跟随选择动态变化
+   - ★ 发送记录里标注「卡片」/「跑马灯」
    ============================================================ */
 
 window.shoutSubTab = 'manage';           // manage | send | history
 window.shoutRooms = [];
 window.currentShoutRoomKey = '';
 window.currentShoutClass = '';
-window.shoutMsgMode = 'popup';           // ★ popup | voice | image
+window.shoutMsgMode = 'popup';           // popup | voice | file
 window.shoutMsgType = 'text';            // text | notice | urgent
-window.shoutDisplay = 'marquee';         // marquee | card
+window.shoutDisplay = 'card';            // card | marquee（默认完整卡片）
 window.shoutBroadcastCount = 1;
+window.shoutBroadcastDuration = 20;      // ★ 大屏显示时长（秒），默认20
 window.shoutHistoryFilter = 'all';
 window.shoutHistoryList = [];
-window.shoutImageData = '';              // ★ 当前已选图片 dataURL
+window.shoutFileInfo = null;             // { name, type, size, data }
+window.shoutFileAutoOpen = true;         // 传输完成后是否在一体机打开
+window.shoutPopupVoice = false;          // ★ 桌面弹窗 + 语音播报开关
 
 let shoutRoomsLoaded = false;
 let shoutStatusTimer = null;
@@ -114,6 +123,60 @@ function compressShoutImage(file, maxSize, quality) {
     reader.onerror = function () { reject(new Error('图片读取失败')); };
     reader.readAsDataURL(file);
   });
+}
+
+/* ---------- 通用文件读取（图片压缩；其他 dataURL） ---------- */
+
+function readShoutFile(file) {
+  return new Promise(function (resolve, reject) {
+    if (!file) { reject(new Error('未选择文件')); return; }
+    const MAX = 20 * 1024 * 1024;   // 20MB
+    if (file.size > MAX) { reject(new Error('文件超过 20MB，请压缩后再传输')); return; }
+
+    const isImage = /^image\//.test(file.type);
+    if (isImage) {
+      compressShoutImage(file, 1280, 0.82).then(function (dataUrl) {
+        resolve({ name: file.name, type: file.type, size: file.size, data: dataUrl });
+      }).catch(reject);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function () {
+      resolve({
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        data: reader.result
+      });
+    };
+    reader.onerror = function () { reject(new Error('文件读取失败')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function renderShoutFilePreview(f) {
+  const isImage = /^image\//.test(f.type);
+  const isVideo = /^video\//.test(f.type);
+  let inner = '';
+  if (isImage) {
+    inner = '<img class="shout-image-preview" src="' + f.data + '" alt="预览" />';
+  } else if (isVideo) {
+    inner = '<video class="shout-file-video" src="' + f.data + '" controls preload="metadata"></video>';
+  } else {
+    inner = '<div class="shout-file-doc">' +
+              '<div class="shout-file-icon">📄</div>' +
+              '<div class="shout-file-name">' + escapeHtml(f.name) + '</div>' +
+              '<div class="shout-file-size">' + formatFileSize(f.size) + '</div>' +
+            '</div>';
+  }
+  return inner +
+    '<button type="button" class="shout-image-clear" id="shoutFileClear" title="移除文件">×</button>';
 }
 
 /* ---------- 主渲染 ---------- */
@@ -224,10 +287,9 @@ async function renderShoutManage() {
         '<div class="shout-client-title">🖥️ 教室大屏客户端</div>' +
         '<button class="shout-copy-link" type="button" data-copy="' + escapeHtml(displayUrl) + '">📋 复制安装网址</button>' +
       '</div>' +
-      '<div class="shout-client-desc">在教室大屏电脑（Windows 一体机）浏览器打开下方网址，免登录即可下载安装：</div>' +
+      '<div class="shout-client-desc">在教室一体机浏览器打开下方网址下载安装：</div>' +
       '<div class="shout-client-url" data-copy="' + escapeHtml(displayUrl) + '">' +
         '<span class="shout-client-url-text">' + escapeHtml(displayUrl) + '</span>' +
-        '<span class="shout-client-url-hint">点击复制</span>' +
       '</div>' +
     '</div>';
   }
@@ -291,19 +353,47 @@ async function refreshRoomListStatus() {
 
 // 取当前模式下的发送内容与类型
 function getShoutSendPayload() {
-  if (shoutMsgMode === 'image') {
-    if (!window.shoutImageData) return { error: '请先选择一张图片' };
-    return { content: window.shoutImageData, msgType: 'image' };
+  if (shoutMsgMode === 'file') {
+    if (!window.shoutFileInfo) return { error: '请先选择一个文件' };
+    const f = window.shoutFileInfo;
+    return {
+      content: JSON.stringify({
+        name: f.name,
+        type: f.type,
+        size: f.size,
+        open: !!window.shoutFileAutoOpen,
+        data: f.data
+      }),
+      msgType: 'file'
+    };
   }
+
   const ta = $('shoutSendContent');
   const content = ta ? ta.value.trim() : '';
-  if (!content) return { error: shoutMsgMode === 'voice' ? '请输入要播报的内容' : '请输入要显示的内容' };
-  return { content: content, msgType: shoutMsgType || 'text' };
+  if (!content) {
+    return { error: shoutMsgMode === 'voice' ? '请输入要播报的内容' : '请输入要显示的内容' };
+  }
+
+  const isVoiceMode = (shoutMsgMode === 'voice');
+  const voiceFlag = isVoiceMode || (shoutMsgMode === 'popup' && !!window.shoutPopupVoice);
+  /* 传输文件走文件卡片，语音走纯语音，只有桌面弹窗才用用户选择的呈现形式 */
+  const display = shoutMsgMode === 'popup'
+    ? shoutDisplay
+    : (isVoiceMode ? 'voice' : 'card');
+
+  return {
+    content: JSON.stringify({
+      text: content,
+      voice: voiceFlag,
+      display: display
+    }),
+    msgType: shoutMsgType || 'text'
+  };
 }
 
 function clearShoutSendInput() {
-  if (shoutMsgMode === 'image') {
-    window.shoutImageData = '';
+  if (shoutMsgMode === 'file') {
+    window.shoutFileInfo = null;
     return;
   }
   const ta = $('shoutSendContent');
@@ -337,7 +427,7 @@ async function renderShoutSend() {
 
   let html = '';
 
-  /* 顶部：班级 + 角色 + 在线状态 +（图片模式下隐藏）消息类型 */
+  /* 顶部：班级 + 角色 + 在线状态 +（仅弹窗模式下）消息类型 */
   html += '<div class="shout-send-head">' +
     '<div class="select-wrap shout-send-class-wrap">' +
       '<select id="shoutSendClass" class="cell-pop-input">' + classOptions + '</select>' +
@@ -348,7 +438,8 @@ async function renderShoutSend() {
       '<span id="shoutSendStatusText">检测中…</span>' +
     '</span>';
 
-  if (shoutMsgMode !== 'image') {
+  /* ★ 只有「桌面弹窗」模式才显示消息类型下拉 */
+  if (shoutMsgMode === 'popup') {
     html += '<div class="select-wrap shout-send-type-wrap">' +
       '<select id="shoutSendType" class="cell-pop-input" title="选择消息在大屏上的显示类型">' +
         '<option value="text"'   + (shoutMsgType === 'text'   ? ' selected' : '') + '>💬 消息</option>' +
@@ -359,11 +450,11 @@ async function renderShoutSend() {
   }
   html += '</div>';
 
-  /* 模式标签：桌面弹窗 / 语音广播 / 发送图片 */
+  /* 模式标签：桌面弹窗 / 语音广播 / 传输文件 */
   const modes = [
     { key: 'popup', icon: '🖥️', label: '桌面弹窗' },
     { key: 'voice', icon: '🔊', label: '语音广播' },
-    { key: 'image', icon: '🖼️', label: '发送图片' }
+    { key: 'file',  icon: '📁', label: '传输文件' }
   ];
   html += '<div class="shout-mode-tabs">';
   modes.forEach(function (m) {
@@ -375,23 +466,37 @@ async function renderShoutSend() {
   html += '</div>';
 
   /* 输入区域 */
-  if (shoutMsgMode === 'image') {
-    const hasImg = !!window.shoutImageData;
+  if (shoutMsgMode === 'file') {
+    const f = window.shoutFileInfo;
+    const hasFile = !!f;
     html += '<div class="shout-input-wrap">' +
-      '<div class="shout-image-drop' + (hasImg ? ' has-image' : '') + '" id="shoutImageDrop">' +
-        (hasImg
-          ? '<img class="shout-image-preview" src="' + window.shoutImageData + '" alt="预览" />' +
-            '<button type="button" class="shout-image-clear" id="shoutImageClear" title="移除图片">×</button>'
+      '<div class="shout-image-drop' + (hasFile ? ' has-image' : '') + '" id="shoutFileDrop">' +
+        (hasFile
+          ? renderShoutFilePreview(f)
           : '<div class="shout-image-placeholder">' +
-              '<div class="shout-image-icon">🖼️</div>' +
-              '<div class="shout-image-title">点击此处选择图片</div>' +
-              '<div class="shout-image-hint">支持 JPG / PNG / GIF，建议 ≤ 2MB</div>' +
+              '<div class="shout-image-icon">📁</div>' +
+              '<div class="shout-image-title">点击此处选择文件</div>' +
+              '<div class="shout-image-hint">支持 图片 / 视频 / 文档等，建议 ≤ 20MB</div>' +
             '</div>') +
       '</div>' +
-      '<input type="file" id="shoutImageInput" accept="image/*" style="display:none">' +
+      '<input type="file" id="shoutFileInput" style="display:none">' +
       '<div class="shout-input-meta">' +
-        '<span class="shout-input-tag">发送后大屏将以图片弹窗方式展示</span>' +
-        '<span class="shout-input-count">' + (hasImg ? '已选择图片' : '未选择图片') + '</span>' +
+        '<span class="shout-input-tag">发送后大屏将按文件类型展示</span>' +
+        '<span class="shout-input-count">' + (hasFile ? escapeHtml(f.name) : '未选择文件') + '</span>' +
+      '</div>' +
+    '</div>';
+
+    /* 是否在一体机打开开关 */
+    html += '<div class="shout-opt-row">' +
+      '<div class="shout-opt-info">' +
+        '<div class="shout-opt-label">传输完成后在一体机打开</div>' +
+        '<div class="shout-opt-hint">开启后，接收端会自动播放/打开该文件；关闭则只显示文件卡片</div>' +
+      '</div>' +
+      '<div class="shout-opt-toggle">' +
+        '<label class="tgl">' +
+          '<input type="checkbox" id="shoutFileAutoOpen"' + (window.shoutFileAutoOpen ? ' checked' : '') + '>' +
+          '<span class="tgl-slider"></span>' +
+        '</label>' +
       '</div>' +
     '</div>';
   } else {
@@ -408,30 +513,64 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* 大屏呈现形式 */
-  html += '<div class="shout-opt-row">' +
-    '<div class="shout-opt-info">' +
-      '<div class="shout-opt-label">大屏呈现形式</div>' +
-      '<div class="shout-opt-hint">居中卡片展示，醒目提醒</div>' +
-    '</div>' +
-    '<div class="shout-opt-seg" data-opt="display">' +
-      '<button class="shout-opt-btn' + (shoutDisplay === 'marquee' ? ' active' : '') + '" data-display="marquee">跑马灯</button>' +
-      '<button class="shout-opt-btn' + (shoutDisplay === 'card' ? ' active' : '') + '" data-display="card">完整卡片</button>' +
-    '</div>' +
-  '</div>';
+  /* ★ 桌面弹窗独有：语音播报开关 */
+  if (shoutMsgMode === 'popup') {
+    html += '<div class="shout-opt-row">' +
+      '<div class="shout-opt-info">' +
+        '<div class="shout-opt-label">语音播报</div>' +
+        '<div class="shout-opt-hint">开启后，弹窗显示的同时朗读这条消息</div>' +
+      '</div>' +
+      '<div class="shout-opt-toggle">' +
+        '<label class="tgl">' +
+          '<input type="checkbox" id="shoutPopupVoiceToggle"' + (window.shoutPopupVoice ? ' checked' : '') + '>' +
+          '<span class="tgl-slider"></span>' +
+        '</label>' +
+      '</div>' +
+    '</div>';
+  }
 
-  /* 播报次数 */
-  html += '<div class="shout-opt-row">' +
-    '<div class="shout-opt-info">' +
-      '<div class="shout-opt-label">播报次数</div>' +
-      '<div class="shout-opt-hint">大屏将按所设次数连播，间隔1.2秒</div>' +
-    '</div>' +
-    '<div class="shout-opt-seg" data-opt="count">' +
-      '<button class="shout-opt-btn' + (shoutBroadcastCount === 1 ? ' active' : '') + '" data-count="1">1次</button>' +
-      '<button class="shout-opt-btn' + (shoutBroadcastCount === 2 ? ' active' : '') + '" data-count="2">2次</button>' +
-      '<button class="shout-opt-btn' + (shoutBroadcastCount === 3 ? ' active' : '') + '" data-count="3">3次</button>' +
-    '</div>' +
-  '</div>';
+  /* ★ 大屏呈现形式 + 播报次数/时间：仅「桌面弹窗」模式显示 */
+  if (shoutMsgMode === 'popup') {
+    /* 大屏呈现形式（完整卡片在前，跑马灯在后） */
+    var displayHint = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
+
+    html += '<div class="shout-opt-row">' +
+      '<div class="shout-opt-info">' +
+        '<div class="shout-opt-label">大屏呈现形式</div>' +
+        '<div class="shout-opt-hint" id="shoutDisplayHint">' + displayHint + '</div>' +
+      '</div>' +
+      '<div class="shout-opt-seg" data-opt="display">' +
+        '<button class="shout-opt-btn' + (shoutDisplay === 'card'    ? ' active' : '') + '" data-display="card">完整卡片</button>' +
+        '<button class="shout-opt-btn' + (shoutDisplay === 'marquee' ? ' active' : '') + '" data-display="marquee">跑马灯</button>' +
+      '</div>' +
+    '</div>';
+
+    /* ★ 播报次数 & 播报时间（左右分栏） */
+    html += '<div class="shout-opt-row shout-opt-row-split">' +
+      '<div class="shout-opt-half">' +
+        '<div class="shout-opt-info">' +
+          '<div class="shout-opt-label">播报次数</div>' +
+          '<div class="shout-opt-hint">大屏连播次数</div>' +
+        '</div>' +
+        '<div class="shout-opt-seg" data-opt="count" style="margin-left: 10px;">' +
+          '<button class="shout-opt-btn' + (shoutBroadcastCount === 1 ? ' active' : '') + '" data-count="1">1次</button>' +
+          '<button class="shout-opt-btn' + (shoutBroadcastCount === 2 ? ' active' : '') + '" data-count="2">2次</button>' +
+          '<button class="shout-opt-btn' + (shoutBroadcastCount === 3 ? ' active' : '') + '" data-count="3">3次</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="shout-opt-half">' +
+        '<div class="shout-opt-info">' +
+          '<div class="shout-opt-label">播报时间</div>' +
+          '<div class="shout-opt-hint">大屏显示秒数</div>' +
+        '</div>' +
+        '<div class="shout-duration-stepper">' +
+          '<button type="button" class="shout-dur-btn" data-act="minus">−</button>' +
+          '<span class="shout-dur-val" id="shoutDurationVal">' + (window.shoutBroadcastDuration || 30) + '</span>' +
+          '<button type="button" class="shout-dur-btn" data-act="plus">+</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
 
   /* 定时发送开关 */
   html += '<div class="shout-opt-row">' +
@@ -482,11 +621,16 @@ async function renderShoutSend() {
   body.querySelectorAll('.shout-mode-tab').forEach(function (b) {
     b.onclick = function () {
       shoutMsgMode = b.dataset.mode;
+      // 切到非弹窗模式时，重置消息类型 & 语音开关
+      if (shoutMsgMode !== 'popup') {
+        shoutMsgType = 'text';
+        window.shoutPopupVoice = false;
+      }
       renderShoutSend();
     };
   });
 
-  // 文本输入
+  /* 文本输入 */
   const ta = $('shoutSendContent');
   const counter = $('shoutSendCount');
   if (ta) {
@@ -495,15 +639,15 @@ async function renderShoutSend() {
     };
   }
 
-  // 图片模式
-  if (shoutMsgMode === 'image') {
-    const drop = $('shoutImageDrop');
-    const fileInp = $('shoutImageInput');
-    const clearBtn = $('shoutImageClear');
+  /* 文件模式 */
+  if (shoutMsgMode === 'file') {
+    const drop = $('shoutFileDrop');
+    const fileInp = $('shoutFileInput');
+    const clearBtn = $('shoutFileClear');
 
     if (drop && fileInp) {
       drop.onclick = function (e) {
-        if (e.target.closest('#shoutImageClear')) return;
+        if (e.target.closest('#shoutFileClear')) return;
         fileInp.click();
       };
     }
@@ -512,13 +656,13 @@ async function renderShoutSend() {
         const f = fileInp.files && fileInp.files[0];
         if (!f) return;
         try {
-          showSaveStatus('正在处理图片…', false);
-          const dataUrl = await compressShoutImage(f, 1280, 0.82);
-          window.shoutImageData = dataUrl;
+          showSaveStatus('正在处理文件…', false);
+          const info = await readShoutFile(f);
+          window.shoutFileInfo = info;
           renderShoutSend();
-          showSaveStatus('图片已就绪', false);
+          showSaveStatus('文件已就绪', false);
         } catch (err) {
-          alert('图片处理失败：' + (err.message || err));
+          alert('文件处理失败：' + (err.message || err));
         } finally {
           fileInp.value = '';
         }
@@ -527,23 +671,45 @@ async function renderShoutSend() {
     if (clearBtn) {
       clearBtn.onclick = function (e) {
         e.stopPropagation();
-        window.shoutImageData = '';
+        window.shoutFileInfo = null;
         renderShoutSend();
+      };
+    }
+
+    /* 开关绑定 */
+    const autoOpenCb = $('shoutFileAutoOpen');
+    if (autoOpenCb) {
+      autoOpenCb.onchange = function () {
+        window.shoutFileAutoOpen = autoOpenCb.checked;
       };
     }
   }
 
-  // 大屏呈现形式
+  /* ★ 桌面弹窗语音播报开关 */
+  const popupVoiceCb = $('shoutPopupVoiceToggle');
+  if (popupVoiceCb) {
+    popupVoiceCb.onchange = function () {
+      window.shoutPopupVoice = popupVoiceCb.checked;
+    };
+  }
+
+  /* 大屏呈现形式 */
   body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutDisplay = b.dataset.display;
       body.querySelectorAll('.shout-opt-seg[data-opt="display"] .shout-opt-btn')
         .forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
+
+      // ★ 联动更新下方提示文字
+      var hintEl = $('shoutDisplayHint');
+      if (hintEl) {
+        hintEl.textContent = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
+      }
     };
   });
 
-  // 播报次数
+  /* 播报次数 */
   body.querySelectorAll('.shout-opt-seg[data-opt="count"] .shout-opt-btn').forEach(function (b) {
     b.onclick = function () {
       shoutBroadcastCount = parseInt(b.dataset.count, 10) || 1;
@@ -553,7 +719,27 @@ async function renderShoutSend() {
     };
   });
 
-  // 定时发送
+  /* ★ 播报时间加减（步长5秒，最小5秒，最大300秒） */
+  const durValEl = $('shoutDurationVal');
+  if (durValEl) {
+    body.querySelectorAll('.shout-dur-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        var act = btn.dataset.act;
+        if (act === 'minus') {
+          if (window.shoutBroadcastDuration > 5) {
+            window.shoutBroadcastDuration -= 5;
+          }
+        } else if (act === 'plus') {
+          if (window.shoutBroadcastDuration < 300) {
+            window.shoutBroadcastDuration += 5;
+          }
+        }
+        durValEl.textContent = window.shoutBroadcastDuration;
+      };
+    });
+  }
+
+  /* 定时发送 */
   const sch = $('shoutSendSchedule');
   const schBox = $('shoutScheduleBox');
   const schDate = $('shoutScheduleDate');
@@ -593,7 +779,7 @@ async function renderShoutSend() {
       const payload = getShoutSendPayload();
       if (payload.error) { errEl.textContent = payload.error; return; }
 
-      const duration = 20 * (shoutBroadcastCount || 1);
+      const duration = window.shoutBroadcastDuration || 30;
 
       schBtn.disabled = true; schBtn.style.opacity = '.7';
       try {
@@ -613,7 +799,7 @@ async function renderShoutSend() {
 
   updateScheduleVisibility();
 
-  // 立即发送
+  /* 立即发送 */
   $('shoutSendBtn').onclick = async function () {
     const errEl = $('shoutSendError');
     errEl.textContent = '';
@@ -621,7 +807,7 @@ async function renderShoutSend() {
     const payload = getShoutSendPayload();
     if (payload.error) { errEl.textContent = payload.error; return; }
 
-    const duration = 20 * (shoutBroadcastCount || 1);
+    const duration = window.shoutBroadcastDuration || 30;
     const btn = $('shoutSendBtn');
     btn.disabled = true;
     btn.style.opacity = '.7';
@@ -679,14 +865,33 @@ async function renderScheduledList() {
     const room = shoutRooms.find(function (r) { return r.room_key === s.room_key; });
     const roomName = room ? room.name : s.room_key;
 
+    const isFile = s.msg_type === 'file';
     const isImage = s.msg_type === 'image';
-    const contentPreview = isImage ? '🖼️ [图片]' : escapeHtml(s.content);
+    let preview = escapeHtml(s.content);
+    if (isFile) {
+      try {
+        const meta = JSON.parse(s.content);
+        const t = meta.type || '';
+        if (/^image\//.test(t)) preview = '🖼️ [图片] ' + escapeHtml(meta.name || '');
+        else if (/^video\//.test(t)) preview = '🎬 [视频] ' + escapeHtml(meta.name || '');
+        else preview = '📄 [文件] ' + escapeHtml(meta.name || '');
+      } catch (e) { preview = '📁 [文件]'; }
+    } else if (isImage) {
+      preview = '🖼️ [图片]';
+    } else if (s.content && s.content.charAt(0) === '{') {
+      try {
+        const parsed = JSON.parse(s.content);
+        if (parsed && typeof parsed.text === 'string') {
+          preview = escapeHtml(parsed.text) + (parsed.voice ? ' <span style="color:#16a085;">[🔊 语音]</span>' : '');
+        }
+      } catch (e) {}
+    }
 
     html += '<div class="shout-member-row">' +
       '<span class="shout-member-name" style="flex:1;min-width:0;">' +
         escapeHtml(timeStr) + ' · ' + escapeHtml(roomName) +
         '<div style="font-size:12px;color:var(--text-sub);margin-top:4px;white-space:pre-wrap;word-break:break-word;font-weight:400;">' +
-          contentPreview +
+          preview +
         '</div>' +
       '</span>' +
       '<button class="shout-member-del" type="button" data-sid="' + s.id + '">取消</button>' +
@@ -794,6 +999,30 @@ function renderShoutHistoryList() {
     if (m.msg_type === 'urgent') { typeLabel = '紧急'; typeCls = 'urgent'; }
     else if (m.msg_type === 'notice') { typeLabel = '通知'; typeCls = 'notice'; }
     else if (m.msg_type === 'image') { typeLabel = '图片'; typeCls = 'image'; }
+    else if (m.msg_type === 'file') {
+      typeCls = 'file';
+      try {
+        const meta = JSON.parse(m.content);
+        const t = meta.type || '';
+        if (/^image\//.test(t)) typeLabel = '图片';
+        else if (/^video\//.test(t)) typeLabel = '视频';
+        else typeLabel = '文件';
+      } catch (e) { typeLabel = '文件'; }
+    }
+
+    /* ★ 解析 display：卡片 / 跑马灯（仅文本类消息显示）
+       ★ 注意：类名使用 display-card / display-marquee，避免与全局 .card 冲突 */
+    let displayLabel = '';
+    if (m.msg_type === 'text' || m.msg_type === 'notice' || m.msg_type === 'urgent') {
+      try {
+        const parsed = JSON.parse(m.content);
+        if (parsed && parsed.display === 'marquee') {
+          displayLabel = '<span class="shout-history-display-tag display-marquee">跑马灯</span>';
+        } else if (parsed && parsed.display === 'card') {
+          displayLabel = '<span class="shout-history-display-tag display-card">卡片</span>';
+        }
+      } catch (e) {}
+    }
 
     let time = m.created_at;
     try { time = new Date(m.created_at).toLocaleString('zh-CN'); } catch (e) {}
@@ -802,14 +1031,46 @@ function renderShoutHistoryList() {
     const statusCls = delivered ? 'ok' : 'fail';
     const statusText = delivered ? '✓ 已送达' : '✕ 未送达';
 
-    const contentHtml = (m.msg_type === 'image')
-      ? '<div class="shout-history-content shout-history-image">🖼️ [图片]</div>'
-      : '<div class="shout-history-content">' + escapeHtml(m.content) + '</div>';
+    let contentHtml;
+    if (m.msg_type === 'image') {
+      contentHtml = '<div class="shout-history-content shout-history-image">🖼️ [图片]</div>';
+    } else if (m.msg_type === 'file') {
+      try {
+        const meta = JSON.parse(m.content);
+        const t = meta.type || '';
+        if (/^image\//.test(t)) {
+          contentHtml = '<div class="shout-history-content shout-history-image">🖼️ [图片] ' + escapeHtml(meta.name || '') + '</div>';
+        } else if (/^video\//.test(t)) {
+          contentHtml = '<div class="shout-history-content shout-history-image">🎬 [视频] ' + escapeHtml(meta.name || '') + '</div>';
+        } else {
+          contentHtml = '<div class="shout-history-content shout-history-image">📄 [文件] ' + escapeHtml(meta.name || '') + '</div>';
+        }
+      } catch (e) {
+        contentHtml = '<div class="shout-history-content shout-history-image">📁 [文件]</div>';
+      }
+    } else {
+      let plainText = m.content;
+      let voiceTag = '';
+      if (m.content && m.content.charAt(0) === '{') {
+        try {
+          const parsed = JSON.parse(m.content);
+          if (parsed && typeof parsed.text === 'string') {
+            plainText = parsed.text;
+            if (parsed.voice) voiceTag = ' <span style="color:#16a085;font-size:12px;">[🔊 语音]</span>';
+          }
+        } catch (e) {}
+      }
+      contentHtml = '<div class="shout-history-content">' + escapeHtml(plainText) + voiceTag + '</div>';
+    }
 
+    /* ★ 顶部：左侧标签组 + 右侧状态（防止串行） */
     html += '<div class="shout-history-item" data-id="' + m.id + '">' +
       '<div class="shout-history-top">' +
-        '<span class="shout-history-room">' + escapeHtml(roomName) + '</span>' +
-        '<span class="shout-history-type ' + typeCls + '">' + typeLabel + '</span>' +
+        '<div class="shout-history-top-left">' +
+          '<span class="shout-history-room">' + escapeHtml(roomName) + '</span>' +
+          '<span class="shout-history-type ' + typeCls + '">' + typeLabel + '</span>' +
+          displayLabel +
+        '</div>' +
         '<span class="shout-history-status ' + statusCls + '">' + statusText + '</span>' +
       '</div>' +
       '<div class="shout-history-time">' + escapeHtml(time) + '</div>' +

@@ -84,7 +84,12 @@ const API = (function () {
     testSupabase: function () { return request('POST', '/admin/supabase/test'); },
     getSchemaSQL: function () { return request('GET', '/admin/supabase/schema'); },
     adminGetSystemConfig: function () { return request('GET', '/admin/system/config'); },
-    adminUpdateSystemConfig: function (n) { return request('PUT', '/admin/system/config', { login_notice: n }); },
+    adminUpdateSystemConfig: function (payload) {
+  if (typeof payload === 'string') {
+    payload = { login_notice: payload };
+  }
+  return request('PUT', '/admin/system/config', payload);
+},
 
     // ============ 远程喊话 ============
     listShoutRooms: function () { return request('GET', '/shout/rooms'); },

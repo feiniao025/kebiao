@@ -1,9 +1,9 @@
 /* ============================================================
-   app-me.js —— 我的模块（登录/注册/个人/管理员/Supabase）
+   app-me.js —— 我的模块（登录/注册/个人/管理员/Supabase/TTS）
    功能：
    - 登录/注册
    - 个人资料 + 深色/自动 主题开关
-   - 修改密码、管理员用户管理、Supabase 配置、登录提示
+   - 修改密码、管理员用户管理、Supabase 配置、登录提示、TTS 接口配置
    - 个人资料中显示「上次同步」时间
    ============================================================ */
 
@@ -14,6 +14,7 @@ window.renderMePage = function () {
   if (meView === 'adminList') { renderAdminList(); return; }
   if (meView === 'supabase') { renderSupabaseConfig(); return; }
   if (meView === 'loginNotice') { renderLoginNoticeEdit(); return; }
+  if (meView === 'ttsConfig') { renderTTSConfig(); return; }
   renderProfile();
 };
 
@@ -67,6 +68,7 @@ window.renderProfile = function () {
     '<button class="me-btn-gray" id="meChangePwdBtn">🔑 修改密码</button>' +
     (currentUser.is_admin ? '<button class="me-admin-btn" id="meAdminBtn">👥 用户管理</button>' : '') +
     (currentUser.is_admin ? '<button class="me-admin-btn" id="meSupabaseBtn" style="background:#16a085;">☁️ Supabase配置</button>' : '') +
+    (currentUser.is_admin ? '<button class="me-admin-btn" id="meTTSBtn" style="background:#8e44ad;">🔊 TTS接口配置</button>' : '') +
     (currentUser.is_admin ? '<button class="me-admin-btn" id="meLoginNoticeBtn" style="background:#9b59b6;">📝 登录提示</button>' : '') +
     syncBlock +
     '<button class="me-logout" id="meLogoutBtn">退出登录</button>';
@@ -87,6 +89,7 @@ window.renderProfile = function () {
   $('meChangePwdBtn').onclick = () => { meView = 'changePwd'; renderMePage(); };
   const adminBtn = $('meAdminBtn'); if (adminBtn) adminBtn.onclick = () => { meView = 'adminList'; renderMePage(); };
   const sbBtn = $('meSupabaseBtn'); if (sbBtn) sbBtn.onclick = () => { meView = 'supabase'; renderMePage(); };
+  const ttsBtn = $('meTTSBtn'); if (ttsBtn) ttsBtn.onclick = () => { meView = 'ttsConfig'; renderMePage(); };
   const lnBtn = $('meLoginNoticeBtn'); if (lnBtn) lnBtn.onclick = () => { meView = 'loginNotice'; renderMePage(); };
   $('meLogoutBtn').onclick = () => { if (!confirm('确认退出登录？')) return; API.clearToken(); location.reload(); };
 
@@ -99,11 +102,10 @@ window.renderProfile = function () {
       window.applyTheme();
       API.updatePreferences({ theme: newTheme }).catch(function () {});
 
-      // ★ 修改：第二个参数传 true 触发红色（.err）
       if (switchT.checked) {
-        showSaveStatus('已开启深色模式', false); // 开启保持绿色
+        showSaveStatus('已开启深色模式', false);
       } else {
-        showSaveStatus('已关闭深色模式', true);   // 关闭改为红色（复用错误样式）
+        showSaveStatus('已关闭深色模式', true);
       }
     };
   }
@@ -118,14 +120,13 @@ window.renderProfile = function () {
       window.applyTheme();
       API.updatePreferences({ theme: newTheme }).catch(function () {});
 
-      // ★ 开启 / 关闭 自动模式 都给出提示
       if (autoT.checked) {
-        showSaveStatus('根据日出日落自动切换（18:00~次日06:00 为夜间）', false, true); // 蓝色
+        showSaveStatus('根据日出日落自动切换（18:00~次日06:00 为夜间）', false, true);
       } else {
-        showSaveStatus('已关闭根据日出日落自动切换', true); // 红色
+        showSaveStatus('已关闭根据日出日落自动切换', true);
       }
 
-      renderMePage(); // 重新渲染页面
+      renderMePage();
     };
   }
 
@@ -176,8 +177,61 @@ window.renderLoginNoticeEdit = async function () {
   $('lnSave').onclick = async () => {
     const errEl = $('lnError');
     errEl.textContent = '';
-    try { await API.adminUpdateSystemConfig($('lnText').value); showSaveStatus('已保存', false); }
-    catch (err) { errEl.textContent = err.message; }
+    try {
+      await API.adminUpdateSystemConfig({ login_notice: $('lnText').value });
+      showSaveStatus('已保存', false);
+    } catch (err) { errEl.textContent = err.message; }
+  };
+};
+
+/* ============================================================
+   ★ TTS 语音接口配置
+   ============================================================ */
+window.renderTTSConfig = async function () {
+  meCard.innerHTML = '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载中...</div>';
+  let cfg;
+  try { cfg = await API.adminGetSystemConfig(); }
+  catch (err) {
+    meCard.innerHTML = '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>';
+    $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
+    return;
+  }
+
+  meCard.innerHTML =
+    '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+    '<div class="me-warn">' +
+      '每行一个接口，按行 <b>轮询</b>；某个失败自动切换到下一个。格式：<br>' +
+      '<code>https://tts.wangwangit.com/v1/audio/speech</code><br>' +
+      '<code>https://另一个接口/v1/audio/speech|你的APIKEY</code><br>' +
+      '以 <b>#</b> 开头的行为注释。留空则使用系统默认接口。' +
+    '</div>' +
+    '<div class="me-field"><label>接口列表</label>' +
+    '<textarea id="ttsUpstreams" class="cell-pop-input" rows="8" ' +
+      'style="width:100%;resize:vertical;font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.6;box-sizing:border-box;" ' +
+      'placeholder="https://tts.wangwangit.com/v1/audio/speech&#10;# https://备用接口/v1/audio/speech|API_KEY"></textarea>' +
+    '</div>' +
+    '<div class="me-field"><label>默认语音 voice</label>' +
+    '<input type="text" id="ttsVoice" class="cell-pop-input" placeholder="zh-CN-XiaochenNeural">' +
+    '</div>' +
+    '<button class="me-submit" id="ttsSave" style="background:#8e44ad;">💾 保存</button>' +
+    '<div class="me-error" id="ttsError"></div>';
+
+  $('ttsUpstreams').value = cfg.tts_upstreams || '';
+  $('ttsVoice').value = cfg.tts_voice || 'zh-CN-XiaochenNeural';
+  $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
+
+  $('ttsSave').onclick = async () => {
+    const errEl = $('ttsError');
+    errEl.textContent = '';
+    try {
+      await API.adminUpdateSystemConfig({
+        tts_upstreams: $('ttsUpstreams').value,
+        tts_voice: ($('ttsVoice').value || '').trim() || 'zh-CN-XiaochenNeural'
+      });
+      showSaveStatus('TTS 配置已保存', false);
+    } catch (err) {
+      errEl.textContent = err.message || '保存失败';
+    }
   };
 };
 

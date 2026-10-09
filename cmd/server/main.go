@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,6 +21,46 @@ import (
 	"kebiao/internal/middleware"
 	"kebiao/internal/service"
 )
+
+// ============================================================
+// ★ TTS 反向代理配置
+// 支持管理员在后台配置「多行」接口，每行一个：
+//   https://xxx/v1/audio/speech
+//   https://yyy/v1/audio/speech|API_KEY
+// # 开头为注释，空行忽略。
+// 请求时按行「轮询」，失败自动切换下一个；全部失败返回 502。
+// 若后台为空，则使用 defaultTTSEndpoints 兜底。
+// ============================================================
+
+type ttsEndpoint struct {
+	URL string
+	Key string
+}
+
+var defaultTTSEndpoints = []ttsEndpoint{
+	{URL: "https://tts.wangwangit.com/v1/audio/speech"},
+}
+
+var ttsCounter uint64
+
+func parseTTSEndpoints(raw string) []ttsEndpoint {
+	var out []ttsEndpoint
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "|", 2)
+		ep := ttsEndpoint{URL: strings.TrimSpace(parts[0])}
+		if len(parts) == 2 {
+			ep.Key = strings.TrimSpace(parts[1])
+		}
+		if ep.URL != "" {
+			out = append(out, ep)
+		}
+	}
+	return out
+}
 
 func main() {
 	cfg := config.Default()
@@ -38,7 +83,8 @@ func main() {
 	syncSvc := service.NewSyncService(db, sb)
 	studentSvc := service.NewStudentService(db)
 	shoutSvc := service.NewShoutService(db)
-	shoutSvc.StartScheduler()   // ★ 启动服务端定时调度器
+	shoutSvc.StartScheduler() // ★ 启动服务端定时调度器
+
 	authHandler := handler.NewAuthHandler(authSvc, db)
 	scheduleHandler := handler.NewScheduleHandler(scheduleSvc)
 	seatHandler := handler.NewSeatHandler(seatSvc)
@@ -55,7 +101,11 @@ func main() {
 
 	// ============ CSP 安全策略中间件 ============
 	r.Use(func(c *gin.Context) {
-		c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; img-src 'self' data: blob:;")
+		c.Header("Content-Security-Policy",
+			"default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; "+
+				"img-src 'self' data: blob:; "+
+				"media-src 'self' blob: data:; "+
+				"connect-src 'self' https://cdn.jsdelivr.net https://cdn.bootcdn.net;")
 		c.Next()
 	})
 
@@ -84,6 +134,9 @@ func main() {
 	{
 		api.GET("/schedule/default", scheduleHandler.GetDefault)
 		api.GET("/config", authHandler.GetPublicSystemConfig)
+
+		// ★ 大屏公开 TTS 反代（同源，绕过 CSP 和 CORS），支持多接口轮询
+		api.POST("/tts", ttsProxyHandler(db))
 
 		// ============ 大屏接收端（公开，凭 display_token） ============
 		api.GET("/shout/feed", shoutHandler.DisplayFeed)
@@ -183,12 +236,12 @@ func main() {
 			shout.DELETE("/rooms/:key/members/:username", shoutHandler.RemoveMember)
 			shout.POST("/rooms/:key/send", shoutHandler.Send)
 			shout.GET("/rooms/:key/messages", shoutHandler.Poll)
-			shout.GET("/rooms/:key/status", shoutHandler.Status)      // ★ 在线状态
+			shout.GET("/rooms/:key/status", shoutHandler.Status)
 			shout.POST("/rooms/:key/schedule", shoutHandler.ScheduleMessage)
 			shout.GET("/scheduled", shoutHandler.ListScheduled)
 			shout.DELETE("/scheduled/:id", shoutHandler.CancelScheduled)
 			shout.GET("/messages", shoutHandler.GetMyMessages)
-			shout.DELETE("/messages/:id", shoutHandler.DeleteMessage) // ★ 删除某条消息
+			shout.DELETE("/messages/:id", shoutHandler.DeleteMessage)
 		}
 
 		admin := api.Group("/admin")
@@ -219,6 +272,92 @@ func main() {
 	log.Printf("SQLite database: %s", cfg.SQLitePath())
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("server error: %v", err)
+	}
+}
+
+// ============================================================
+// ★ TTS 反向代理（多接口轮询 + 失败自动切换）
+// ============================================================
+func ttsProxyHandler(db *database.SQLite) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "读取请求体失败"})
+			return
+		}
+
+		// 从数据库读取管理员配置的接口列表
+		endpoints := defaultTTSEndpoints
+		if cfg, err := db.GetSystemConfig(); err == nil {
+			if list := parseTTSEndpoints(cfg.TTSUpstreams); len(list) > 0 {
+				endpoints = list
+			}
+		}
+		if len(endpoints) == 0 {
+			endpoints = defaultTTSEndpoints
+		}
+
+		// 轮询：原子自增取模，起点依次递推
+		start := int(atomic.AddUint64(&ttsCounter, 1)-1) % len(endpoints)
+		client := &http.Client{Timeout: 15 * time.Second}
+
+		var lastErr error
+
+		for i := 0; i < len(endpoints); i++ {
+			ep := endpoints[(start+i)%len(endpoints)]
+
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+			req, err := http.NewRequestWithContext(ctx, "POST", ep.URL, bytes.NewReader(body))
+			if err != nil {
+				cancel()
+				lastErr = err
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "audio/*,application/json")
+			if ep.Key != "" {
+				req.Header.Set("Authorization", "Bearer "+ep.Key)
+				req.Header.Set("X-API-Key", ep.Key)
+			}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				cancel()
+				lastErr = err
+				continue
+			}
+
+			ct := resp.Header.Get("Content-Type")
+			ctLower := strings.ToLower(ct)
+
+			// 成功：返回音频（非 JSON）
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 &&
+				!strings.Contains(ctLower, "application/json") {
+				if ct == "" {
+					ct = "application/octet-stream"
+				}
+				c.Header("Content-Type", ct)
+				c.Header("Cache-Control", "no-store")
+				c.Status(resp.StatusCode)
+				_, _ = io.Copy(c.Writer, resp.Body)
+				resp.Body.Close()
+				cancel()
+				return
+			}
+
+			// 失败：记录错误，尝试下一个
+			errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			resp.Body.Close()
+			cancel()
+			lastErr = fmt.Errorf("endpoint %s: HTTP %d %s", ep.URL, resp.StatusCode, string(errBody))
+		}
+
+		msg := "所有 TTS 接口均不可用"
+		if lastErr != nil {
+			msg += ": " + lastErr.Error()
+		}
+		log.Printf("[tts-proxy] %s", msg)
+		c.JSON(http.StatusBadGateway, gin.H{"error": msg})
 	}
 }
 

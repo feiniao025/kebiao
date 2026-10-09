@@ -92,8 +92,10 @@ type Class struct {
 }
 
 type SystemConfig struct {
-	LoginNotice string    `json:"login_notice"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	LoginNotice  string    `json:"login_notice"`
+	TTSUpstreams string    `json:"tts_upstreams"` // 多行：URL 或 URL|API_KEY
+	TTSVoice     string    `json:"tts_voice"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // ============ 花名册 ============
