@@ -10,11 +10,12 @@
    - 图片自动压缩；视频/文件走 dataURL 直传
    - 大屏端按类型渲染：图片 / 视频 / 文件卡片
    - ★ 大屏呈现形式：默认「完整卡片」，可切换「跑马灯」
-   - ★ 大屏呈现形式 / 播报次数 / 播报时间：仅「桌面弹窗」模式显示
-   - ★ 播报次数与播报时间左右分栏；播报时间默认20秒，步长5秒
+   - ★ 播报次数 / 播报时间：桌面弹窗 / 语音广播 均显示
+   - ★ 播报次数与播报时间左右分栏；播报时间默认30秒，步长5秒
    - ★ 大屏呈现形式提示文字跟随选择动态变化
    - ★ 发送记录里标注「卡片」/「跑马灯」/「🔊 语音」/「广播」
    - ★ 发送记录支持「编辑」按钮，一键回填至发通知页
+   - ★ count 字段写入 payload，大屏端读 count 循环播报
    ============================================================ */
 
 window.shoutSubTab = 'manage';           // manage | send | history
@@ -381,11 +382,15 @@ function getShoutSendPayload() {
     ? shoutDisplay
     : (isVoiceMode ? 'voice' : 'card');
 
+  // ★ 所有非 file 模式都读取用户设置的播报次数
+  const count = window.shoutBroadcastCount || 1;
+
   return {
     content: JSON.stringify({
       text: content,
       voice: voiceFlag,
-      display: display
+      display: display,
+      count: count
     }),
     msgType: shoutMsgType || 'text'
   };
@@ -511,6 +516,7 @@ async function renderShoutSend() {
     '</div>';
   }
 
+  /* 语音播报开关（仅桌面弹窗模式） */
   if (shoutMsgMode === 'popup') {
     html += '<div class="shout-opt-row">' +
       '<div class="shout-opt-info">' +
@@ -526,6 +532,7 @@ async function renderShoutSend() {
     '</div>';
   }
 
+  /* 大屏呈现形式（仅桌面弹窗模式） */
   if (shoutMsgMode === 'popup') {
     var displayHint = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
 
@@ -539,12 +546,29 @@ async function renderShoutSend() {
         '<button class="shout-opt-btn' + (shoutDisplay === 'marquee' ? ' active' : '') + '" data-display="marquee">跑马灯</button>' +
       '</div>' +
     '</div>';
+  }
+
+  /* ★ 播报次数 + 播报时间：所有非 file 模式都显示 */
+  if (shoutMsgMode !== 'file') {
+    var countHint = '大屏连播次数';
+    var durHint   = '大屏显示秒数';
+
+    if (shoutMsgMode === 'voice') {
+      countHint = '语音连播次数';
+      durHint   = '最长播报秒数';
+    } else if (shoutMsgMode === 'popup' && shoutDisplay === 'marquee') {
+      countHint = '滚动连播次数';
+      durHint   = '顶部滚动秒数';
+    } else if (shoutMsgMode === 'popup' && shoutDisplay === 'card') {
+      countHint = '弹窗连播次数';
+      durHint   = '弹窗显示秒数';
+    }
 
     html += '<div class="shout-opt-row shout-opt-row-split">' +
       '<div class="shout-opt-half">' +
         '<div class="shout-opt-info">' +
           '<div class="shout-opt-label">播报次数</div>' +
-          '<div class="shout-opt-hint">大屏连播次数</div>' +
+          '<div class="shout-opt-hint">' + countHint + '</div>' +
         '</div>' +
         '<div class="shout-opt-seg" data-opt="count" style="margin-left: 10px;">' +
           '<button class="shout-opt-btn' + (shoutBroadcastCount === 1 ? ' active' : '') + '" data-count="1">1次</button>' +
@@ -555,7 +579,7 @@ async function renderShoutSend() {
       '<div class="shout-opt-half">' +
         '<div class="shout-opt-info">' +
           '<div class="shout-opt-label">播报时间</div>' +
-          '<div class="shout-opt-hint">大屏显示秒数</div>' +
+          '<div class="shout-opt-hint">' + durHint + '</div>' +
         '</div>' +
         '<div class="shout-duration-stepper">' +
           '<button type="button" class="shout-dur-btn" data-act="minus">−</button>' +
@@ -708,6 +732,9 @@ async function renderShoutSend() {
       if (hintEl) {
         hintEl.textContent = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
       }
+
+      // ★ 大屏呈现形式切换后，重新渲染以更新「播报次数 / 播报时间」的提示文字
+      renderShoutSend();
     };
   });
 
@@ -1020,11 +1047,9 @@ function renderShoutHistoryList() {
         } else if (parsed && parsed.display === 'card') {
           displayLabel = '<span class="shout-history-display-tag display-card">卡片</span>';
         } else if (parsed && parsed.display === 'voice') {
-          // 语音广播：主类型标签显示为「广播」
           typeLabel = '广播';
           typeCls = 'voice';
         }
-        // 弹窗 + 语音播报的场景：追加一个绿色的「🔊 语音」小标签
         if (parsed && parsed.voice && parsed.display !== 'voice') {
           voiceTag = '<span class="shout-history-display-tag display-voice">语音</span>';
         }
@@ -1068,7 +1093,6 @@ function renderShoutHistoryList() {
       contentHtml = '<div class="shout-history-content">' + escapeHtml(plainText) + '</div>';
     }
 
-    /* 顶部：房间 + 类型标签 + 卡片/跑马灯 + 语音标签 + 右侧状态 */
     html += '<div class="shout-history-item" data-id="' + m.id + '">' +
       '<div class="shout-history-top">' +
         '<div class="shout-history-top-left">' +
@@ -1119,7 +1143,7 @@ async function handleResendShout(msg) {
     try {
       const resp = await API.getMyShoutMessages(200);
       shoutHistoryList = resp.messages || [];
-    } catch (e) { /* 忽略 */ }
+    } catch (e) {}
     renderShoutHistoryList();
   } catch (e) {
     showSaveStatus('重发失败：' + (e.message || ''), true);
@@ -1138,7 +1162,7 @@ async function handleDeleteShout(msg) {
   }
 }
 
-/* ★ 新增：编辑 —— 跳转到发通知页，自动回填原内容/模式 */
+/* ★ 编辑 —— 跳转到发通知页，自动回填原内容/模式/播报次数 */
 async function handleEditShout(msg) {
   // 1. 重置编辑状态
   window.shoutMsgMode = 'popup';
@@ -1146,6 +1170,7 @@ async function handleEditShout(msg) {
   window.shoutPopupVoice = false;
   window.shoutFileInfo = null;
   window.shoutEditDraftText = '';
+  window.shoutBroadcastCount = 1;
 
   // 2. 解析原消息内容
   if (msg.msg_type === 'file') {
@@ -1163,6 +1188,7 @@ async function handleEditShout(msg) {
       if (p && typeof p.text === 'string') {
         window.shoutEditDraftText = p.text;
         window.shoutDisplay = p.display || 'card';
+        window.shoutBroadcastCount = Math.max(1, Math.min(3, parseInt(p.count, 10) || 1));
         if (p.display === 'voice') {
           window.shoutMsgMode = 'voice';
         } else {
