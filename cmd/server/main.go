@@ -24,19 +24,18 @@ import (
 
 // ============================================================
 // ★ TTS 反向代理配置
-// 支持管理员在后台配置「多行」接口，每行一个：
+// 完全依赖管理员在后台配置「多行」接口，每行一个：
 //   https://xxx/v1/audio/speech
 //   https://yyy/v1/audio/speech|API_KEY
 // # 开头为注释，空行忽略。
-// 请求时按行「轮询」，失败自动切换下一个；全部失败返回 502。
-// 若后台为空，则使用 defaultTTSEndpoints 兜底。
+// 请求时按行「轮询」，失败自动切换下一个；
+// 若后台未配置任何接口，直接返回 502，大屏会立即降级到浏览器内置语音。
 // ============================================================
 
 type ttsEndpoint struct {
 	URL string
 	Key string
 }
-
 
 var ttsCounter uint64
 
@@ -119,7 +118,7 @@ func main() {
 	if _, err := os.Stat(webDir); err == nil {
 		r.Static("/static", filepath.Join(webDir, "css"))
 		r.Static("/js", filepath.Join(webDir, "js"))
-		r.Static("/audio", filepath.Join(webDir, "audio"))
+		r.Static("/audio", filepath.Join(webDir, "audio")) // ★ ding.wav 提示铃声
 		r.StaticFile("/", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/index.html", filepath.Join(webDir, "index.html"))
 		r.StaticFile("/display.html", filepath.Join(webDir, "display.html"))
@@ -275,11 +274,8 @@ func main() {
 
 // ============================================================
 // ★ TTS 反向代理（多接口轮询 + 失败自动切换）
-// ============================================================
-// ============================================================
-// ★ TTS 反向代理（多接口轮询 + 失败自动切换）
 // 无默认接口：管理员未配置时直接返回 502，
-// 大屏会立刻降级到浏览器内置语音，不产生额外网络等待。
+// 大屏收到 502 会立即降级到浏览器内置语音，不产生额外等待。
 // ============================================================
 func ttsProxyHandler(db *database.SQLite) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -295,94 +291,13 @@ func ttsProxyHandler(db *database.SQLite) gin.HandlerFunc {
 			endpoints = parseTTSEndpoints(cfg.TTSUpstreams)
 		}
 
-		// ★ 未配置任何接口：直接 502，大屏收到后立刻降级
+		// ★ 未配置任何接口：直接 502，大屏会立即降级
 		if len(endpoints) == 0 {
 			log.Printf("[tts-proxy] 未配置 TTS 接口，拒绝请求")
 			c.JSON(http.StatusBadGateway, gin.H{
 				"error": "管理员尚未配置 TTS 接口",
 			})
 			return
-		}
-
-		// 轮询：原子自增取模，起点依次递推
-		start := int(atomic.AddUint64(&ttsCounter, 1)-1) % len(endpoints)
-		client := &http.Client{Timeout: 15 * time.Second}
-
-		var lastErr error
-
-		for i := 0; i < len(endpoints); i++ {
-			ep := endpoints[(start+i)%len(endpoints)]
-
-			ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
-			req, err := http.NewRequestWithContext(ctx, "POST", ep.URL, bytes.NewReader(body))
-			if err != nil {
-				cancel()
-				lastErr = err
-				continue
-			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Accept", "audio/*,application/json")
-			if ep.Key != "" {
-				req.Header.Set("Authorization", "Bearer "+ep.Key)
-				req.Header.Set("X-API-Key", ep.Key)
-			}
-
-			resp, err := client.Do(req)
-			if err != nil {
-				cancel()
-				lastErr = err
-				continue
-			}
-
-			ct := resp.Header.Get("Content-Type")
-			ctLower := strings.ToLower(ct)
-
-			// 成功：返回音频（非 JSON）
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 &&
-				!strings.Contains(ctLower, "application/json") {
-				if ct == "" {
-					ct = "application/octet-stream"
-				}
-				c.Header("Content-Type", ct)
-				c.Header("Cache-Control", "no-store")
-				c.Status(resp.StatusCode)
-				_, _ = io.Copy(c.Writer, resp.Body)
-				resp.Body.Close()
-				cancel()
-				return
-			}
-
-			// 失败：记录错误，尝试下一个
-			errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-			resp.Body.Close()
-			cancel()
-			lastErr = fmt.Errorf("endpoint %s: HTTP %d %s", ep.URL, resp.StatusCode, string(errBody))
-		}
-
-		msg := "所有 TTS 接口均不可用"
-		if lastErr != nil {
-			msg += ": " + lastErr.Error()
-		}
-		log.Printf("[tts-proxy] %s", msg)
-		c.JSON(http.StatusBadGateway, gin.H{"error": msg})
-	}
-}
-	return func(c *gin.Context) {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "读取请求体失败"})
-			return
-		}
-
-		// 从数据库读取管理员配置的接口列表
-		endpoints := defaultTTSEndpoints
-		if cfg, err := db.GetSystemConfig(); err == nil {
-			if list := parseTTSEndpoints(cfg.TTSUpstreams); len(list) > 0 {
-				endpoints = list
-			}
-		}
-		if len(endpoints) == 0 {
-			endpoints = defaultTTSEndpoints
 		}
 
 		// 轮询：原子自增取模，起点依次递推
