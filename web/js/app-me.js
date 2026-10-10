@@ -31,10 +31,10 @@ window.renderProfile = function () {
   const isDark = isAuto ? (typeof isNightTime === 'function' ? isNightTime() : false) : (curTheme === 'dark');
 
   const syncBlock = currentUser.is_admin
-    ? ('<div class="sync-section"><h4>☁️ 云同步</h4>' +
+    ? ('<div class="sync-section"><h4>' + icon('cloud') + ' 云同步</h4>' +
        '<div class="sync-row">' +
-       '<button id="syncPushBtn2">⬆️ 推送</button>' +
-       '<button id="syncPullBtn2">⬇️ 拉取</button>' +
+       '<button id="syncPushBtn2">' + icon('upload') + ' 推送</button>' +
+       '<button id="syncPullBtn2">' + icon('download') + ' 拉取</button>' +
        '<label class="reg-lock-toggle" title="开启后，除管理员外的用户将无法注册"><input type="checkbox" id="syncRegLock"><span>锁定注册</span></label>' +
        '</div>' +
        '<div class="sync-status" id="syncStatusText">点击推送/拉取同步数据</div>' +
@@ -67,11 +67,11 @@ window.renderProfile = function () {
       '</div>' +
 
     '</div>' +
-    '<button class="me-btn-gray" id="meChangePwdBtn">🔑 修改密码</button>' +
-    (currentUser.is_admin ? '<button class="me-admin-btn" id="meAdminBtn">👥 用户管理</button>' : '') +
-    (currentUser.is_admin ? '<button class="me-admin-btn" id="meSupabaseBtn" style="background:#16a085;">☁️ Supabase配置</button>' : '') +
-    (currentUser.is_admin ? '<button class="me-admin-btn" id="meTTSBtn" style="background:#8e44ad;">🔊 TTS接口配置</button>' : '') +
-    (currentUser.is_admin ? '<button class="me-admin-btn" id="meLoginNoticeBtn" style="background:#9b59b6;">📝 登录提示</button>' : '') +
+    '<button class="me-btn-gray" id="meChangePwdBtn">' + icon('key') + ' 修改密码</button>' +
+    (currentUser.is_admin ? '<button class="me-admin-btn" id="meAdminBtn">' + icon('users') + ' 用户管理</button>' : '') +
+    (currentUser.is_admin ? '<button class="me-admin-btn" id="meSupabaseBtn" style="background:#16a085;">' + icon('cloud') + ' Supabase配置</button>' : '') +
+    (currentUser.is_admin ? '<button class="me-admin-btn" id="meTTSBtn" style="background:#8e44ad;">' + icon('volume') + ' TTS接口配置</button>' : '') +
+    (currentUser.is_admin ? '<button class="me-admin-btn" id="meLoginNoticeBtn" style="background:#9b59b6;">' + icon('note') + ' 登录提示</button>' : '') +
     syncBlock +
     '<button class="me-logout" id="meLogoutBtn">退出登录</button>';
 
@@ -161,17 +161,17 @@ window.renderProfile = function () {
 };
 
 window.renderLoginNoticeEdit = async function () {
-  meCard.innerHTML = '<div class="admin-title"><span>📝 登录提示</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载中...</div>';
+  meCard.innerHTML = '<div class="admin-title"><span>' + icon('note') + ' 登录提示</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载中...</div>';
   let cfg;
   try { cfg = await API.adminGetSystemConfig(); }
   catch (err) { meCard.innerHTML = '<div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>'; return; }
 
   meCard.innerHTML =
-    '<div class="admin-title"><span>📝 登录提示</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+    '<div class="admin-title"><span>' + icon('note') + ' 登录提示</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div>' +
     '<div class="me-warn">这段文字会显示在登录/注册页面的顶部提示栏。留空则不显示。</div>' +
     '<div class="me-field"><label>提示内容</label>' +
     '<textarea id="lnText" class="cell-pop-input" rows="4" style="width:100%;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea></div>' +
-    '<button class="me-submit" id="lnSave" style="background:#9b59b6;">💾 保存</button>' +
+    '<button class="me-submit" id="lnSave" style="background:#9b59b6;">' + icon('save') + ' 保存</button>' +
     '<div class="me-error" id="lnError"></div>';
 
   $('lnText').value = cfg.login_notice || '';
@@ -190,11 +190,11 @@ window.renderLoginNoticeEdit = async function () {
    ★ TTS 语音接口配置
    ============================================================ */
 window.renderTTSConfig = async function () {
-  meCard.innerHTML = '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载中...</div>';
+  meCard.innerHTML = '<div class="admin-title"><span>' + icon('volume') + ' TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载中...</div>';
   let cfg;
   try { cfg = await API.adminGetSystemConfig(); }
   catch (err) {
-    meCard.innerHTML = '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>';
+    meCard.innerHTML = '<div class="admin-title"><span>' + icon('volume') + ' TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>';
     $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
     return;
   }
@@ -238,7 +238,7 @@ window.renderTTSConfig = async function () {
   }
 
   meCard.innerHTML =
-    '<div class="admin-title"><span>🔊 TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+    '<div class="admin-title"><span>' + icon('volume') + ' TTS 语音接口配置</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div>' +
     '<div class="me-warn">' +
       '每行一个接口，按行 <b>轮询</b>；某个失败自动切换到下一个。格式：<br>' +
       '<code>https://tts.wangwangit.com/v1/audio/speech</code><br>' +
@@ -255,7 +255,7 @@ window.renderTTSConfig = async function () {
       voiceOptionsHtml +
     '</select>' +
     '</div>' +
-    '<button class="me-submit" id="ttsSave" style="background:#8e44ad;">💾 保存</button>' +
+    '<button class="me-submit" id="ttsSave" style="background:#8e44ad;">' + icon('save') + ' 保存</button>' +
     '<div class="me-error" id="ttsError"></div>';
 
   $('ttsUpstreams').value = cfg.tts_upstreams || '';
@@ -305,7 +305,7 @@ window.renderTTSConfig = async function () {
 
 window.renderChangePwd = function () {
   meCard.innerHTML =
-    '<div class="admin-title"><span>🔑 修改密码</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+    '<div class="admin-title"><span>' + icon('key') + ' 修改密码</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div>' +
     '<div class="me-warn">修改密码后下次登录需要使用新密码。</div>' +
     '<div class="me-field"><label>当前密码</label><input type="password" id="pwdOld" autocomplete="current-password"></div>' +
     '<div class="me-field"><label>新密码</label><input type="password" id="pwdNew" placeholder="6-32字符" autocomplete="new-password"></div>' +
@@ -328,7 +328,7 @@ window.renderChangePwd = function () {
 
 window.renderAdminList = async function () {
   if (!currentUser.is_admin) { meView = 'profile'; renderMePage(); return; }
-  meCard.innerHTML = '<div class="admin-title"><span>👥 用户管理</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载中...</div>';
+  meCard.innerHTML = '<div class="admin-title"><span>' + icon('users') + ' 用户管理</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载中...</div>';
   try {
     const resp = await API.listUsers();
     const list = resp.users || [];
@@ -341,19 +341,19 @@ window.renderAdminList = async function () {
         const isSelf = (u.username === currentUser.username);
         rowsHtml +=
           '<div class="user-row" data-user="' + escapeHtml(u.username) + '">' +
-          '<div class="user-row-head"><div class="user-row-name">👤 ' + escapeHtml(u.username) + adminBadge + (isSelf ? ' <span style="color:#3498db;font-size:12px;">(当前)</span>' : '') + '</div></div>' +
+          '<div class="user-row-head"><div class="user-row-name">' + icon('user') + ' ' + escapeHtml(u.username) + adminBadge + (isSelf ? ' <span style="color:#3498db;font-size:12px;">(当前)</span>' : '') + '</div></div>' +
           '<div class="user-row-meta">注册：' + escapeHtml(u.created_at) + ' · 班级 ' + (u.class_count || 0) + ' · 座位 ' + (u.seat_count || 0) + '</div>' +
           '<div class="user-row-actions">' +
-            '<button class="btn-data" data-act="view" data-user="' + escapeHtml(u.username) + '">📊 查看数据</button>' +
-            '<button class="btn-edit" data-act="editUser" data-user="' + escapeHtml(u.username) + '">✏️ 编辑用户名/密码</button>' +
-            '<button class="btn-reset" data-act="resetPwd" data-user="' + escapeHtml(u.username) + '">🔑 重置密码</button>' +
-            '<button class="btn-clear" data-act="clear" data-user="' + escapeHtml(u.username) + '">🧹 清空数据</button>' +
-            '<button class="btn-del" data-act="del" data-user="' + escapeHtml(u.username) + '"' + (isSelf ? ' disabled title="不能删除自己"' : '') + '>🗑️ 删除用户</button>' +
+            '<button class="btn-data" data-act="view" data-user="' + escapeHtml(u.username) + '">' + icon('chart') + ' 查看数据</button>' +
+            '<button class="btn-edit" data-act="editUser" data-user="' + escapeHtml(u.username) + '">' + icon('pencil') + ' 编辑用户名/密码</button>' +
+            '<button class="btn-reset" data-act="resetPwd" data-user="' + escapeHtml(u.username) + '">' + icon('key') + ' 重置密码</button>' +
+            '<button class="btn-clear" data-act="clear" data-user="' + escapeHtml(u.username) + '">' + icon('refresh') + ' 清空数据</button>' +
+            '<button class="btn-del" data-act="del" data-user="' + escapeHtml(u.username) + '"' + (isSelf ? ' disabled title="不能删除自己"' : '') + '>' + icon('trash') + ' 删除用户</button>' +
           '</div></div>';
       }
     }
     meCard.innerHTML =
-      '<div class="admin-title"><span>👥 用户管理</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+      '<div class="admin-title"><span>' + icon('users') + ' 用户管理</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div>' +
       '<div class="me-warn">共 ' + list.length + ' 个用户。删除用户会同时删除其所有数据，无法恢复。</div>' +
       '<div class="user-list">' + rowsHtml + '</div>';
     $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
@@ -361,27 +361,27 @@ window.renderAdminList = async function () {
       b.onclick = () => handleAdminAction(b.dataset.act, b.dataset.user);
     });
   } catch (err) {
-    meCard.innerHTML = '<div class="admin-title"><span>👥 用户管理</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>';
+    meCard.innerHTML = '<div class="admin-title"><span>' + icon('users') + ' 用户管理</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>';
     $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
   }
 };
 
 window.renderSupabaseConfig = async function () {
   if (!currentUser.is_admin) { meView = 'profile'; renderMePage(); return; }
-  meCard.innerHTML = '<div class="admin-title"><span>☁️ Supabase 云同步配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div><div class="me-warn">加载中...</div>';
+  meCard.innerHTML = '<div class="admin-title"><span>' + icon('cloud') + ' Supabase 云同步配置</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div><div class="me-warn">加载中...</div>';
   let cfg;
   try { cfg = await API.getSupabaseConfig(); }
   catch (err) { meCard.innerHTML = '<div class="me-warn">加载失败: ' + escapeHtml(err.message) + '</div>'; return; }
   meCard.innerHTML =
-    '<div class="admin-title"><span>☁️ Supabase 云同步配置</span><button class="back-btn" id="meBackBtn">← 返回</button></div>' +
+    '<div class="admin-title"><span>' + icon('cloud') + ' Supabase 云同步配置</span><button class="back-btn" id="meBackBtn">' + icon('arrowLeft') + ' 返回</button></div>' +
     '<div class="me-warn">配置 Supabase 后，所有用户数据将在本地 SQLite 和 Supabase 云端之间双向同步，实现多端数据同步。数据有变化时会自动同步到云端（2 秒防抖）。</div>' +
     '<div class="supabase-toggle"><input type="checkbox" id="sbEnabled" ' + (cfg.enabled ? 'checked' : '') + '><label>启用云同步</label></div>' +
     '<div class="supabase-field"><label>Supabase URL</label><input type="text" id="sbUrl" placeholder="https://xxx.supabase.co" value="' + escapeHtml(cfg.url || '') + '"></div>' +
     '<div class="supabase-field"><label>API Key (anon/service_role)</label><input type="text" id="sbApiKey" placeholder="eyJ..." value="' + escapeHtml(cfg.api_key || '') + '"></div>' +
     '<div class="supabase-field"><label>同步间隔 (秒)</label><input type="number" id="sbInterval" value="' + (cfg.sync_interval || 300) + '"></div>' +
-    '<button class="me-submit" id="sbSave" style="background:#16a085;">💾 保存配置</button>' +
-    '<button class="me-btn-gray" id="sbTest" style="margin-top:10px;">🧪 测试连接</button>' +
-    '<button class="me-btn-gray" id="sbSchema" style="margin-top:10px;">📋 获取建表SQL</button>' +
+    '<button class="me-submit" id="sbSave" style="background:#16a085;">' + icon('save') + ' 保存配置</button>' +
+    '<button class="me-btn-gray" id="sbTest" style="margin-top:10px;">' + icon('flask') + ' 测试连接</button>' +
+    '<button class="me-btn-gray" id="sbSchema" style="margin-top:10px;">' + icon('copy') + ' 获取建表SQL</button>' +
     '<div class="me-error" id="sbError"></div>';
   $('meBackBtn').onclick = () => { meView = 'profile'; renderMePage(); };
   $('sbSave').onclick = async () => {
@@ -425,7 +425,7 @@ window.showLoginRegister = function () {
   if (rosterCtrl) rosterCtrl.style.display = 'none';
   if (bottomNav) bottomNav.style.display = 'none';
   if (subNav) subNav.style.display = 'none';
-  pageTitle.innerHTML = '📚 教师工作台';
+  pageTitle.innerHTML = icon('book') + ' 教师工作台';
   pageSub.innerHTML = '登录后使用个性化数据';
   pageSub.style.display = '';
   meCard.innerHTML =
@@ -604,7 +604,7 @@ window.renderUserDetailHtml = function (detail) {
 
   /* 1) 基本信息 */
   html += '<details class="admin-fold">';
-  html += '<summary>📋 基本信息</summary>';
+  html += '<summary>' + icon('note') + ' 基本信息</summary>';
   html += '<div class="admin-fold-body">';
   html += '<div class="user-data-row">用户名：' + escapeHtml(user.username || '') + '</div>';
   html += '<div class="user-data-row">注册时间：' + (user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '—') + '</div>';
@@ -617,7 +617,7 @@ window.renderUserDetailHtml = function (detail) {
 
   /* 2) 班级列表 */
   html += '<details class="admin-fold">';
-  html += '<summary>🏫 班级列表（' + classes.length + '）</summary>';
+  html += '<summary>' + icon('school') + ' 班级列表（' + classes.length + '）</summary>';
   html += '<div class="admin-fold-body">';
   if (classes.length === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无班级</div>';
@@ -647,7 +647,7 @@ window.renderUserDetailHtml = function (detail) {
 
   /* 3) 学生花名册 */
   html += '<details class="admin-fold">';
-  html += '<summary>👥 学生花名册（' + roster.length + '）</summary>';
+  html += '<summary>' + icon('users') + ' 学生花名册（' + roster.length + '）</summary>';
   html += '<div class="admin-fold-body">';
   if (roster.length === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无花名册学生</div>';
@@ -680,7 +680,7 @@ window.renderUserDetailHtml = function (detail) {
 
   /* 4) 座位表 */
   html += '<details class="admin-fold">';
-  html += '<summary>🪑 座位表（' + rows + '行×' + cols + '列' + (aisle ? ' · 过道 ' + escapeHtml(aisle) : '') + '）</summary>';
+  html += '<summary>' + icon('chair') + ' 座位表（' + rows + '行×' + cols + '列' + (aisle ? ' · 过道 ' + escapeHtml(aisle) : '') + '）</summary>';
   html += '<div class="admin-fold-body">';
   const segs = getAisleSegments(aisle, cols);
   const aisleCols = segs.length > 1 ? getAisleGridCols(segs) : [];
@@ -703,7 +703,7 @@ window.renderUserDetailHtml = function (detail) {
 
   /* 5) 课程表 */
   html += '<details class="admin-fold">';
-  html += '<summary>📚 课程表（' + classes.length + ' 个班级）</summary>';
+  html += '<summary>' + icon('book') + ' 课程表（' + classes.length + ' 个班级）</summary>';
   html += '<div class="admin-fold-body">';
   if (classes.length === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无班级</div>';
@@ -749,7 +749,7 @@ window.renderUserDetailHtml = function (detail) {
   /* 6) 值日表 */
   const dutyClassIds = Object.keys(dutyByClass);
   html += '<details class="admin-fold">';
-  html += '<summary>🧹 值日表（' + dutyClassIds.length + ' 个班级）</summary>';
+  html += '<summary>' + icon('listChecks') + ' 值日表（' + dutyClassIds.length + ' 个班级）</summary>';
   html += '<div class="admin-fold-body">';
   if (dutyClassIds.length === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无值日数据</div>';
@@ -789,7 +789,7 @@ window.renderUserDetailHtml = function (detail) {
   const examClassIds = Object.keys(examsByClass);
   let totalExamCount = exams.length;
   html += '<details class="admin-fold">';
-  html += '<summary>📝 考试（' + totalExamCount + ' 场 / ' + examClassIds.length + ' 个班级）</summary>';
+  html += '<summary>' + icon('note') + ' 考试（' + totalExamCount + ' 场 / ' + examClassIds.length + ' 个班级）</summary>';
   html += '<div class="admin-fold-body">';
   if (totalExamCount === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无考试记录</div>';
@@ -840,7 +840,7 @@ window.renderUserDetailHtml = function (detail) {
   const attKeys = Object.keys(attByClassDate);
   const totalAttRecords = attendance.length;
   html += '<details class="admin-fold">';
-  html += '<summary>✅ 考勤（' + totalAttRecords + ' 条 / ' + attKeys.length + ' 个班次）</summary>';
+  html += '<summary>' + icon('check') + ' 考勤（' + totalAttRecords + ' 条 / ' + attKeys.length + ' 个班次）</summary>';
   html += '<div class="admin-fold-body">';
   if (attKeys.length === 0) {
     html += '<div class="user-data-row" style="color:var(--empty-text);">暂无考勤记录</div>';

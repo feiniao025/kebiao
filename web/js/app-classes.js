@@ -140,7 +140,7 @@ window.renderSchedule = function () {
       '<div style="text-align:center;padding:40px 20px;">' +
       '<p style="font-size:16px;color:var(--text-sub);margin-bottom:16px;">暂无班级</p>' +
       '<button id="emptyCreateClassBtn" style="padding:10px 24px;border-radius:10px;border:none;background:#16a085;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;">＋ 新建班级</button>' +
-      '<p style="font-size:13px;color:var(--text-sub);margin-top:16px;">或点击「⚙️ 更多 → 📗 导入」批量导入</p>' +
+      '<p style="font-size:13px;color:var(--text-sub);margin-top:16px;">或点击「' + icon('settings') + ' 更多 → ' + icon('import') + ' 导入」批量导入</p>' +
       '</div>';
     container.appendChild(emptyCard);
     const b = $('emptyCreateClassBtn');
@@ -274,7 +274,7 @@ window.renderClassCard = function (container, cls) {
   table.querySelectorAll('tbody td').forEach(td => {
     td.onclick = () => {
       if (Date.now() - suppressClickTime < 400) return;
-      if (!editAllOn) { showSaveStatus('已锁定，请点击顶部「✏️ 编辑课表」开启编辑', true); return; }
+      if (!editAllOn) { showSaveStatus('已锁定，请点击顶部「编辑课表」开启编辑', true); return; }
       openCellPop(td);
     };
   });
@@ -297,7 +297,7 @@ window.renderLegendCard = function (container) {
   legendCard.className = 'card legend-card';
   legendCard.id = 'legendCard';
   legendCard.innerHTML =
-    '<div class="card-header"><h2>📖 课程简称说明</h2><div class="legend" style="font-size:13px;color:var(--text-sub);">共 <strong style="color:var(--text-main);">' + defaultLegend.length + '</strong> 项</div></div>' +
+    '<div class="card-header"><h2>' + icon('book') + ' 课程简称说明</h2><div class="legend" style="font-size:13px;color:var(--text-sub);">共 <strong style="color:var(--text-main);">' + defaultLegend.length + '</strong> 项</div></div>' +
     '<div class="legend-grid">' + defaultLegend.map(item =>
       '<div class="legend-item"><span class="abbr' + (item.special ? ' special' : '') + '">' + escapeHtml(item.abbr) + '</span><span class="full">' + escapeHtml(item.full) + '</span></div>'
     ).join('') + '</div>';
@@ -570,7 +570,7 @@ window.renderDuty = function () {
 
   table.querySelectorAll('tbody td').forEach(td => {
     td.onclick = () => {
-      if (!dutyEditOn) { showSaveStatus('请点击顶部「✏️ 编辑值日」开启编辑', true); return; }
+      if (!dutyEditOn) { showSaveStatus('请点击顶部「编辑值日」开启编辑', true); return; }
       openDutyPop(td);
     };
   });
@@ -915,7 +915,7 @@ window.openCommitteePop = async function (item) {
         '<div class="me-error" id="committeePopError" style="min-height:18px;"></div>' +
         '<div style="display:flex;gap:10px;margin-top:16px;">' +
           '<button id="committeePopCancel" type="button" style="flex:1;background:transparent;color:var(--text-main);padding:10px;border:1px solid var(--seat-border);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">取消</button>' +
-          '<button id="committeePopSave" type="button" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>' +
+          '<button id="committeePopSave" type="button" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">' + icon('save') + ' 保存</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(pop);
@@ -2076,7 +2076,7 @@ window.doExportScheduleExcel = async function (list) {
     if (!panel) return;
     const open = panel.classList.toggle('open');
     moreToggle.classList.toggle('open', open);
-    moreToggle.textContent = open ? '⚙️ 收起' : '⚙️ 更多';
+    moreToggle.innerHTML = open ? icon('settings') + ' 收起' : icon('settings') + ' 更多';
   };
 
   const createClassBtn = $('createClassBtn');
@@ -2325,7 +2325,7 @@ window.doExportScheduleExcel = async function (list) {
 
   const popSaveBtn = $('popSaveBtn');
   if (popSaveBtn) popSaveBtn.onclick = async () => {
-    if (!seatEditOn) { alert('请先开启「✏️ 编辑座位」开关'); return; }
+    if (!seatEditOn) { alert('请先开启「编辑座位」开关'); return; }
     if (currentPopIdx === null) return;
     const s = seat.students[currentPopIdx];
     if (!s) return;
@@ -2335,15 +2335,15 @@ window.doExportScheduleExcel = async function (list) {
     const tel1Raw = $('popTel1Input').value.trim();
     const tel2Raw = $('popTel2Input').value.trim();
     const addr = $('popAddrInput').value.trim();
-    if (!name) { alert('❌ 请填写「姓名」'); $('popNameInput').focus(); return; }
-    if (!gender) { alert('❌ 请选择「性别」（男 / 女）'); $('popGenderInput').focus(); return; }
+    if (!name) { alert('请填写「姓名」'); $('popNameInput').focus(); return; }
+    if (!gender) { alert('请选择「性别」（男 / 女）'); $('popGenderInput').focus(); return; }
     let idCard = '';
-    if (idCardRaw) { idCard = idCardRaw.replace(/\s+/g, ''); if (!/^\d{17}[\dXx]$/.test(idCard)) { alert('❌ 「身份证号」格式错误（需 18 位）\n当前输入：' + idCardRaw); $('popIdCardInput').focus(); return; } }
+    if (idCardRaw) { idCard = idCardRaw.replace(/\s+/g, ''); if (!/^\d{17}[\dXx]$/.test(idCard)) { alert('「身份证号」格式错误（需 18 位）\n当前输入：' + idCardRaw); $('popIdCardInput').focus(); return; } }
     let tel1 = '';
-    if (tel1Raw) { tel1 = tel1Raw.replace(/[\s-]+/g, ''); if (!/^\d{11}$/.test(tel1)) { alert('❌ 「家长1电话」需为 11 位数字\n当前输入：' + tel1Raw); $('popTel1Input').focus(); return; } }
+    if (tel1Raw) { tel1 = tel1Raw.replace(/[\s-]+/g, ''); if (!/^\d{11}$/.test(tel1)) { alert('「家长1电话」需为 11 位数字\n当前输入：' + tel1Raw); $('popTel1Input').focus(); return; } }
     let tel2 = '';
-    if (tel2Raw) { tel2 = tel2Raw.replace(/[\s-]+/g, ''); if (!/^\d{11}$/.test(tel2)) { alert('❌ 「家长2电话」需为 11 位数字\n当前输入：' + tel2Raw); $('popTel2Input').focus(); return; } }
-    if (!addr) { alert('❌ 请填写「家庭地址」'); $('popAddrInput').focus(); return; }
+    if (tel2Raw) { tel2 = tel2Raw.replace(/[\s-]+/g, ''); if (!/^\d{11}$/.test(tel2)) { alert('「家长2电话」需为 11 位数字\n当前输入：' + tel2Raw); $('popTel2Input').focus(); return; } }
+    if (!addr) { alert('请填写「家庭地址」'); $('popAddrInput').focus(); return; }
     const aRow = Math.floor(currentPopIdx / seat.cols);
     const aCol = currentPopIdx % seat.cols;
     try {
@@ -2358,7 +2358,7 @@ window.doExportScheduleExcel = async function (list) {
 
   const popDeleteBtn = $('popDeleteBtn');
   if (popDeleteBtn) popDeleteBtn.onclick = async () => {
-    if (!seatEditOn) { alert('请先开启「✏️ 编辑座位」开关'); return; }
+    if (!seatEditOn) { alert('请先开启「编辑座位」开关'); return; }
     if (currentPopIdx === null) return;
     const s = seat.students[currentPopIdx];
     if (!s || !s.name) return;

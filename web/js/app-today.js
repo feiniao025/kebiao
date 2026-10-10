@@ -109,7 +109,7 @@ window.renderToday = function () {
         '<div class="today-date">' + yyyy + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日 星期' + wd + '</div>' +
         '<div class="today-section" style="margin-bottom:0;">' +
           '<div class="today-section-header">' +
-            '<h4>📚 今日课程</h4>' +
+            '<h4>' + icon('book') + ' 今日课程</h4>' +
             '<div class="today-header-controls">' +
               '<div id="todayWeekdayPicker" class="today-weekday-picker" style="display:none;"></div>' +
               '<select id="todayClassFilter" class="cell-pop-input today-grade-filter">' + classFilterOptions + '</select>' +
@@ -123,7 +123,7 @@ window.renderToday = function () {
       '<div class="me-card" style="margin-top:20px;">' +
         '<div class="today-section" style="margin-bottom:0;">' +
           '<div class="today-section-header">' +
-            '<h4>✅ 今日考勤</h4>' +
+            '<h4>' + icon('check') + ' 今日考勤</h4>' +
             '<select id="todayAttendanceClass" class="cell-pop-input today-grade-filter">' +
               (classOptions || '<option value="">（暂无班级）</option>') +
             '</select>' +
@@ -184,7 +184,7 @@ window.renderToday = function () {
 };
 
 window.renderTodayCourses = function (wd, week) {
-  if (wd === 0 || wd === 6) return '<div class="today-empty">周末无课程安排 🎉</div>';
+  if (wd === 0 || wd === 6) return '<div class="today-empty">' + icon('party', 'party') + ' 周末无课程安排</div>';
   if (classes.length === 0) return '<div class="today-empty">暂无班级</div>';
 
   // 按班级筛选

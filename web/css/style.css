@@ -1520,6 +1520,92 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 .shout-btn-open:hover{background:#2980b9;}
 
+/* ============ 27.1 教室卡片：四功能操作行 ============ */
+
+/* ============ 27.1 教室卡片：四功能操作行 ============ */
+
+/* 让卡片可以换行，操作行占据第二整行 */
+.shout-room-item {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* 四功能按钮行：位于 more 按钮下方、占满整行、图标在上文字在下 */
+.shout-room-actions-row {
+  flex-basis: 100%;
+  width: 100%;
+  display: flex;
+  gap: 15px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--legend-item-border);
+}
+
+.shout-action-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--seat-border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.shout-action-btn .shout-action-icon {
+  font-size: 20px;
+  line-height: 1;
+  display: block;
+}
+.shout-action-btn .shout-action-text {
+  font-size: 12px;
+  line-height: 1;
+  display: block;
+  white-space: nowrap;
+}
+.shout-action-btn:hover {
+  border-color: #2f6df6;
+  color: #2f6df6;
+  background: rgba(47, 109, 246, .08);
+}
+.shout-action-btn:active {
+  transform: translateY(1px);
+}
+[data-theme="dark"] .shout-action-btn {
+  border-color: var(--seat-border);
+  color: var(--text-main);
+  background: var(--card-bg);
+}
+[data-theme="dark"] .shout-action-btn:hover {
+  border-color: #5dade2;
+  color: #5dade2;
+  background: rgba(93, 173, 226, .12);
+}
+
+@media (max-width: 768px) {
+  .shout-room-actions-row {
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  .shout-action-btn {
+    padding: 8px 4px;
+    gap: 6px;
+  }
+  .shout-action-btn .shout-action-icon { font-size: 18px; }
+  .shout-action-btn .shout-action-text { font-size: 11px; }
+}
+
+
 /* ============ 28. 喊话三分类 ============ */
 
 .shout-main-card { padding-bottom: 28px; }
@@ -2692,3 +2778,531 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     flex: 1 1 auto;
   }
 }
+
+/* ============ 32. 远程控制弹窗 ============ */
+
+.remote-control-inner {
+  min-width: 0;
+  width: 100%;
+  max-width: 520px;
+  padding: 20px 20px 28px;
+  background: var(--pop-bg);
+}
+
+.remote-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0b1220;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  position: relative;
+}
+.remote-preview img,
+.remote-preview video {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.remote-preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 20px;
+}
+.remote-preview-icon { font-size: 46px; opacity: .6; }
+.remote-preview-text { font-size: 14px; font-weight: 600; color: #cbd5e1; }
+.remote-preview-hint { font-size: 12px; color: #64748b; }
+
+
+.remote-actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--table-border);
+}
+.remote-action-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+.remote-action-circle .remote-circle-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1.5px solid var(--seat-border);
+  background: var(--card-bg);
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  transition: all .2s;
+  box-sizing: border-box;
+}
+.remote-action-circle .remote-circle-text {
+  font-size: 13px;
+  color: var(--text-sub);
+  font-weight: 500;
+  transition: color .2s;
+  white-space: nowrap;
+}
+.remote-action-circle:hover .remote-circle-icon {
+  border-color: #2f6df6;
+  color: #2f6df6;
+}
+.remote-action-circle:hover .remote-circle-text {
+  color: #2f6df6;
+}
+.remote-action-circle.active .remote-circle-icon {
+  background: #2bb673;
+  border-color: #2bb673;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(43, 182, 115, .35);
+}
+.remote-action-circle.active .remote-circle-text {
+  color: #2bb673;
+  font-weight: 600;
+}
+[data-theme="dark"] .remote-action-circle.active .remote-circle-icon {
+  background: #16a34a;
+  border-color: #16a34a;
+  box-shadow: 0 6px 20px rgba(22, 163, 74, .4);
+}
+[data-theme="dark"] .remote-action-circle.active .remote-circle-text {
+  color: #4ade80;
+}
+
+.remote-hint {
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 14px;
+  line-height: 1.8;
+  margin-bottom: 22px;
+  padding: 0 10px;
+}
+
+.remote-talk-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: none;
+  background: #2bb673;
+  color: #fff;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(43, 182, 115, .4);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.remote-talk-btn:hover {
+  background: #24a866;
+}
+.remote-talk-btn:active,
+.remote-talk-btn.recording {
+  background: #1e8e54;
+  transform: scale(.96);
+  box-shadow: 0 4px 12px rgba(43, 182, 115, .6);
+}
+.remote-talk-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+.remote-talk-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+[data-theme="dark"] .remote-talk-btn {
+  background: #16a34a;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, .5);
+}
+[data-theme="dark"] .remote-talk-btn:hover {
+  background: #15803d;
+}
+[data-theme="dark"] .remote-talk-btn:active,
+[data-theme="dark"] .remote-talk-btn.recording {
+  background: #14532d;
+}
+
+@media (max-width: 768px) {
+  .remote-control-inner { padding: 16px 14px 22px; }
+  .remote-preview { margin-bottom: 12px; }
+  .remote-preview-icon { font-size: 36px; }
+  .remote-preview-text { font-size: 13px; }
+  .remote-preview-hint { font-size: 11px; }
+  .remote-actions { margin: 14px 0 16px; padding-bottom: 14px; }
+  .remote-action-circle .remote-circle-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  .remote-action-circle .remote-circle-text { font-size: 12px; }
+  .remote-hint { font-size: 13px; margin-bottom: 16px; }
+  .remote-talk-btn { width: 100px; height: 100px; gap: 6px; }
+  .remote-talk-icon { font-size: 26px; }
+  .remote-talk-text { font-size: 13px; }
+}
+
+/* ============================================================
+   32.1 远程控制弹窗 · 线性 SVG 图标尺寸 / 颜色
+   （与 app-shout.js 中 RC_ICONS 配合）
+   ============================================================ */
+
+/* 圆形操作按钮内的 SVG */
+.remote-action-circle .remote-circle-icon {
+  font-size: 0;            /* 屏蔽旧 emoji 残留 */
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.remote-action-circle .remote-circle-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  pointer-events: none;
+  stroke: currentColor;
+}
+
+/* 按住说话按钮内的 SVG */
+.remote-talk-btn .remote-talk-icon {
+  font-size: 0;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.remote-talk-btn .remote-talk-icon svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+  pointer-events: none;
+  stroke: currentColor;
+}
+
+/* 预览区占位图标 */
+.remote-preview-placeholder .remote-preview-icon {
+  font-size: 0;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;          /* 与 .remote-preview-hint 的灰调一致 */
+}
+.remote-preview-placeholder .remote-preview-icon svg {
+  width: 46px;
+  height: 46px;
+  display: block;
+  stroke: currentColor;
+}
+
+/* ---------- 移动端尺寸 ---------- */
+@media (max-width: 768px) {
+  .remote-action-circle .remote-circle-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .remote-talk-btn .remote-talk-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .remote-preview-placeholder .remote-preview-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+/* ============ 33. 设备控制弹窗 ============ */
+
+.device-control-inner {
+  min-width: 0;
+  width: 100%;
+  max-width: 460px;
+  padding: 22px 20px 24px;
+  background: var(--pop-bg);
+}
+
+.device-control-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  padding-right: 32px;
+}
+.device-control-sub {
+  font-size: 12.5px;
+  color: var(--text-sub);
+  margin-bottom: 16px;
+  letter-spacing: .3px;
+}
+
+.device-control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.device-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--seat-border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s ease;
+  text-align: center;
+}
+.device-action-card:hover {
+  border-color: #2f6df6;
+  background: rgba(47, 109, 246, .06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(47, 109, 246, .12);
+}
+.device-action-card:active {
+  transform: translateY(0);
+}
+
+.device-action-icon {
+  font-size: 30px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.device-action-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: .5px;
+}
+.device-action-desc {
+  font-size: 11.5px;
+  color: var(--text-sub);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* 一键关机：偏红提示 */
+.device-action-card[data-action="shutdown"] .device-action-icon {
+  color: #e74c3c;
+}
+.device-action-card[data-action="shutdown"]:hover {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, .06);
+  box-shadow: 0 6px 18px rgba(231, 76, 60, .14);
+}
+
+/* 重启：偏橙提示 */
+.device-action-card[data-action="reboot"] .device-action-icon {
+  color: #f39c12;
+}
+.device-action-card[data-action="reboot"]:hover {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, .06);
+  box-shadow: 0 6px 18px rgba(243, 156, 18, .14);
+}
+
+/* 全屏时钟：偏蓝提示 */
+.device-action-card[data-action="clock"] .device-action-icon {
+  color: #3498db;
+}
+.device-action-card[data-action="clock"]:hover {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, .06);
+  box-shadow: 0 6px 18px rgba(52, 152, 219, .14);
+}
+
+/* 定时关机：偏紫提示 */
+.device-action-card[data-action="timer"] .device-action-icon {
+  color: #9b59b6;
+}
+.device-action-card[data-action="timer"]:hover {
+  border-color: #9b59b6;
+  background: rgba(155, 89, 182, .06);
+  box-shadow: 0 6px 18px rgba(155, 89, 182, .14);
+}
+
+[data-theme="dark"] .device-action-card {
+  border-color: var(--seat-border);
+  background: var(--card-bg);
+}
+[data-theme="dark"] .device-action-card[data-action="shutdown"]:hover {
+  background: rgba(231, 76, 60, .12);
+}
+[data-theme="dark"] .device-action-card[data-action="reboot"]:hover {
+  background: rgba(243, 156, 18, .12);
+}
+[data-theme="dark"] .device-action-card[data-action="clock"]:hover {
+  background: rgba(52, 152, 219, .12);
+}
+[data-theme="dark"] .device-action-card[data-action="timer"]:hover {
+  background: rgba(155, 89, 182, .12);
+}
+
+/* ---------- 定时关机设置面板 ---------- */
+.device-timer-panel {
+  margin-top: 14px;
+  padding: 14px 14px 12px;
+  background: var(--table-row-alt);
+  border: 1px solid var(--table-border);
+  border-radius: 12px;
+  animation: deviceTimerFadeIn .18s ease;
+}
+@keyframes deviceTimerFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.device-timer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.device-timer-row label {
+  width: 70px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.device-timer-row .cell-pop-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.device-timer-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.device-btn-ghost,
+.device-btn-primary {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .18s;
+}
+.device-btn-ghost {
+  border: 1px solid var(--seat-border);
+  background: transparent;
+  color: var(--text-main);
+}
+.device-btn-ghost:hover {
+  background: var(--card-bg);
+}
+.device-btn-primary {
+  border: none;
+  background: #2f6df6;
+  color: #fff;
+}
+.device-btn-primary:hover {
+  background: #2159d4;
+}
+
+@media (max-width: 768px) {
+  .device-control-inner { padding: 18px 14px 20px; }
+  .device-control-title { font-size: 18px; }
+  .device-control-sub { font-size: 12px; margin-bottom: 14px; }
+  .device-control-grid { gap: 8px; }
+  .device-action-card { padding: 14px 8px 12px; border-radius: 12px; }
+  .device-action-icon { font-size: 26px; }
+  .device-action-label { font-size: 14px; }
+  .device-action-desc { font-size: 11px; }
+  .device-timer-row label { width: 60px; font-size: 12.5px; }
+  .device-timer-row .cell-pop-input { padding: 7px 10px; font-size: 13px; }
+  .device-btn-ghost, .device-btn-primary { padding: 9px; font-size: 13px; }
+}
+
+/* ============ 34. SVG 图标通用样式 ============ */
+.svg-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  vertical-align: -0.18em;
+  pointer-events: none;
+  color: currentColor;
+  transition: transform .15s ease, color .15s ease;
+}
+
+/* 按钮内的图标与文字间距 */
+button > .svg-icon,
+.btn-primary > .svg-icon,
+.mini-toggle > .svg-icon,
+.seat-ctrl > .svg-icon,
+.shout-pill-btn > .svg-icon,
+.shout-mode-icon > .svg-icon,
+.shout-opt-btn > .svg-icon,
+.shout-history-btn > .svg-icon,
+.tab-btn > .svg-icon,
+.sub-tab > .svg-icon,
+.nav-icon + .svg-icon {
+  margin-right: 4px;
+}
+button > .svg-icon:last-child { margin-right: 0; margin-left: 4px; }
+
+/* 底部导航里的图标尺寸固定 */
+.bottom-nav .nav-icon { width: 22px; height: 22px; }
+
+/* 卡片标题旁的图标稍微大一点 */
+.card-header h2 > .svg-icon { width: 20px; height: 20px; margin-right: 6px; vertical-align: -0.2em; }
+
+/* 顶部页面标题 */
+.page-title > .svg-icon { width: 26px; height: 26px; margin-right: 8px; vertical-align: -0.22em; }
+
+/* 今日课程列表的箭头 —— SVG 版本 */
+.today-course-ul li::after {
+  content: none; /* 关闭原 ::after 箭头（改由 JS 输出 SVG） */
+}
+.today-course-arrow {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  color: #cbd5e1;
+  transition: transform .2s, color .2s;
+}
+.today-course-ul li:hover .today-course-arrow {
+  color: #94a3b8;
+  transform: translateX(2px);
+}
+.today-course-arrow .svg-icon { width: 20px; height: 20px; }
+
+/* 三档主题色适配（可选） */
+[data-theme="dark"] .svg-icon { color: currentColor; }

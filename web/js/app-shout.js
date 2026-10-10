@@ -16,12 +16,53 @@
    - ★ 发送记录里标注「卡片」/「跑马灯」/「🔊 语音」/「广播」
    - ★ 发送记录支持「编辑」按钮，一键回填至发通知页
    - ★ count 字段写入 payload，大屏端读 count 循环播报
+   - ★ 教室卡片下方新增四个操作按钮：查看桌面 / 查看监控 / 远程喊话 / 设备控制
+   - ★ 查看桌面 / 查看监控 / 远程喊话 弹出远程控制面板
+   - ★ 设备控制弹出一键关机 / 重启电脑 / 定时关机 / 全屏时钟
+   - ★ 远程控制弹窗图标统一为线性 SVG（跟随 currentColor）
+   - ★ 「远程喊话」入口 / 按钮也在弹窗内显示监控画面
    ============================================================ */
+
+/* ============================================================
+   远程控制弹窗图标（线性 SVG · Lucide 风格 · 跟随 currentColor）
+   ============================================================ */
+const RC_ICONS = {
+  monitor:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect width="20" height="14" x="2" y="3" rx="2"/>' +
+      '<line x1="8" x2="16" y1="21" y2="21"/>' +
+      '<line x1="12" x2="12" y1="17" y2="21"/>' +
+    '</svg>',
+
+  video:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="m22 8-6 4 6 4V8Z"/>' +
+      '<rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>' +
+    '</svg>',
+
+  megaphone:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="m3 11 18-5v12L3 14v-3z"/>' +
+      '<path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>' +
+    '</svg>',
+
+  mic:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>' +
+      '<path d="M19 10v2a7 7 0 0 1-14 0v-2"/>' +
+      '<line x1="12" x2="12" y1="19" y2="22"/>' +
+    '</svg>',
+};
 
 window.shoutSubTab = 'manage';           // manage | send | history
 window.shoutRooms = [];
 window.currentShoutRoomKey = '';
 window.currentShoutClass = '';
+window.currentRemoteRoomKey = '';
 window.shoutMsgMode = 'popup';           // popup | voice | file
 window.shoutMsgType = 'text';            // text | notice | urgent
 window.shoutDisplay = 'card';            // card | marquee（默认完整卡片）
@@ -173,7 +214,7 @@ function renderShoutFilePreview(f) {
     inner = '<video class="shout-file-video" src="' + f.data + '" controls preload="metadata"></video>';
   } else {
     inner = '<div class="shout-file-doc">' +
-              '<div class="shout-file-icon">📄</div>' +
+              '<div class="shout-file-icon">' + icon('file') + '</div>' +
               '<div class="shout-file-name">' + escapeHtml(f.name) + '</div>' +
               '<div class="shout-file-size">' + formatFileSize(f.size) + '</div>' +
             '</div>';
@@ -263,20 +304,39 @@ async function renderShoutManage() {
     shoutRooms.forEach(function (r) {
       const roleCls = r.is_owner ? 'owner' : 'teacher';
       const roleLabel = r.is_owner ? '班主任' : (r.role || '任课老师');
-      html += '<div class="shout-room-item" data-key="' + escapeHtml(r.room_key) + '">' +
+      const rk = escapeHtml(r.room_key);
+      html += '<div class="shout-room-item" data-key="' + rk + '">' +
         '<div class="shout-room-info">' +
           '<div class="shout-room-name-row">' +
             '<span class="shout-room-name">' + escapeHtml(r.name) + '</span>' +
             '<span class="shout-role-pill ' + roleCls + '">' + escapeHtml(roleLabel) + '</span>' +
           '</div>' +
-          '<div class="shout-room-sub">教室码 ' + escapeHtml(r.room_key) +
+          '<div class="shout-room-sub">教室码 ' + rk +
             ' · ' + (r.member_count || 0) + ' 位老师</div>' +
         '</div>' +
-        '<span class="shout-online-status" data-status-key="' + escapeHtml(r.room_key) + '">' +
+        '<span class="shout-online-status" data-status-key="' + rk + '">' +
           '<span class="shout-status-dot"></span>' +
           '<span>检测中…</span>' +
         '</span>' +
-        '<button class="shout-room-more" data-more="' + escapeHtml(r.room_key) + '" title="班级设置">⋯</button>' +
+        '<button class="shout-room-more" data-more="' + rk + '" title="班级设置">⋯</button>' +
+        '<div class="shout-room-actions-row">' +
+          '<button type="button" class="shout-action-btn" data-action="view-desktop"   data-key="' + rk + '">' +
+            '<span class="shout-action-icon">' + icon('monitor') + '</span>' +
+            '<span class="shout-action-text">查看桌面</span>' +
+          '</button>' +
+          '<button type="button" class="shout-action-btn" data-action="view-monitor"   data-key="' + rk + '">' +
+            '<span class="shout-action-icon">' + icon('video') + '</span>' +
+            '<span class="shout-action-text">查看监控</span>' +
+          '</button>' +
+          '<button type="button" class="shout-action-btn" data-action="shout"          data-key="' + rk + '">' +
+            '<span class="shout-action-icon">' + icon('megaphone') + '</span>' +
+            '<span class="shout-action-text">远程喊话</span>' +
+          '</button>' +
+          '<button type="button" class="shout-action-btn" data-action="device-control" data-key="' + rk + '">' +
+            '<span class="shout-action-icon">' + icon('sliders') + '</span>' +
+            '<span class="shout-action-text">设备控制</span>' +
+          '</button>' +
+        '</div>' +
       '</div>';
     });
     html += '</div>';
@@ -287,8 +347,8 @@ async function renderShoutManage() {
     const displayUrl = location.origin + '/display.html?token=' + encodeURIComponent(first.display_token);
     html += '<div class="shout-client-block">' +
       '<div class="shout-client-head">' +
-        '<div class="shout-client-title">🖥️ 教室大屏客户端</div>' +
-        '<button class="shout-copy-link" type="button" data-copy="' + escapeHtml(displayUrl) + '">📋 复制安装网址</button>' +
+        '<div class="shout-client-title">' + icon('monitor') + ' 教室大屏客户端</div>' +
+        '<button class="shout-copy-link" type="button" data-copy="' + escapeHtml(displayUrl) + '">' + icon('copy') + ' 复制安装网址</button>' +
       '</div>' +
       '<div class="shout-client-desc">在教室一体机浏览器打开下方网址下载安装：</div>' +
       '<div class="shout-client-url" data-copy="' + escapeHtml(displayUrl) + '">' +
@@ -305,6 +365,7 @@ async function renderShoutManage() {
   body.querySelectorAll('.shout-room-item').forEach(function (el) {
     el.onclick = function (e) {
       if (e.target.closest('.shout-room-more')) return;
+      if (e.target.closest('.shout-action-btn')) return;
       currentShoutClass = el.dataset.key;
       shoutSubTab = 'send';
       renderShout();
@@ -318,6 +379,13 @@ async function renderShoutManage() {
     };
   });
 
+  body.querySelectorAll('.shout-action-btn').forEach(function (btn) {
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      handleShoutRoomAction(btn.dataset.action, btn.dataset.key);
+    };
+  });
+
   bindCopyButtons(body);
   body.querySelectorAll('.shout-client-url').forEach(function (el) {
     el.onclick = function () { copyText(el.dataset.copy); };
@@ -326,6 +394,32 @@ async function renderShoutManage() {
   stopListStatusPolling();
   refreshRoomListStatus();
   shoutListStatusTimer = setInterval(refreshRoomListStatus, 5000);
+}
+
+/* ---------- 教室四功能入口 ---------- */
+function handleShoutRoomAction(action, roomKey) {
+  switch (action) {
+    case 'view-desktop':
+      window.currentRemoteRoomKey = roomKey;
+      window.openRemoteControlPop('desktop');
+      break;
+
+    case 'view-monitor':
+      window.currentRemoteRoomKey = roomKey;
+      window.openRemoteControlPop('monitor');
+      break;
+
+    case 'shout':
+      // ★ 改为 'shout' 模式：弹窗内直接显示监控画面，同时可按住说话
+      window.currentRemoteRoomKey = roomKey;
+      window.openRemoteControlPop('shout');
+      break;
+
+    case 'device-control':
+      window.currentRemoteRoomKey = roomKey;
+      window.openDeviceControlPop();
+      break;
+  }
 }
 
 async function refreshRoomListStatus() {
@@ -382,7 +476,6 @@ function getShoutSendPayload() {
     ? shoutDisplay
     : (isVoiceMode ? 'voice' : 'card');
 
-  // ★ 所有非 file 模式都读取用户设置的播报次数
   const count = window.shoutBroadcastCount || 1;
 
   return {
@@ -432,7 +525,6 @@ async function renderShoutSend() {
 
   let html = '';
 
-  /* 顶部 */
   html += '<div class="shout-send-head">' +
     '<div class="select-wrap shout-send-class-wrap">' +
       '<select id="shoutSendClass" class="cell-pop-input">' + classOptions + '</select>' +
@@ -446,19 +538,18 @@ async function renderShoutSend() {
   if (shoutMsgMode === 'popup') {
     html += '<div class="select-wrap shout-send-type-wrap">' +
       '<select id="shoutSendType" class="cell-pop-input" title="选择消息在大屏上的显示类型">' +
-        '<option value="text"'   + (shoutMsgType === 'text'   ? ' selected' : '') + '>💬 消息</option>' +
-        '<option value="notice"' + (shoutMsgType === 'notice' ? ' selected' : '') + '>📢 通知</option>' +
-        '<option value="urgent"' + (shoutMsgType === 'urgent' ? ' selected' : '') + '>🚨 紧急</option>' +
+        '<option value="text"'   + (shoutMsgType === 'text'   ? ' selected' : '') + '>消息</option>' +
+        '<option value="notice"' + (shoutMsgType === 'notice' ? ' selected' : '') + '>通知</option>' +
+        '<option value="urgent"' + (shoutMsgType === 'urgent' ? ' selected' : '') + '>紧急</option>' +
       '</select>' +
     '</div>';
   }
   html += '</div>';
 
-  /* 模式标签 */
   const modes = [
-    { key: 'popup', icon: '🖥️', label: '桌面弹窗' },
-    { key: 'voice', icon: '🔊', label: '语音广播' },
-    { key: 'file',  icon: '📁', label: '传输文件' }
+    { key: 'popup', icon: icon('monitor'), label: '桌面弹窗' },
+    { key: 'voice', icon: icon('volume'),  label: '语音广播' },
+    { key: 'file',  icon: icon('folder'),  label: '传输文件' }
   ];
   html += '<div class="shout-mode-tabs">';
   modes.forEach(function (m) {
@@ -469,7 +560,6 @@ async function renderShoutSend() {
   });
   html += '</div>';
 
-  /* 输入区域 */
   if (shoutMsgMode === 'file') {
     const f = window.shoutFileInfo;
     const hasFile = !!f;
@@ -478,7 +568,7 @@ async function renderShoutSend() {
         (hasFile
           ? renderShoutFilePreview(f)
           : '<div class="shout-image-placeholder">' +
-              '<div class="shout-image-icon">📁</div>' +
+              '<div class="shout-image-icon">' + icon('folder') + '</div>' +
               '<div class="shout-image-title">点击此处选择文件</div>' +
               '<div class="shout-image-hint">支持 图片 / 视频 / 文档等，建议 ≤ 20MB</div>' +
             '</div>') +
@@ -516,7 +606,6 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* 语音播报开关（仅桌面弹窗模式） */
   if (shoutMsgMode === 'popup') {
     html += '<div class="shout-opt-row">' +
       '<div class="shout-opt-info">' +
@@ -532,7 +621,6 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* 大屏呈现形式（仅桌面弹窗模式） */
   if (shoutMsgMode === 'popup') {
     var displayHint = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
 
@@ -548,7 +636,6 @@ async function renderShoutSend() {
     '</div>';
   }
 
-  /* ★ 播报次数 + 播报时间：所有非 file 模式都显示 */
   if (shoutMsgMode !== 'file') {
     var countHint = '大屏连播次数';
     var durHint   = '大屏显示秒数';
@@ -614,13 +701,12 @@ async function renderShoutSend() {
   html += '<div class="me-error" id="shoutSendError" style="min-height:18px;"></div>';
 
   html += '<button id="shoutSendBtn" class="shout-send-main">' +
-    '<span class="shout-send-icon">✈</span><span>发送至教室大屏</span></button>';
+    '<span class="shout-send-icon">' + icon('send') + '</span><span>发送至教室大屏</span></button>';
 
   html += '<div id="shoutScheduledBox" class="shout-client-block" style="display:none;margin-top:18px;"></div>';
 
   body.innerHTML = html;
 
-  /* ★ 应用编辑草稿 */
   if (window.shoutEditDraftText) {
     const ta = $('shoutSendContent');
     if (ta) {
@@ -636,7 +722,6 @@ async function renderShoutSend() {
     window.shoutEditDraftText = '';
   }
 
-  /* ---------- 绑定 ---------- */
   const clsSel = $('shoutSendClass');
   clsSel.value = currentShoutClass;
   clsSel.onchange = function () {
@@ -733,7 +818,6 @@ async function renderShoutSend() {
         hintEl.textContent = (shoutDisplay === 'marquee') ? '跑马灯在顶部滚动显示' : '完整卡片居中显示';
       }
 
-      // ★ 大屏呈现形式切换后，重新渲染以更新「播报次数 / 播报时间」的提示文字
       renderShoutSend();
     };
   });
@@ -876,7 +960,7 @@ async function renderScheduledList() {
   box.style.display = '';
 
   let html = '<div class="shout-client-head">' +
-    '<div class="shout-client-title">⏰ 待发送定时任务（' + list.length + '）</div>' +
+    '<div class="shout-client-title">' + icon('alarmClock') + ' 待发送定时任务（' + list.length + '）</div>' +
   '</div>';
   html += '<div class="shout-member-list">';
   list.forEach(function (s) {
@@ -897,17 +981,17 @@ async function renderScheduledList() {
       try {
         const meta = JSON.parse(s.content);
         const t = meta.type || '';
-        if (/^image\//.test(t)) preview = '🖼️ [图片] ' + escapeHtml(meta.name || '');
-        else if (/^video\//.test(t)) preview = '🎬 [视频] ' + escapeHtml(meta.name || '');
-        else preview = '📄 [文件] ' + escapeHtml(meta.name || '');
-      } catch (e) { preview = '📁 [文件]'; }
+        if (/^image\//.test(t)) preview = icon('image') + ' [图片] ' + escapeHtml(meta.name || '');
+        else if (/^video\//.test(t)) preview = icon('film') + ' [视频] ' + escapeHtml(meta.name || '');
+        else preview = icon('file') + ' [文件] ' + escapeHtml(meta.name || '');
+      } catch (e) { preview = icon('folder') + ' [文件]'; }
     } else if (isImage) {
-      preview = '🖼️ [图片]';
+      preview = icon('image') + ' [图片]';
     } else if (s.content && s.content.charAt(0) === '{') {
       try {
         const parsed = JSON.parse(s.content);
         if (parsed && typeof parsed.text === 'string') {
-          preview = escapeHtml(parsed.text) + (parsed.voice ? ' <span style="color:#16a085;">[🔊 语音]</span>' : '');
+          preview = escapeHtml(parsed.text) + (parsed.voice ? ' <span style="color:#16a085;">' + icon('volume') + ' [语音]</span>' : '');
         }
       } catch (e) {}
     }
@@ -1035,7 +1119,6 @@ function renderShoutHistoryList() {
       } catch (e) { typeLabel = '文件'; }
     }
 
-    /* ★ 解析 display：卡片 / 跑马灯 / 语音广播 */
     let displayLabel = '';
     let voiceTag = '';
 
@@ -1061,24 +1144,24 @@ function renderShoutHistoryList() {
 
     const delivered = m.delivered !== false;
     const statusCls = delivered ? 'ok' : 'fail';
-    const statusText = delivered ? '✓ 已送达' : '✕ 未送达';
+    const statusText = delivered ? icon('check') + ' 已送达' : icon('x') + ' 未送达';
 
     let contentHtml;
     if (m.msg_type === 'image') {
-      contentHtml = '<div class="shout-history-content shout-history-image">🖼️ [图片]</div>';
+      contentHtml = '<div class="shout-history-content shout-history-image">' + icon('image') + ' [图片]</div>';
     } else if (m.msg_type === 'file') {
       try {
         const meta = JSON.parse(m.content);
         const t = meta.type || '';
         if (/^image\//.test(t)) {
-          contentHtml = '<div class="shout-history-content shout-history-image">🖼️ [图片] ' + escapeHtml(meta.name || '') + '</div>';
+          contentHtml = '<div class="shout-history-content shout-history-image">' + icon('image') + ' [图片] ' + escapeHtml(meta.name || '') + '</div>';
         } else if (/^video\//.test(t)) {
-          contentHtml = '<div class="shout-history-content shout-history-image">🎬 [视频] ' + escapeHtml(meta.name || '') + '</div>';
+          contentHtml = '<div class="shout-history-content shout-history-image">' + icon('film') + ' [视频] ' + escapeHtml(meta.name || '') + '</div>';
         } else {
-          contentHtml = '<div class="shout-history-content shout-history-image">📄 [文件] ' + escapeHtml(meta.name || '') + '</div>';
+          contentHtml = '<div class="shout-history-content shout-history-image">' + icon('file') + ' [文件] ' + escapeHtml(meta.name || '') + '</div>';
         }
       } catch (e) {
-        contentHtml = '<div class="shout-history-content shout-history-image">📁 [文件]</div>';
+        contentHtml = '<div class="shout-history-content shout-history-image">' + icon('folder') + ' [文件]</div>';
       }
     } else {
       let plainText = m.content;
@@ -1162,9 +1245,7 @@ async function handleDeleteShout(msg) {
   }
 }
 
-/* ★ 编辑 —— 跳转到发通知页，自动回填原内容/模式/播报次数 */
 async function handleEditShout(msg) {
-  // 1. 重置编辑状态
   window.shoutMsgMode = 'popup';
   window.shoutDisplay = 'card';
   window.shoutPopupVoice = false;
@@ -1172,7 +1253,6 @@ async function handleEditShout(msg) {
   window.shoutEditDraftText = '';
   window.shoutBroadcastCount = 1;
 
-  // 2. 解析原消息内容
   if (msg.msg_type === 'file') {
     window.shoutMsgMode = 'file';
     try {
@@ -1203,12 +1283,10 @@ async function handleEditShout(msg) {
     window.shoutEditDraftText = msg.content;
   }
 
-  // 3. 设置目标班级和消息类型
   window.currentShoutClass = msg.room_key;
   window.shoutMsgType = msg.msg_type === 'file' ? 'text' : (msg.msg_type || 'text');
   window.shoutSubTab = 'send';
 
-  // 4. 跳转并重新渲染
   await renderShout();
 }
 
@@ -1299,7 +1377,7 @@ window.openShoutRoomPop = async function (roomKey) {
     '</span></div>';
   html += '</div>';
 
-  html += '<div class="shout-section-title">👥 班级成员（' + members.length + '）</div>';
+  html += '<div class="shout-section-title">' + icon('users') + ' 班级成员（' + members.length + '）</div>';
   html += '<div class="shout-member-list">';
   if (!members.length) {
     html += '<div class="shout-member-empty">暂无成员</div>';
@@ -1319,10 +1397,10 @@ window.openShoutRoomPop = async function (roomKey) {
   html += '</div>';
 
   if (room.is_owner) {
-    html += '<div class="shout-section-title">⚙️ 班级管理</div>';
+    html += '<div class="shout-section-title">' + icon('settings') + ' 班级管理</div>';
     html += '<div class="shout-danger-row">' +
-      '<button id="shoutResetTokenBtn" type="button" class="shout-btn-ghost">🔄 重置大屏地址</button>' +
-      '<button id="shoutDeleteRoomBtn" type="button" class="shout-btn-danger">🗑️ 删除班级</button>' +
+      '<button id="shoutResetTokenBtn" type="button" class="shout-btn-ghost">' + icon('refresh') + ' 重置大屏地址</button>' +
+      '<button id="shoutDeleteRoomBtn" type="button" class="shout-btn-danger">' + icon('trash') + ' 删除班级</button>' +
     '</div>';
   }
 
@@ -1391,6 +1469,281 @@ window.openShoutRoomPop = async function (roomKey) {
     };
   }
 };
+
+/* ---------- 远程控制弹窗 ---------- */
+
+window.openRemoteControlPop = function (mode) {
+  mode = mode || 'desktop';
+
+  let pop = document.getElementById('remoteControlPop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'remoteControlPop';
+    pop.className = 'seat-pop';
+    pop.innerHTML =
+      '<div class="seat-pop-inner remote-control-inner">' +
+        '<button class="pop-close-x" id="remoteControlClose" type="button">×</button>' +
+
+        '<div class="remote-preview" id="remotePreview"></div>' +
+
+        '<div class="remote-actions">' +
+          '<button type="button" class="remote-action-circle" data-mode="desktop">' +
+            '<span class="remote-circle-icon">' + RC_ICONS.monitor + '</span>' +
+            '<span class="remote-circle-text">查看桌面</span>' +
+          '</button>' +
+          '<button type="button" class="remote-action-circle" data-mode="monitor">' +
+            '<span class="remote-circle-icon">' + RC_ICONS.video + '</span>' +
+            '<span class="remote-circle-text">查看监控</span>' +
+          '</button>' +
+          '<button type="button" class="remote-action-circle" data-mode="shout">' +
+            '<span class="remote-circle-icon">' + RC_ICONS.megaphone + '</span>' +
+            '<span class="remote-circle-text">远程喊话</span>' +
+          '</button>' +
+        '</div>' +
+
+        '<div class="remote-hint">按住说话，您的讲话内容会发送到班级教室黑板，学生可听到您所发送的语音</div>' +
+
+        '<button type="button" class="remote-talk-btn" id="remoteTalkBtn">' +
+          '<span class="remote-talk-icon">' + RC_ICONS.mic + '</span>' +
+          '<span class="remote-talk-text">按住说话</span>' +
+        '</button>' +
+      '</div>';
+    document.body.appendChild(pop);
+
+    document.getElementById('remoteControlClose').onclick = closeRemoteControlPop;
+    pop.addEventListener('click', function (e) {
+      if (e.target === pop) closeRemoteControlPop();
+    });
+
+    pop.querySelectorAll('.remote-action-circle').forEach(function (btn) {
+      btn.onclick = function () {
+        const m = btn.dataset.mode;
+        // ★ 三个模式都在弹窗内切换预览：desktop / monitor / shout
+        pop.querySelectorAll('.remote-action-circle').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        renderRemotePreview(m);
+      };
+    });
+
+    setupRemoteTalkBtn(document.getElementById('remoteTalkBtn'));
+  }
+
+  pop.querySelectorAll('.remote-action-circle').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  renderRemotePreview(mode);
+
+  pop.style.display = 'flex';
+};
+
+window.closeRemoteControlPop = function () {
+  const pop = document.getElementById('remoteControlPop');
+  if (pop) pop.style.display = 'none';
+};
+
+function renderRemotePreview(mode) {
+  const preview = document.getElementById('remotePreview');
+  if (!preview) return;
+
+  if (mode === 'monitor' || mode === 'shout') {
+    preview.innerHTML =
+      '<div class="remote-preview-placeholder">' +
+        '<div class="remote-preview-icon">' + RC_ICONS.video + '</div>' +
+        '<div class="remote-preview-text">暂无监控画面</div>' +
+        '<div class="remote-preview-hint">大屏端接入摄像头后即可显示</div>' +
+      '</div>';
+  } else {
+    preview.innerHTML =
+      '<div class="remote-preview-placeholder">' +
+        '<div class="remote-preview-icon">' + RC_ICONS.monitor + '</div>' +
+        '<div class="remote-preview-text">暂无桌面画面</div>' +
+        '<div class="remote-preview-hint">大屏端客户端接入后即可显示</div>' +
+      '</div>';
+  }
+}
+
+function setupRemoteTalkBtn(btn) {
+  if (!btn) return;
+  let recording = false;
+  const textEl = btn.querySelector('.remote-talk-text');
+
+  const start = function (e) {
+    if (e) e.preventDefault();
+    if (recording) return;
+    recording = true;
+    btn.classList.add('recording');
+    if (textEl) textEl.textContent = '松开结束';
+    showSaveStatus('正在讲话…', false, true);
+  };
+  const end = function (e) {
+    if (e) e.preventDefault();
+    if (!recording) return;
+    recording = false;
+    btn.classList.remove('recording');
+    if (textEl) textEl.textContent = '按住说话';
+    showSaveStatus('已发送语音到教室', false);
+    // TODO: 接入后此处调用真正的语音上传接口
+  };
+
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', end);
+  btn.addEventListener('mouseleave', end);
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('touchend', end, { passive: false });
+  btn.addEventListener('touchcancel', end);
+}
+
+/* ---------- 设备控制弹窗 ---------- */
+
+window.openDeviceControlPop = function () {
+  let pop = document.getElementById('deviceControlPop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'deviceControlPop';
+    pop.className = 'seat-pop';
+    pop.innerHTML =
+      '<div class="seat-pop-inner device-control-inner">' +
+        '<button class="pop-close-x" id="deviceControlClose" type="button">×</button>' +
+        '<h3 class="device-control-title">设备控制</h3>' +
+        '<div class="device-control-sub">控制教室大屏一体机</div>' +
+
+        '<div class="device-control-grid">' +
+          '<button type="button" class="device-action-card" data-action="shutdown">' +
+            '<span class="device-action-icon">' + icon('power') + '</span>' +
+            '<span class="device-action-label">一键关机</span>' +
+            '<span class="device-action-desc">立即关闭设备</span>' +
+          '</button>' +
+
+          '<button type="button" class="device-action-card" data-action="reboot">' +
+            '<span class="device-action-icon">' + icon('refresh') + '</span>' +
+            '<span class="device-action-label">重启电脑</span>' +
+            '<span class="device-action-desc">立即重启设备</span>' +
+          '</button>' +
+
+          '<button type="button" class="device-action-card" data-action="timer">' +
+            '<span class="device-action-icon">' + icon('alarmClock') + '</span>' +
+            '<span class="device-action-label">定时关机</span>' +
+            '<span class="device-action-desc">指定时间自动关机</span>' +
+          '</button>' +
+
+          '<button type="button" class="device-action-card" data-action="clock">' +
+            '<span class="device-action-icon">' + icon('clock') + '</span>' +
+            '<span class="device-action-label">全屏时钟</span>' +
+            '<span class="device-action-desc">大屏显示全屏时钟</span>' +
+          '</button>' +
+        '</div>' +
+
+        '<div class="device-timer-panel" id="deviceTimerPanel" style="display:none;">' +
+          '<div class="device-timer-row">' +
+            '<label>关机时间：</label>' +
+            '<input type="time" id="deviceTimerTime" class="cell-pop-input">' +
+          '</div>' +
+          '<div class="device-timer-row">' +
+            '<label>重复：</label>' +
+            '<select id="deviceTimerRepeat" class="cell-pop-input">' +
+              '<option value="once">仅一次</option>' +
+              '<option value="daily">每天</option>' +
+              '<option value="weekday">工作日</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="device-timer-actions">' +
+            '<button type="button" class="device-btn-ghost" id="deviceTimerCancel">取消</button>' +
+            '<button type="button" class="device-btn-primary" id="deviceTimerConfirm">确认定时</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="me-error" id="deviceControlError" style="min-height:18px;"></div>' +
+      '</div>';
+    document.body.appendChild(pop);
+
+    document.getElementById('deviceControlClose').onclick = function () {
+      pop.style.display = 'none';
+      const panel = document.getElementById('deviceTimerPanel');
+      if (panel) panel.style.display = 'none';
+    };
+    pop.addEventListener('click', function (e) {
+      if (e.target === pop) {
+        pop.style.display = 'none';
+        const panel = document.getElementById('deviceTimerPanel');
+        if (panel) panel.style.display = 'none';
+      }
+    });
+
+    pop.querySelectorAll('.device-action-card').forEach(function (btn) {
+      btn.onclick = function () {
+        handleDeviceAction(btn.dataset.action);
+      };
+    });
+
+    document.getElementById('deviceTimerCancel').onclick = function () {
+      document.getElementById('deviceTimerPanel').style.display = 'none';
+    };
+    document.getElementById('deviceTimerConfirm').onclick = function () {
+      const t = document.getElementById('deviceTimerTime').value;
+      const r = document.getElementById('deviceTimerRepeat').value;
+      if (!t) {
+        document.getElementById('deviceControlError').textContent = '请选择关机时间';
+        return;
+      }
+      document.getElementById('deviceControlError').textContent = '';
+      const roomKey = window.currentRemoteRoomKey || '';
+      const repeatLabel = { once: '仅一次', daily: '每天', weekday: '工作日' }[r] || '仅一次';
+      showSaveStatus('已设置定时关机：' + t + '（' + repeatLabel + '）', false);
+      document.getElementById('deviceTimerPanel').style.display = 'none';
+      pop.style.display = 'none';
+    };
+  }
+
+  const panel = document.getElementById('deviceTimerPanel');
+  if (panel) panel.style.display = 'none';
+  const err = document.getElementById('deviceControlError');
+  if (err) err.textContent = '';
+  const timeInput = document.getElementById('deviceTimerTime');
+  if (timeInput && !timeInput.value) {
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    timeInput.value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  pop.style.display = 'flex';
+};
+
+function handleDeviceAction(action) {
+  const roomKey = window.currentRemoteRoomKey || '';
+  const errEl = document.getElementById('deviceControlError');
+  if (errEl) errEl.textContent = '';
+
+  switch (action) {
+    case 'shutdown': {
+      if (!confirm('确认要立刻关闭教室大屏一体机吗？')) return;
+      showSaveStatus('已发送「一键关机」指令', false);
+      const pop = document.getElementById('deviceControlPop');
+      if (pop) pop.style.display = 'none';
+      break;
+    }
+
+    case 'reboot': {
+      if (!confirm('确认要重启教室大屏一体机吗？')) return;
+      showSaveStatus('已发送「重启电脑」指令', false);
+      const pop = document.getElementById('deviceControlPop');
+      if (pop) pop.style.display = 'none';
+      break;
+    }
+
+    case 'timer': {
+      const panel = document.getElementById('deviceTimerPanel');
+      if (panel) panel.style.display = 'block';
+      break;
+    }
+
+    case 'clock': {
+      showSaveStatus('已发送「全屏时钟」指令', false);
+      const pop = document.getElementById('deviceControlPop');
+      if (pop) pop.style.display = 'none';
+      break;
+    }
+  }
+}
 
 /* ---------- 弹窗事件绑定 ---------- */
 

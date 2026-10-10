@@ -13,7 +13,7 @@
 
 
 <header class="top-bar">
-  <h1 class="page-title" id="pageTitle">📚 教师工作台</h1>
+  <h1 class="page-title" id="pageTitle"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> 教师工作台</h1>
   <p class="page-sub" id="pageSub" style="display:none;"></p>
 </header>
 
@@ -24,26 +24,26 @@
   <button data-filter="all" class="active schedule-only">全部显示</button>
   <span id="classFilterButtons" style="display:contents;"></span>
   <button id="createClassBtn" class="schedule-only" style="background:#16a085;">＋ 新建班级</button>
-  <button id="toggleWeekHighlight" class="active">🔆 当日高亮</button>
-  <button id="editToggleBtn" class="schedule-only">✏️ 编辑课表</button>
-  <button id="seatEditToggle" class="seat-only" style="display:none;">✏️ 编辑座位</button>
-  <button id="dutyEditToggle" class="duty-only" style="display:none;">✏️ 编辑值日</button>
-  <button id="moreToggle" class="more-ctrl">⚙️ 更多</button>
+  <button id="toggleWeekHighlight" class="active"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> 当日高亮</button>
+  <button id="editToggleBtn" class="schedule-only"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> 编辑课表</button>
+  <button id="seatEditToggle" class="seat-only" style="display:none;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> 编辑座位</button>
+  <button id="dutyEditToggle" class="duty-only" style="display:none;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> 编辑值日</button>
+  <button id="moreToggle" class="more-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 更多</button>
   <div id="morePanel" class="more-panel">
-    <button id="exportBtn">📷 导出图片</button>
-    <button id="importExcelBtn" class="data-ctrl">📗 导入</button>
-    <button id="exportExcelBtn" class="data-ctrl">📗 导出</button>
+    <button id="exportBtn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> 导出图片</button>
+    <button id="importExcelBtn" class="data-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="m9 15 3 3 3-3"/></svg> 导入</button>
+    <button id="exportExcelBtn" class="data-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg> 导出</button>
   </div>
 </div>
 
 <!-- 花名册工具条 -->
 <div class="control-bar" id="rosterControlBar" style="display:none;">
-  <button id="rosterEditBtn">✏️ 编辑名册</button>
-  <button id="rosterMoreToggle" class="more-ctrl">⚙️ 更多</button>
+  <button id="rosterEditBtn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> 编辑名册</button>
+  <button id="rosterMoreToggle" class="more-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 更多</button>
   <div id="rosterMorePanel" class="more-panel">
-    <button id="rosterExportImgBtn">📷 导出图片</button>
-    <button id="rosterImportBtn" class="data-ctrl">📗 导入</button>
-    <button id="rosterExportBtn" class="data-ctrl">📗 导出</button>
+    <button id="rosterExportImgBtn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> 导出图片</button>
+    <button id="rosterImportBtn" class="data-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="m9 15 3 3 3-3"/></svg> 导入</button>
+    <button id="rosterExportBtn" class="data-ctrl"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg> 导出</button>
   </div>
 </div>
 
@@ -67,7 +67,7 @@
     </div>
     <div class="seat-stage" id="seatStage">讲 台</div>
     <div class="seat-grid" id="seatGrid"></div>
-    <div class="seat-legend">💡 单击看名片 · 点击「✏️ 编辑座位」后长按可拖动换位、可增删改学生</div>
+    <div class="seat-legend"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> 单击看名片 · 点击「编辑座位」后长按可拖动换位、可增删改学生</div>
   </div>
 
   <div id="meContainer" style="display:none;">
@@ -126,10 +126,10 @@
     <select id="popGenderInput" class="cell-pop-input"><option value="男">男</option><option value="女">女</option></select>
   </div>
   <div class="cell-pop-row"><label>身份证号：</label><input type="text" id="popIdCardInput" class="cell-pop-input" placeholder="18位"></div>
-  <div class="cell-pop-row"><label>家长1电话：</label><input type="text" id="popTel1Input" class="cell-pop-input"><button type="button" id="popTel1Dial" class="tel-btn">📞</button></div>
-  <div class="cell-pop-row"><label>家长2电话：</label><input type="text" id="popTel2Input" class="cell-pop-input"><button type="button" id="popTel2Dial" class="tel-btn">📞</button></div>
+  <div class="cell-pop-row"><label>家长1电话：</label><input type="text" id="popTel1Input" class="cell-pop-input"><button type="button" id="popTel1Dial" class="tel-btn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button></div>
+  <div class="cell-pop-row"><label>家长2电话：</label><input type="text" id="popTel2Input" class="cell-pop-input"><button type="button" id="popTel2Dial" class="tel-btn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button></div>
   <div class="cell-pop-row"><label>家庭地址：</label><input type="text" id="popAddrInput" class="cell-pop-input"></div>
-  <div class="seat-pop-btns"><button id="popDeleteBtn">🗑️ 删除</button><button id="popSaveBtn">💾 保存</button></div>
+  <div class="seat-pop-btns"><button id="popDeleteBtn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除</button><button id="popSaveBtn"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button></div>
 </div>
 </div>
 
@@ -145,7 +145,7 @@
     <button data-color="0"></button><button data-color="1"></button><button data-color="2"></button>
     <button data-color="3"></button><button data-color="4"></button><button data-color="5"></button><button data-color="6"></button>
   </div></div>
-  <button id="cellPopSave">💾 保存</button>
+  <button id="cellPopSave"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
 </div>
 </div>
 
@@ -175,7 +175,7 @@
 </div>
 <div class="cell-pop-row"><label>教师姓名：</label><input type="text" id="classPopName" class="cell-pop-input" placeholder="请输入教师姓名"></div>
   <div class="me-error" id="classPopError" style="min-height:18px;margin-top:6px;"></div>
-  <button id="classPopSave" style="background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:16px;">💾 创建</button>
+  <button id="classPopSave" style="background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:16px;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 创建</button>
 </div>
 </div>
 
@@ -201,10 +201,10 @@
 </div>
 <div class="cell-pop-row"><label>教师姓名：</label><input type="text" id="classManageName" class="cell-pop-input" placeholder="请输入教师姓名"></div>
   <div class="me-error" id="classManageError" style="min-height:18px;margin-top:6px;"></div>
-  <button id="classManageEditCsBtn" style="display:none;width:100%;margin-top:10px;padding:9px;border-radius:8px;border:none;background:#7d5ba6;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">📅 编辑课服（4周循环）</button>
+  <button id="classManageEditCsBtn" style="display:none;width:100%;margin-top:10px;padding:9px;border-radius:8px;border:none;background:#7d5ba6;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M14.5 14.5 19 19"/><path d="M19 14.5 14.5 19"/></svg> 编辑课服（4周循环）</button>
   <div style="display:flex;gap:10px;margin-top:16px;">
-    <button id="classManageDelete" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 删除</button>
-    <button id="classManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+    <button id="classManageDelete" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除</button>
+    <button id="classManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
   </div>
 </div>
 </div>
@@ -218,8 +218,8 @@
     <div id="classServiceBody"></div>
     <div class="me-error" id="classServiceError" style="min-height:18px;margin-top:6px;"></div>
     <div style="display:flex;gap:10px;margin-top:16px;">
-      <button id="classServiceClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 清空</button>
-      <button id="classServiceSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+      <button id="classServiceClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 清空</button>
+      <button id="classServiceSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
     </div>
   </div>
 </div>
@@ -261,7 +261,7 @@
     <div class="me-error" id="seatManageError" style="min-height:18px;margin-top:6px;"></div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button id="seatManageCancel" style="flex:1;background:transparent;color:var(--text-main);padding:10px;border:1px solid var(--seat-border);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">取消</button>
-      <button id="seatManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+      <button id="seatManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
     </div>
   </div>
 </div>
@@ -277,13 +277,13 @@
     <div class="cell-pop-row" style="align-items:flex-start;">
       <label style="padding-top:9px;">值日备注：</label>
       <textarea id="dutyManageNote" class="cell-pop-input" rows="12"
-                placeholder="值日要求...（点击「✏️ 编辑值日」后可修改）"
+                placeholder="值日要求...（点击「编辑值日」后可修改）"
                 style="resize:vertical;font-family:inherit;line-height:1.7;min-height:160px;"></textarea>
     </div>
     <div class="me-error" id="dutyManageError" style="min-height:18px;margin-top:6px;"></div>
     <div style="display:flex;gap:10px;margin-top:16px;">
-      <button id="dutyManageClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">🗑️ 清空值日表</button>
-      <button id="dutyManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;">💾 保存</button>
+      <button id="dutyManageClear" style="flex:1;background:#e74c3c;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 清空值日表</button>
+      <button id="dutyManageSave" style="flex:2;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
     </div>
   </div>
 </div>
@@ -302,10 +302,10 @@
       </label>
     </div>
     <div style="color:var(--text-sub);font-size:12px;margin:4px 0 8px;line-height:1.6;display:none;" id="importRosterGradeHint">
-      ⓘ 勾选后，所选年级用于补全 Excel 中纯数字的班级列（如 1、2、3 → 一年级N班）
+      <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg> 勾选后，所选年级用于补全 Excel 中纯数字的班级列（如 1、2、3 → 一年级N班）
     </div>
     <div class="me-error" id="importTargetError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="importTargetConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">✅ 确定并选择文件</button>
+    <button id="importTargetConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 确定并选择文件</button>
   </div>
 </div>
 
@@ -318,7 +318,7 @@
     </label>
     <div id="exportScheduleList" style="max-height:320px;overflow:auto;border:1px solid var(--seat-border);border-radius:10px;padding:8px;"></div>
     <div class="me-error" id="exportScheduleError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="exportScheduleConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">✅ 导出</button>
+    <button id="exportScheduleConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 导出</button>
   </div>
 </div>
 
@@ -338,7 +338,7 @@
       </label>
     </div>
     <div class="me-error" id="exportRosterError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="exportRosterConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">✅ 导出</button>
+    <button id="exportRosterConfirm" style="width:100%;background:#16a085;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 导出</button>
   </div>
 </div>
 
@@ -359,7 +359,7 @@
     </p>
     <div class="cell-pop-row"><label>过道格式：</label><input type="text" id="aisleInput" class="cell-pop-input" placeholder="如 3+2+3，留空则取消"></div>
     <div class="me-error" id="aisleError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="aisleSave" style="width:100%;background:#7d5ba6;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">💾 保存</button>
+    <button id="aisleSave" style="width:100%;background:#7d5ba6;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
   </div>
 </div>
 
@@ -380,7 +380,7 @@
     <div class="cell-pop-row"><label>家长电话2：</label><input type="text" id="rosterPopTel2" class="cell-pop-input" placeholder="11位数字"></div>
     <div class="cell-pop-row"><label>家庭地址：</label><input type="text" id="rosterPopAddress" class="cell-pop-input"></div>
     <div class="me-error" id="rosterPopError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="rosterPopSave" style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">💾 保存</button>
+    <button id="rosterPopSave" style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
   </div>
 </div>
 
@@ -421,7 +421,7 @@
       </div>
     </div>
     <div class="me-error" id="examPopError" style="min-height:18px;margin-top:6px;"></div>
-    <button id="examPopSave" style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">💾 保存</button>
+    <button id="examPopSave" style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存</button>
   </div>
 </div>
 
@@ -458,7 +458,7 @@
     <div class="me-error" id="dutyPopError" style="min-height:18px;"></div>
     <button id="dutyPopSave"
             style="width:100%;background:#3498db;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;margin-top:16px;font-family:inherit;">
-      💾 保存
+      <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存
     </button>
   </div>
 </div>

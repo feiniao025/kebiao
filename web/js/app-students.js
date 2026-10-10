@@ -416,8 +416,8 @@ window.loadExams = async function () {
     html += '<div class="exam-row" data-id="' + e.id + '">' +
       '<div class="exam-row-head"><span class="exam-name">' + escapeHtml(e.name) + ' · ' + escapeHtml(e.subject) + '</span>' +
       '<div class="exam-actions">' +
-      '<button class="btn-sm btn-edit-exam" data-exam=\'' + JSON.stringify(e).replace(/'/g, "\\'") + '\'>✏️ 修改</button>' +
-      '<button class="btn-sm btn-del-exam" data-id="' + e.id + '">🗑️ 删除</button>' +
+      '<button class="btn-sm btn-edit-exam" data-exam=\'' + JSON.stringify(e).replace(/'/g, "\\'") + '\'>' + icon('pencil') + ' 修改</button>' +
+      '<button class="btn-sm btn-del-exam" data-id="' + e.id + '">' + icon('trash') + ' 删除</button>' +
       '</div></div>' +
       '<div class="exam-meta">满分 ' + e.full_score + ' · 及格 ' + e.pass_score + ' · 优秀 ' + e.excellent_score + '</div>' +
       '<div class="exam-stats" data-stats-for="' + e.id + '">加载中...</div></div>';
@@ -646,9 +646,9 @@ window.importScoresFromExcel = async function (exam, onSaved) {
       showSaveStatus('正在保存 ' + toSave.length + ' 条...', false);
       try {
         await apiCall(API.saveScores, exam.id, toSave);
-        let msg = '✅ 已导入并保存 ' + toSave.length + ' 名学生的成绩';
+        let msg = '已导入并保存 ' + toSave.length + ' 名学生的成绩';
         if (unmatched.length > 0) {
-          msg += '\n\n⚠️ 有 ' + unmatched.length + ' 名学生不在当前花名册，已跳过：\n' + unmatched.slice(0, 8).join('、');
+          msg += '\n\n注意：有 ' + unmatched.length + ' 名学生不在当前花名册，已跳过：\n' + unmatched.slice(0, 8).join('、');
           if (unmatched.length > 8) msg += ' …等';
         }
         alert(msg);
@@ -907,17 +907,17 @@ window.openScoresPop = async function (examId) {
 
     let html = `
       <div class="tab-header">
-        <button class="tab-btn active" data-tab="input">📝 成绩录入</button>
-        <button class="tab-btn" data-tab="analysis">📊 分数段</button>
-        <button class="tab-btn" data-tab="rank">🏆 名次表</button>
-        <button class="tab-btn" data-tab="trend">📈 成绩走势</button>
+        <button class="tab-btn active" data-tab="input">${icon('note')} 成绩录入</button>
+        <button class="tab-btn" data-tab="analysis">${icon('chart')} 分数段</button>
+        <button class="tab-btn" data-tab="rank">${icon('trophy')} 名次表</button>
+        <button class="tab-btn" data-tab="trend">${icon('trending')} 成绩走势</button>
       </div>
       <div id="tab-content-input" class="tab-pane active">
         <div class="scores-stats" id="scoresPopStats"></div>
         <div id="scoresInputBody" style="margin-top:12px;"></div>
         <div class="scores-action-bar">
-          <button id="scoresImportBtn" class="btn-scores-import">📗 导入</button>
-          <button id="scoresSaveBtn" class="btn-scores-save">💾 保存</button>
+          <button id="scoresImportBtn" class="btn-scores-import">${icon('import')} 导入</button>
+          <button id="scoresSaveBtn" class="btn-scores-save">${icon('save')} 保存</button>
         </div>
       </div>
       <div id="tab-content-analysis" class="tab-pane">
@@ -926,7 +926,7 @@ window.openScoresPop = async function (examId) {
       <div id="tab-content-rank" class="tab-pane">
         <div id="rankTableBody"></div>
         <div style="position:sticky;bottom:0;display:flex;justify-content:center;padding:12px 0 6px;background:var(--pop-bg,#fff);z-index:5;box-shadow:0 -8px 12px -8px rgba(0,0,0,.12);margin-top:10px;">
-          <button id="rankExportImgBtn" type="button" style="padding:8px 26px;border:none;border-radius:22px;background:#2c3e50;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.5px;box-shadow:0 3px 10px rgba(0,0,0,.18);transition:background .2s, transform .15s;">📷 导出图片</button>
+          <button id="rankExportImgBtn" type="button" style="padding:8px 26px;border:none;border-radius:22px;background:#2c3e50;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.5px;box-shadow:0 3px 10px rgba(0,0,0,.18);transition:background .2s, transform .15s;">${icon('camera')} 导出图片</button>
         </div>
       </div>
       <div id="tab-content-trend" class="tab-pane">
@@ -1426,8 +1426,8 @@ window.renderAttendance = async function () {
         '<div class="roster-toolbar">' +
           '<select id="attClass" class="cell-pop-input" style="flex:1;min-width:100px;">' + (classOptions || '<option value="">（暂无班级）</option>') + '</select>' +
           '<input type="date" id="attDate" class="cell-pop-input" style="flex:1;min-width:110px;">' +
-          '<button id="attDelBtn" class="btn-primary" style="background:#eeeeee;color:#555;" title="删除当日考勤">🗑️</button>' +
-          '<button id="attSaveBtn" class="btn-primary" title="保存考勤">💾</button>' +
+          '<button id="attDelBtn" class="btn-primary" style="background:#eeeeee;color:#555;" title="删除当日考勤">' + icon('trash') + '</button>' +
+          '<button id="attSaveBtn" class="btn-primary" title="保存考勤">' + icon('save') + '</button>' +
         '</div>' +
         '<div id="attSummary" class="att-summary"></div>' +
         '<div id="attList" class="att-list">加载中...</div>' +
@@ -1506,7 +1506,7 @@ window.loadAttendance = async function () {
         '</div>' +
         // ③ 右侧：独立的"月"按钮包裹层（垂直居中）
         '<div class="att-month-wrapper">' +
-          '<button class="att-month-btn" data-name="' + escapeHtml(safeName) + '" title="查看月度考勤">📅</button>' +
+          '<button class="att-month-btn" data-name="' + escapeHtml(safeName) + '" title="查看月度考勤">' + icon('calendarDay') + '</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -1634,7 +1634,7 @@ window.saveAttendance = async function () {
     await loadAttendance();
     showSaveStatus('已保存 ' + items.length + ' 条', false);
     if (saveBtn) {
-      saveBtn.textContent = '✓';
+      saveBtn.innerHTML = icon('check');
       saveBtn.style.background = '#27ae60';
       setTimeout(() => {
         saveBtn.textContent = oldText;
@@ -1774,7 +1774,7 @@ window.saveAttendance = async function () {
     e.stopPropagation();
     const open = rosterMorePanel.classList.toggle('open');
     rosterMoreToggle.classList.toggle('open', open);
-    rosterMoreToggle.textContent = open ? '⚙️ 收起' : '⚙️ 更多';
+    rosterMoreToggle.innerHTML = open ? icon('settings') + ' 收起' : icon('settings') + ' 更多';
   };
   const rosterImportBtn = $('rosterImportBtn');
   if (rosterImportBtn) rosterImportBtn.onclick = () => {
@@ -1790,7 +1790,7 @@ window.saveAttendance = async function () {
     const item = e.target.closest && e.target.closest('.roster-tr');
     if (item) {
       e.preventDefault();
-      if (!rosterEditOn) { showSaveStatus('已锁定，请先点击「✏️ 编辑名册」', true); return; }
+      if (!rosterEditOn) { showSaveStatus('已锁定，请先点击「编辑名册」', true); return; }
       const cid = item.dataset.class, name = item.dataset.name;
       const ok = await showConfirm('删除学生「' + name + '」？', { title: '删除学生', okText: '删除' });
       if (ok) {
