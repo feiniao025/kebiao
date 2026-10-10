@@ -1574,16 +1574,29 @@ function setupRemoteTalkBtn(btn) {
     recording = true;
     btn.classList.add('recording');
     if (textEl) textEl.textContent = '松开结束';
-    showSaveStatus('正在讲话…', false, true);
+
+    // ★ 核心修改：直接操作 DOM，清除自动消失的定时器，让提示保持显示
+    const el = document.getElementById('saveStatus');
+    if (el) {
+      if (window.saveStatusTimer) {
+        clearTimeout(window.saveStatusTimer);
+        window.saveStatusTimer = null;
+      }
+      el.textContent = '正在讲话…';
+      el.classList.remove('err');
+      el.classList.add('info', 'show');
+    }
   };
+
   const end = function (e) {
     if (e) e.preventDefault();
     if (!recording) return;
     recording = false;
     btn.classList.remove('recording');
     if (textEl) textEl.textContent = '按住说话';
+
+    // ★ 松开时，重新调用 showSaveStatus 提示"已发送"，这样它会自动在 2.5 秒后消失
     showSaveStatus('已发送语音到教室', false);
-    // TODO: 接入后此处调用真正的语音上传接口
   };
 
   btn.addEventListener('mousedown', start);
@@ -1737,6 +1750,7 @@ function handleDeviceAction(action) {
     }
 
     case 'clock': {
+      if (!confirm('确认要让教室大屏显示全屏时钟吗？')) return;	
       showSaveStatus('已发送「全屏时钟」指令', false);
       const pop = document.getElementById('deviceControlPop');
       if (pop) pop.style.display = 'none';

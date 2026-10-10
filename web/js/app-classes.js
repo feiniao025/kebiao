@@ -297,7 +297,7 @@ window.renderLegendCard = function (container) {
   legendCard.className = 'card legend-card';
   legendCard.id = 'legendCard';
   legendCard.innerHTML =
-    '<div class="card-header"><h2>' + icon('book') + ' 课程简称说明</h2><div class="legend" style="font-size:13px;color:var(--text-sub);">共 <strong style="color:var(--text-main);">' + defaultLegend.length + '</strong> 项</div></div>' +
+    '<div class="card-header"><h2>课程简称说明</h2><div class="legend" style="font-size:13px;color:var(--text-sub);">共 <strong style="color:var(--text-main);">' + defaultLegend.length + '</strong> 项</div></div>' +
     '<div class="legend-grid">' + defaultLegend.map(item =>
       '<div class="legend-item"><span class="abbr' + (item.special ? ' special' : '') + '">' + escapeHtml(item.abbr) + '</span><span class="full">' + escapeHtml(item.full) + '</span></div>'
     ).join('') + '</div>';

@@ -2964,7 +2964,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   }
   .remote-action-circle .remote-circle-text { font-size: 12px; }
   .remote-hint { font-size: 13px; margin-bottom: 16px; }
-  .remote-talk-btn { width: 100px; height: 100px; gap: 6px; }
+  .remote-talk-btn { width: 90px; height: 90px; gap: 5px; }
   .remote-talk-icon { font-size: 26px; }
   .remote-talk-text { font-size: 13px; }
 }
@@ -3037,12 +3037,57 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
     height: 36px;
   }
 }
+
+/* ============ 远程喊话：按住说话水波扩散效果 ============ */
+
+/* 1. 确保按钮本身拥有相对定位和层级，防止波纹被其它元素遮挡 */
+.remote-talk-btn {
+  position: relative;
+  z-index: 1;
+}
+
+/* 2. 核心：按住时，在按钮背后生成两个扩散的圆环 */
+.remote-talk-btn.recording::before,
+.remote-talk-btn.recording::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  border: 3px solid #2bb673; /* 水波的颜色，和按钮背景一致 */
+  animation: talk-ripple 1.5s ease-out infinite; /* 1.5秒扩散一次 */
+  pointer-events: none; /* 确保水波不阻挡鼠标/手指事件 */
+  z-index: -1; /* 放在按钮后面 */
+}
+
+/* 3. 第二个水波延迟 0.75 秒，形成连绵不断向外扩散的效果 */
+.remote-talk-btn.recording::after {
+  animation-delay: 0.75s;
+}
+
+/* 4. 定义水波扩散动画 */
+@keyframes talk-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.8; /* 刚开始比较明显 */
+  }
+  100% {
+    transform: scale(1.5); /* 向外扩大 1.5 倍 */
+    opacity: 0; /* 逐渐消失 */
+  }
+}
+
+/* 5. 深色模式下微调水波颜色，让它更亮一点（比如用翠绿色） */
+[data-theme="dark"] .remote-talk-btn.recording::before,
+[data-theme="dark"] .remote-talk-btn.recording::after {
+  border-color: #4ade80;
+}
+
 /* ============ 33. 设备控制弹窗 ============ */
 
 .device-control-inner {
   min-width: 0;
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   padding: 22px 20px 24px;
   background: var(--pop-bg);
 }
@@ -3061,10 +3106,11 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   letter-spacing: .3px;
 }
 
+/* 四个按钮：2×2 网格，间距加大，每格最小 0 防溢出 */
 .device-control-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .device-action-card {
@@ -3073,7 +3119,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 18px 12px 14px;
+  padding: 16px 10px 14px;
   border-radius: 14px;
   border: 1px solid var(--seat-border);
   background: var(--card-bg);
@@ -3082,6 +3128,7 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   cursor: pointer;
   transition: all .18s ease;
   text-align: center;
+  min-width: 0;
 }
 .device-action-card:hover {
   border-color: #2f6df6;
@@ -3094,57 +3141,54 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 
 .device-action-icon {
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1;
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.device-action-icon .svg-icon { width: 28px; height: 28px; }
+
 .device-action-label {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: .5px;
+  white-space: nowrap;      /* 防止「一键关机」等被拆行 */
+  line-height: 1.2;
 }
 .device-action-desc {
   font-size: 11.5px;
   color: var(--text-sub);
   line-height: 1.4;
   margin-top: 2px;
+  white-space: nowrap;      /* 说明文字同样保持单行 */
 }
 
-/* 一键关机：偏红提示 */
-.device-action-card[data-action="shutdown"] .device-action-icon {
-  color: #e74c3c;
-}
+/* 颜色强调 */
+.device-action-card[data-action="shutdown"] .device-action-icon { color: #e74c3c; }
 .device-action-card[data-action="shutdown"]:hover {
   border-color: #e74c3c;
   background: rgba(231, 76, 60, .06);
   box-shadow: 0 6px 18px rgba(231, 76, 60, .14);
 }
 
-/* 重启：偏橙提示 */
-.device-action-card[data-action="reboot"] .device-action-icon {
-  color: #f39c12;
-}
+.device-action-card[data-action="reboot"] .device-action-icon { color: #f39c12; }
 .device-action-card[data-action="reboot"]:hover {
   border-color: #f39c12;
   background: rgba(243, 156, 18, .06);
   box-shadow: 0 6px 18px rgba(243, 156, 18, .14);
 }
 
-/* 全屏时钟：偏蓝提示 */
-.device-action-card[data-action="clock"] .device-action-icon {
-  color: #3498db;
-}
+.device-action-card[data-action="clock"] .device-action-icon { color: #3498db; }
 .device-action-card[data-action="clock"]:hover {
   border-color: #3498db;
   background: rgba(52, 152, 219, .06);
   box-shadow: 0 6px 18px rgba(52, 152, 219, .14);
 }
 
-/* 定时关机：偏紫提示 */
-.device-action-card[data-action="timer"] .device-action-icon {
-  color: #9b59b6;
-}
+.device-action-card[data-action="timer"] .device-action-icon { color: #9b59b6; }
 .device-action-card[data-action="timer"]:hover {
   border-color: #9b59b6;
   background: rgba(155, 89, 182, .06);
@@ -3155,18 +3199,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   border-color: var(--seat-border);
   background: var(--card-bg);
 }
-[data-theme="dark"] .device-action-card[data-action="shutdown"]:hover {
-  background: rgba(231, 76, 60, .12);
-}
-[data-theme="dark"] .device-action-card[data-action="reboot"]:hover {
-  background: rgba(243, 156, 18, .12);
-}
-[data-theme="dark"] .device-action-card[data-action="clock"]:hover {
-  background: rgba(52, 152, 219, .12);
-}
-[data-theme="dark"] .device-action-card[data-action="timer"]:hover {
-  background: rgba(155, 89, 182, .12);
-}
+[data-theme="dark"] .device-action-card[data-action="shutdown"]:hover { background: rgba(231, 76, 60, .12); }
+[data-theme="dark"] .device-action-card[data-action="reboot"]:hover   { background: rgba(243, 156, 18, .12); }
+[data-theme="dark"] .device-action-card[data-action="clock"]:hover    { background: rgba(52, 152, 219, .12); }
+[data-theme="dark"] .device-action-card[data-action="timer"]:hover    { background: rgba(155, 89, 182, .12); }
 
 /* ---------- 定时关机设置面板 ---------- */
 .device-timer-panel {
@@ -3179,9 +3215,10 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
 }
 @keyframes deviceTimerFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
+/* 关键修复：label 不换行，「关机时间」四字完整显示 */
 .device-timer-row {
   display: flex;
   align-items: center;
@@ -3189,16 +3226,23 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   margin-bottom: 10px;
 }
 .device-timer-row label {
-  width: 70px;
-  flex-shrink: 0;
+  flex: 0 0 78px;
+  width: 78px;
+  white-space: nowrap;       /* ★ 防止「关机时间」被拆成两行 */
   font-size: 13px;
   color: var(--text-sub);
+  line-height: 1.4;
+}
+.device-timer-row .cell-pop-input,
+.device-timer-row .select-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .device-timer-row .cell-pop-input {
-  flex: 1;
-  min-width: 0;
   padding: 8px 12px;
   font-size: 14px;
+  height: 38px;
+  box-sizing: border-box;
 }
 
 .device-timer-actions {
@@ -3222,29 +3266,39 @@ body:not(.person-mode) .cell-pop-input{background-color:var(--table-row-alt);cur
   background: transparent;
   color: var(--text-main);
 }
-.device-btn-ghost:hover {
-  background: var(--card-bg);
-}
+.device-btn-ghost:hover { background: var(--card-bg); }
 .device-btn-primary {
   border: none;
   background: #2f6df6;
   color: #fff;
 }
-.device-btn-primary:hover {
-  background: #2159d4;
-}
+.device-btn-primary:hover { background: #2159d4; }
 
+/* ---------- 移动端 ---------- */
 @media (max-width: 768px) {
   .device-control-inner { padding: 18px 14px 20px; }
   .device-control-title { font-size: 18px; }
-  .device-control-sub { font-size: 12px; margin-bottom: 14px; }
-  .device-control-grid { gap: 8px; }
-  .device-action-card { padding: 14px 8px 12px; border-radius: 12px; }
-  .device-action-icon { font-size: 26px; }
-  .device-action-label { font-size: 14px; }
-  .device-action-desc { font-size: 11px; }
-  .device-timer-row label { width: 60px; font-size: 12.5px; }
-  .device-timer-row .cell-pop-input { padding: 7px 10px; font-size: 13px; }
+  .device-control-sub   { font-size: 12px; margin-bottom: 14px; }
+
+  .device-control-grid { gap: 10px; }
+
+  .device-action-card { padding: 14px 8px 12px; border-radius: 12px; gap: 5px; }
+  .device-action-icon { font-size: 24px; }
+  .device-action-icon .svg-icon { width: 24px; height: 24px; }
+  .device-action-label { font-size: 13px; letter-spacing: .3px; }
+  .device-action-desc  { font-size: 10.5px; }
+
+  .device-timer-row { gap: 8px; }
+  .device-timer-row label {
+    flex: 0 0 70px;          /* ★ 移动端同样保证不换行 */
+    width: 70px;
+    font-size: 12.5px;
+  }
+  .device-timer-row .cell-pop-input {
+    padding: 7px 10px;
+    font-size: 13px;
+    height: 34px;
+  }
   .device-btn-ghost, .device-btn-primary { padding: 9px; font-size: 13px; }
 }
 
@@ -3283,7 +3337,12 @@ button > .svg-icon:last-child { margin-right: 0; margin-left: 4px; }
 .card-header h2 > .svg-icon { width: 20px; height: 20px; margin-right: 6px; vertical-align: -0.2em; }
 
 /* 顶部页面标题 */
-.page-title > .svg-icon { width: 26px; height: 26px; margin-right: 8px; vertical-align: -0.22em; }
+.page-title > .svg-icon {
+  width: 1em;              /* 等于1个字号大小（32px）*/
+  height: 1em;
+  vertical-align: -0.125em; /* 精准的垂直居中偏移 */
+  stroke-width: 2.2;
+}
 
 /* 今日课程列表的箭头 —— SVG 版本 */
 .today-course-ul li::after {
@@ -3305,4 +3364,92 @@ button > .svg-icon:last-child { margin-right: 0; margin-left: 4px; }
 .today-course-arrow .svg-icon { width: 20px; height: 20px; }
 
 /* 三档主题色适配（可选） */
-[data-theme="dark"] .svg-icon { color: currentColor; }
+[data-theme="dark"] .bottom-nav .nav-icon { color: currentColor; }
+
+/* ============ 35. SVG 图标颜色 ============ */
+/* 底部导航的 4 个图标保持 currentColor 不变 */
+.bottom-nav .nav-icon { color: currentColor; }
+
+/* JS 生成的图标（icon 函数添加 ic-<name> 类）按图标名着色 */
+.svg-icon.ic-book        { stroke: #3b82f6; }
+.svg-icon.ic-check       { stroke: #16a085; }
+.svg-icon.ic-checkCircle { stroke: #16a085; }
+.svg-icon.ic-calendar    { stroke: #3b82f6; }
+.svg-icon.ic-calendarDay { stroke: #3b82f6; }
+.svg-icon.ic-users       { stroke: #0d9488; }
+.svg-icon.ic-user        { stroke: #3498db; }
+.svg-icon.ic-school      { stroke: #4f46e5; }
+.svg-icon.ic-key         { stroke: #f59e0b; }
+.svg-icon.ic-cloud       { stroke: #64748b; }
+.svg-icon.ic-volume      { stroke: #8b5cf6; }
+.svg-icon.ic-megaphone   { stroke: #ef4444; }
+.svg-icon.ic-note        { stroke: #f59e0b; }
+.svg-icon.ic-save        { stroke: #3b82f6; }
+.svg-icon.ic-pencil      { stroke: #3b82f6; }
+.svg-icon.ic-settings    { stroke: #64748b; }
+.svg-icon.ic-camera      { stroke: #14b8a6; }
+.svg-icon.ic-import      { stroke: #16a085; }
+.svg-icon.ic-export      { stroke: #16a085; }
+.svg-icon.ic-bulb        { stroke: #f59e0b; }
+.svg-icon.ic-phone       { stroke: #3b82f6; }
+.svg-icon.ic-trash       { stroke: #ef4444; }
+.svg-icon.ic-refresh     { stroke: #64748b; }
+.svg-icon.ic-clock       { stroke: #3b82f6; }
+.svg-icon.ic-monitor     { stroke: #3b82f6; }
+.svg-icon.ic-video       { stroke: #8b5cf6; }
+.svg-icon.ic-sliders    { stroke: #64748b; }
+.svg-icon.ic-folder     { stroke: #f59e0b; }
+.svg-icon.ic-file       { stroke: #64748b; }
+.svg-icon.ic-image      { stroke: #14b8a6; }
+.svg-icon.ic-film       { stroke: #8b5cf6; }
+.svg-icon.ic-message    { stroke: #3b82f6; }
+.svg-icon.ic-siren      { stroke: #ef4444; }
+.svg-icon.ic-chart      { stroke: #16a085; }
+.svg-icon.ic-trophy     { stroke: #f59e0b; }
+.svg-icon.ic-trending   { stroke: #16a085; }
+.svg-icon.ic-send       { stroke: #3b82f6; }
+.svg-icon.ic-copy       { stroke: #64748b; }
+.svg-icon.ic-flask      { stroke: #14b8a6; }
+.svg-icon.ic-upload     { stroke: #3b82f6; }
+.svg-icon.ic-download   { stroke: #3b82f6; }
+.svg-icon.ic-listChecks { stroke: #16a085; }
+.svg-icon.ic-chair      { stroke: #8b5cf6; }
+.svg-icon.ic-sun        { stroke: #f59e0b; }
+.svg-icon.ic-arrowLeft  { stroke: #64748b; }
+.svg-icon.ic-party      { stroke: #ec4899; }
+.svg-icon.ic-inbox      { stroke: #f59e0b; }
+.svg-icon.ic-warn       { stroke: #f59e0b; }
+.svg-icon.ic-xCircle    { stroke: #ef4444; }
+.svg-icon.ic-mic        { stroke: #8b5cf6; }
+.svg-icon.ic-info       { stroke: #3b82f6; }
+.svg-icon.ic-editCal    { stroke: #e74c3c; }
+.svg-icon.ic-x          { stroke: #ef4444; }
+.svg-icon.ic-power      { stroke: #ef4444; }
+.svg-icon.ic-alarmClock { stroke: #ef4444; }
+
+/* 彩色背景按钮内的图标继承按钮文字色（通常白色） */
+.me-admin-btn .svg-icon,
+.me-submit .svg-icon,
+.me-logout .svg-icon,
+.shout-send-main .svg-icon,
+.shout-btn-danger .svg-icon,
+.cell-pop-save .svg-icon,
+.committeePopSave .svg-icon,
+.btn-primary .svg-icon { stroke: currentColor !important; }
+
+/* index.html 内联 SVG 图标按位置着色 */
+
+#toggleWeekHighlight .svg-icon  { stroke: #f59e0b; }  /* sun */
+#editToggleBtn .svg-icon        { stroke: #3b82f6; }  /* pencil */
+#seatEditToggle .svg-icon       { stroke: #3b82f6; }  /* pencil */
+#dutyEditToggle .svg-icon       { stroke: #3b82f6; }  /* pencil */
+#moreToggle .svg-icon           { stroke: #64748b; }  /* settings */
+#exportBtn .svg-icon            { stroke: #14b8a6; }  /* camera */
+#importExcelBtn .svg-icon       { stroke: currentColor; }  /* import - 绿底按钮 */
+#exportExcelBtn .svg-icon       { stroke: currentColor; }  /* export - 绿底按钮 */
+#rosterEditBtn .svg-icon        { stroke: #3b82f6; }  /* pencil */
+#rosterMoreToggle .svg-icon    { stroke: #64748b; }  /* settings */
+#rosterExportImgBtn .svg-icon   { stroke: #14b8a6; }  /* camera */
+#rosterImportBtn .svg-icon      { stroke: currentColor; }  /* import - 绿底按钮 */
+#rosterExportBtn .svg-icon      { stroke: currentColor; }  /* export - 绿底按钮 */
+.seat-legend .svg-icon          { stroke: #f59e0b; }  /* bulb */

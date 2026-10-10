@@ -8,6 +8,19 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   .svg-icon{width:1em;height:1em;display:inline-block;vertical-align:-0.125em;}
+  .svg-icon.ic-volume{stroke:#8b5cf6;}
+  .svg-icon.ic-check{stroke:#16a085;}
+  .svg-icon.ic-megaphone{stroke:#ef4444;}
+  .svg-icon.ic-message{stroke:#3b82f6;}
+  .svg-icon.ic-image{stroke:#14b8a6;}
+  .svg-icon.ic-film{stroke:#8b5cf6;}
+  .svg-icon.ic-file{stroke:#64748b;}
+  .svg-icon.ic-folder{stroke:#f59e0b;}
+  .svg-icon.ic-siren{stroke:#ef4444;}
+  .svg-icon.ic-download{stroke:#3b82f6;}
+  .svg-icon.ic-warn{stroke:#f59e0b;}
+  .idle .icon .svg-icon{stroke:#ef4444;}
+  #audioHint .svg-icon{stroke:currentColor;}
   html,body{width:100%;height:100%;overflow:hidden;}
   body{
     font-family:'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;
@@ -324,7 +337,7 @@
   function icon(name, cls) {
     var body = ICONS[name];
     if (!body) return '';
-    return '<svg class="svg-icon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" ' +
+    return '<svg class="svg-icon ic-' + name + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" ' +
            'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
            body + '</svg>';
   }
